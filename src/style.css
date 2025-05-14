@@ -1,0 +1,116 @@
+:root {
+  --primary: #007bff;
+  --primary-hover: #0056b3;
+  --light-bg: #f9fafb;
+  --border: #ddd;
+  --text-color: #333;
+  --header-bg: #f0f4f8;
+  --row-alt: #f9f9f9;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--light-bg);
+  color: var(--text-color);
+  margin: 0;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+h2 {
+  text-align: center;
+  color: #444;
+  margin-bottom: 30px;
+}
+
+input[type="file"],
+select,
+button {
+  font-size: 15px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  margin: 10px 5px 20px 0;
+}
+
+button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--primary-hover);
+}
+
+select {
+  background-color: white;
+}
+
+.table-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: white;
+  padding: 15px;
+  margin-top: 20px;
+  overflow-x: auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+th,
+td {
+  padding: 10px 14px;
+  white-space: nowrap;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+
+th {
+  background-color: var(--header-bg);
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+tr:nth-child(even) {
+  background-color: var(--row-alt);
+}
+
+#paginationControls {
+  margin-top: 20px;
+  text-align: center;
+}
+
+#paginationControls button {
+  margin: 0 10px;
+}
+
+#filters label {
+  margin-right: 20px;
+}
+
+#filters select {
+  margin-left: 5px;
+}
+
+@media (max-width: 768px) {
+  table, th, td {
+    font-size: 14px;
+  }
+
+  input[type="file"],
+  select,
+  button {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+}
