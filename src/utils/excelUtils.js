@@ -32,16 +32,12 @@ export function cleanEmptyValues(dataArray, sheetName) {
         }
       }
 
-        const hourLikeColumns = ["Est. (hrs)", "Acc. time"]; 
-      if (
-        typeof value === "number" &&
-        value > 0 &&
-        value < 1 &&
-        !hourLikeColumns.includes(renamedKey)
-      ) {
+      if (typeof value === "number" && value > 0 && value < 1) {
         const totalSeconds = Math.round(value * 24 * 60 * 60);
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const hourLikeColumns = ["Est. (hrs)", "Acc. time"]; 
+        hourLikeColumns.includes(renamedKey) && (value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
 
         value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
       }
