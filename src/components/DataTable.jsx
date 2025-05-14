@@ -23,9 +23,7 @@ const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
             case "__EMPTY_4":
               return "End";
             case "__EMPTY_5":
-              return " ";
-            case "__EMPTY_6":
-              return "Real - Start to finish";
+              return "Acc. time ";
           }
         }
         return h;
