@@ -17,7 +17,7 @@ export default function ExportPdfBtn({ sheetName }) {
     const cloned = table.cloneNode(true);
 
     // 3. Colonnes à exclure (exact nom d'en-tête visible)
-    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "__EMPTY_4"]; // adapte selon ton contexte
+    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA"]; // adapte selon ton contexte
 
     // 4. Trouver les index des colonnes à exclure
     const headerCells = Array.from(cloned.querySelectorAll('thead th'));
@@ -62,7 +62,7 @@ export default function ExportPdfBtn({ sheetName }) {
 
   return (
     <button onClick={exportPdf} style={{ marginBottom: '15px' }}>
-      📄 Exporter (sans colonnes exclues)
+      📄 Export
     </button>
   );
 }
