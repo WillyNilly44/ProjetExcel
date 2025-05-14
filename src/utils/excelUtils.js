@@ -1,3 +1,5 @@
+import * as XLSX from "xlsx";
+
 export const headerRenamesBySheet = {
   "Operational Logs": {
     "__EMPTY_1": "Incid.",
