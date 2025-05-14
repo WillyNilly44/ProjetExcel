@@ -8,7 +8,8 @@ import ExportPdfBtn from './components/ExportPdfBtn';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
+
 
 function App() {
   const [workbook, setWorkbook] = useState(null);
