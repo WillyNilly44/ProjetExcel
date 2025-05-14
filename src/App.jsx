@@ -1,5 +1,3 @@
-// ===============================
-// src/App.jsx
 import React, { useState } from 'react';
 import FileUpload from './components/FileUpload';
 import SheetSelector from './components/SheetSelector';
@@ -9,10 +7,8 @@ import CalendarView from './components/CalendarView';
 import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
-import * as XLSX from 'xlsx';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
-
 
 function App() {
   const [workbook, setWorkbook] = useState(null);
@@ -25,11 +21,8 @@ function App() {
   const [viewMode, setViewMode] = useState('table');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(() => {
-    return localStorage.getItem('admin') === 'true';
-  });
-
-
+  const [adminView, setAdminView] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('admin') === 'true');
 
   const handleWorkbookLoaded = (wb, validSheets) => {
     setWorkbook(wb);
@@ -48,14 +41,34 @@ function App() {
     setCurrentPage(0);
   };
 
+  if (adminView) {
+    if (!isAdmin) {
+      return <AdminLogin onLogin={() => {
+        localStorage.setItem('admin', 'true');
+        setIsAdmin(true);
+      }} />;
+    }
+    return <AdminPanel onLogout={() => {
+      localStorage.removeItem('admin');
+      setIsAdmin(false);
+      setAdminView(false);
+    }} />;
+  }
+
   return (
     <div className="App">
       <h2>Operational & Application Logs</h2>
-      <Route path="/admin" element={
-        isAdmin ? <AdminPanel /> : <AdminLogin onLogin={() => setIsAdmin(true)} />
-      } />
-
       <FileUpload onWorkbookLoaded={handleWorkbookLoaded} />
+
+      <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
+        <button onClick={() => setAdminView(true)}>🔒 Page Admin</button>
+        {sheetNames.length > 0 && (
+          <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
+            {viewMode === 'table' ? 'Afficher Calendrier' : 'Afficher Tableau'}
+          </button>
+        )}
+      </div>
+
       {sheetNames.length > 0 && (
         <>
           <SheetSelector
@@ -73,17 +86,12 @@ function App() {
             onMonthFilterChange={(isSelected) => setIsMonthSelected(isSelected)}
             onMonthYearChange={(date) => setCalendarStartDate(date)}
           />
-          <div style={{ marginBottom: '10px' }}>
-            <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
-              {viewMode === 'table' ? 'Afficher Calendrier' : 'Afficher Tableau'}
-            </button>
-          </div>
           {viewMode === 'table' ? (
             <>
               <ExportPdfBtn
                 filteredData={filteredData}
                 currentPage={currentPage}
-                pageSize={pageSize}
+                pageSize={isMonthSelected ? -1 : pageSize}
                 sheetName={selectedSheet}
               />
               <DataTable
@@ -102,7 +110,6 @@ function App() {
             </>
           ) : (
             <CalendarView data={filteredData} initialDate={calendarStartDate} />
-
           )}
         </>
       )}
