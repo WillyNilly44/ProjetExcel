@@ -34,17 +34,24 @@ function App() {
   };
 
   const loadDataFromSheets = (wb, sheets) => {
-    const allData = sheets.flatMap((sheetName) => {
-      const sheet = wb.Sheets[sheetName];
-      let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
-      rawData = cleanEmptyValues(rawData, sheetName);
-      rawData = removeFirstColumn(rawData);
-      return rawData;
-    });
-    setData(allData);
-    setFilteredData(allData);
-    setCurrentPage(0);
-  };
+  const allData = sheets.flatMap((sheetName) => {
+    const sheet = wb.Sheets[sheetName];
+    let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
+    rawData = cleanEmptyValues(rawData, sheetName);
+    rawData = removeFirstColumn(rawData);
+    return rawData;
+  });
+  allData.sort((a, b) => {
+    const dateA = new Date(Object.values(a).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) || 0);
+    const dateB = new Date(Object.values(b).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) || 0);
+    return dateB - dateA;
+  });
+
+  setData(allData);
+  setFilteredData(allData);
+  setCurrentPage(0);
+};
+
 
   if (adminView) {
     if (!isAdmin) {
