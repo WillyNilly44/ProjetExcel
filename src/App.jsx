@@ -21,6 +21,8 @@ function App() {
   const [pageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(0);
   const [viewMode, setViewMode] = useState('table');
+  const [isMonthSelected, setIsMonthSelected] = useState(false);
+
 
   const handleWorkbookLoaded = (wb, validSheets) => {
     setWorkbook(wb);
@@ -57,6 +59,7 @@ function App() {
             originalData={data}
             setFilteredData={setFilteredData}
             setCurrentPage={setCurrentPage}
+            onMonthFilterChange={(isSelected) => setIsMonthSelected(isSelected)}
           />
           <div style={{ marginBottom: '10px' }}>
             <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
@@ -73,15 +76,17 @@ function App() {
               />
               <DataTable
                 data={filteredData}
-                pageSize={pageSize}
+                pageSize={isMonthSelected ? -1 : pageSize}
                 currentPage={currentPage}
               />
+              {!isMonthSelected && (
               <PaginationControls
                 currentPage={currentPage}
                 setCurrentPage={setCurrentPage}
                 totalItems={filteredData.length}
                 pageSize={pageSize}
               />
+              )}
             </>
           ) : (
             <CalendarView data={filteredData} />

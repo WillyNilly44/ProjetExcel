@@ -4,7 +4,7 @@ export default function DataTable({ data, pageSize, currentPage }) {
 const excludedColumns = ["Maint. (#)", "Maint. (hrs)", "Incid. (#)","Incid. (hrs.)", "Bus. Imp.", "Bus. Imp. (hrs)"];
 
   const start = currentPage * pageSize;
-  const pageData = data.slice(start, start + pageSize);
+const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
 
   if (pageData.length === 0) {
     return <p style={{ color: 'red' }}>Aucune donnée disponible.</p>;

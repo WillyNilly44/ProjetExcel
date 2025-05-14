@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { extractDateInfo } from '../utils/dateUtils';
 
-export default function Filters({ originalData, setFilteredData, setCurrentPage }) {
+export default function Filters({ originalData, setFilteredData, setCurrentPage, onMonthFilterChange }) {
   const [years, setYears] = useState([]);
   const [months, setMonths] = useState([]);
   const [weeks, setWeeks] = useState([]);
@@ -61,6 +61,9 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage 
     );
     const uniqueWeeks = [...new Set(dates.map(d => d.weekRange))];
     setWeeks(uniqueWeeks);
+    if (onMonthFilterChange) {
+      onMonthFilterChange(!!selectedMonth);
+    }
   }, [selectedMonth]);
 
   const resetFilters = () => {
