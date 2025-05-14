@@ -6,43 +6,57 @@ export default function ExportPdfBtn({ sheetName }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    // 1. Trouver le tableau visible
     const table = document.querySelector('table');
     if (!table) {
       alert("Aucun tableau trouvé à l'écran.");
       return;
     }
 
-    // 2. Cloner le tableau pour le modifier sans toucher à l'original
+    // Clone le tableau HTML visible
     const cloned = table.cloneNode(true);
 
-    // 3. Colonnes à exclure (exact nom d'en-tête visible)
-    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", ""]; // adapte selon ton contexte
+    // Colonnes à exclure (exactes, sensibles à la casse)
+    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
 
-    // 4. Trouver les index des colonnes à exclure
+    // Ordre final désiré pour l’export
+    const exportOrder = ["Ticket #", "Assigned", "Note", "Date", "Acc. time", "Temps Réel", "District"];
+
+    // Étape 1 : Trouver en-têtes
     const headerCells = Array.from(cloned.querySelectorAll('thead th'));
-    const indexesToRemove = headerCells
-      .map((cell, idx) => (excludedColumns.includes(cell.textContent.trim()) ? idx : -1))
+    const headerNames = headerCells.map(cell => cell.textContent.trim());
+
+    // Étape 2 : Supprimer colonnes exclues (descendant pour garder index valides)
+    const indexesToRemove = headerNames
+      .map((name, idx) => (excludedColumns.includes(name) ? idx : -1))
       .filter(idx => idx !== -1);
 
-    // 5. Supprimer les colonnes exclues dans le head
-    headerCells.forEach((cell, idx) => {
-      if (indexesToRemove.includes(idx)) cell.remove();
-    });
-
-    // 6. Supprimer les colonnes exclues dans chaque ligne
-    cloned.querySelectorAll('tbody tr').forEach(row => {
-      [...indexesToRemove].sort((a, b) => b - a).forEach(idx => {
+    [...indexesToRemove].sort((a, b) => b - a).forEach(idx => {
+      if (headerCells[idx]) headerCells[idx].remove();
+      cloned.querySelectorAll('tbody tr').forEach(row => {
         if (row.children[idx]) row.children[idx].remove();
       });
     });
 
+    // Étape 3 : Recalculer les en-têtes restants
+    const finalHeaderCells = Array.from(cloned.querySelectorAll('thead th'));
+    const finalHeaders = finalHeaderCells.map(cell => cell.textContent.trim());
 
-    // 7. Exporter avec autoTable
+    // Étape 4 : Réordonner selon exportOrder
+    const orderedIndexes = exportOrder.map(col => finalHeaders.indexOf(col)).filter(i => i !== -1);
+    const orderedHeaders = exportOrder.filter(col => finalHeaders.includes(col));
+
+    // Étape 5 : Lire lignes dans l’ordre
+    const body = Array.from(cloned.querySelectorAll('tbody tr')).map(row => {
+      const cells = Array.from(row.children);
+      return orderedIndexes.map(idx => cells[idx]?.textContent.trim() ?? '');
+    });
+
+    // Étape 6 : Export PDF
     doc.setFontSize(10);
     doc.text(sheetName || 'Export', 14, 15);
     doc.autoTable({
-      html: cloned,
+      head: [orderedHeaders],
+      body,
       startY: 20,
       styles: {
         fontSize: 8,
