@@ -5,6 +5,8 @@ import 'jspdf-autotable';
 export default function ExportPdfBtn({ filteredData, currentPage, pageSize, sheetName }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
+
+    const excludedColumns = ["Stack Trace", "Durée"]; // <- à personnaliser
     const start = currentPage * pageSize;
     const pageData = filteredData.slice(start, start + pageSize);
 
@@ -13,7 +15,7 @@ export default function ExportPdfBtn({ filteredData, currentPage, pageSize, shee
       return;
     }
 
-    const headers = Object.keys(pageData[0]);
+    const headers = Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
     const body = pageData.map(row => headers.map(h => row[h] ?? ''));
 
     doc.setFontSize(10);
@@ -35,6 +37,7 @@ export default function ExportPdfBtn({ filteredData, currentPage, pageSize, shee
       },
       margin: { left: 10, right: 10 }
     });
+
     doc.save(sheetName + '.pdf');
   };
 

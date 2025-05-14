@@ -20,17 +20,10 @@ export const headerRenamesBySheet = {
 
 export function cleanEmptyValues(dataArray, sheetName) {
   const renameMap = headerRenamesBySheet[sheetName] || {};
-
   return dataArray.map(row => {
     const cleanedRow = {};
     Object.entries(row).forEach(([key, value], i) => {
       const newKey = renameMap[key] || renameMap[`__EMPTY_${i}`] || key;
-      if (typeof value === 'number' && value > 30000 && value < 60000) {
-        const parsed = XLSX.SSF.parse_date_code(value);
-        if (parsed) {
-          value = `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
-        }
-      }
       cleanedRow[newKey] = value;
     });
     return cleanedRow;

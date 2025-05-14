@@ -84,7 +84,12 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage 
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} disabled={!selectedYear}>
           <option value="">-- Tous --</option>
           {months.map(m => (
-            <option key={m} value={m}>{new Date(0, m).toLocaleString('fr', { month: 'long' })}</option>
+            <option key={m} value={m}>
+              {new Date(0, m)
+                .toLocaleString('fr', { month: 'long' })
+                .replace(/^./, c => c.toUpperCase())}
+            </option>
+
           ))}
         </select>
       </label>
