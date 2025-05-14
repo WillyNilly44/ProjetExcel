@@ -12,6 +12,13 @@ const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
 
   const headers = Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
   const poop = headers.map(h => {
+    switch (h) {
+      case "Business Impact?":
+        return "Impact?";
+        case "Duration (hrs)":
+          return "Est. (hrs)";
+    }
+
         if (h.includes("__EMPTY_")) {
           switch (h) {
             case "__EMPTY_1":
@@ -24,10 +31,6 @@ const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
               return "";
             case "__EMPTY_5":
               return "Acc. time ";
-            case "Business Impact?":
-              return "Impact?";
-            case "Duration (hrs)":
-              return "Est. time";
           }
         }
         return h;
