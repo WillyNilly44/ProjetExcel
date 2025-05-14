@@ -32,10 +32,11 @@ export default function ExportPdfBtn({ sheetName }) {
 
     // 6. Supprimer les colonnes exclues dans chaque ligne
     cloned.querySelectorAll('tbody tr').forEach(row => {
-      indexesToRemove.forEach(idx => {
+      [...indexesToRemove].sort((a, b) => b - a).forEach(idx => {
         if (row.children[idx]) row.children[idx].remove();
       });
     });
+
 
     // 7. Exporter avec autoTable
     doc.setFontSize(10);
