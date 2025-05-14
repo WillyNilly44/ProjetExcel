@@ -11,13 +11,33 @@ const excludedColumns = ["Maint. (#)", "Maint. (hrs)", "Incid. (#)","Incid. (hrs
   }
 
   const headers = Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
+  const poop = headers.map(h => {
+        if (h.includes("__EMPTY_")) {
+          switch (h) {
+            case "__EMPTY_1":
+              return "Incid."
+            case "__EMPTY_2":
+              return "Est.";
+            case "__EMPTY_3":
+              return "Start";
+            case "__EMPTY_4":
+              return "End";
+            case "__EMPTY_5":
+              return " ";
+            case "__EMPTY_6":
+              return "Real - Start to finish";
+          }
+        }
+        return h;
+      });
 
   return (
     <div style={{ overflowX: 'auto', marginTop: '20px' }}>
       <table>
         <thead>
           <tr>
-            {headers.map(h => <th key={h}>{h}</th>)}
+            {poop.forEach(h =>
+              <th key={h}>{h}</th>)}
           </tr>
         </thead>
         <tbody>
