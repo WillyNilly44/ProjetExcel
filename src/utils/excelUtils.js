@@ -33,7 +33,7 @@ export function cleanEmptyValues(dataArray, sheetName) {
       }
 
     
-      const hourLikeColumns = ["Est.(hrs)", "Acc. time ", " "]; 
+      const hourLikeColumns = ["Est.(hrs)", "Acc. time ", "", "End","Start"]; 
       if (
         typeof value === "number" &&
         value > 0 &&
