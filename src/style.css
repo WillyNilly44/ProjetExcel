@@ -69,9 +69,10 @@ th, td {
   padding: 10px 14px;
   border: 1px solid #ddd;
   text-align: left;
-  overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: hidden;
+  max-width: 200px; 
+  word-break: break-word; 
 }
 
 th {
@@ -82,12 +83,6 @@ th {
   z-index: 1;
 }
 
-td:nth-child(5), th:nth-child(5) {
-  max-width: 200px;
-}
-td:nth-child(6), th:nth-child(6) {
-  max-width: 250px;
-}
 
 tr:nth-child(even) {
   background-color: var(--row-alt);
