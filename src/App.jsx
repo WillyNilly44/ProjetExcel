@@ -9,6 +9,8 @@ import CalendarView from './components/CalendarView';
 import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
+import * as XLSX from 'xlsx';
+
 
 function App() {
   const [workbook, setWorkbook] = useState(null);
