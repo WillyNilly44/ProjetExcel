@@ -22,6 +22,8 @@ function App() {
   const [currentPage, setCurrentPage] = useState(0);
   const [viewMode, setViewMode] = useState('table');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
+  const [calendarStartDate, setCalendarStartDate] = useState(null);
+
 
 
   const handleWorkbookLoaded = (wb, validSheets) => {
@@ -60,6 +62,7 @@ function App() {
             setFilteredData={setFilteredData}
             setCurrentPage={setCurrentPage}
             onMonthFilterChange={(isSelected) => setIsMonthSelected(isSelected)}
+            onMonthYearChange={(date) => setCalendarStartDate(date)}
           />
           <div style={{ marginBottom: '10px' }}>
             <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
@@ -89,7 +92,8 @@ function App() {
               )}
             </>
           ) : (
-            <CalendarView data={filteredData} />
+            <CalendarView data={filteredData} initialDate={calendarStartDate} />
+
           )}
         </>
       )}

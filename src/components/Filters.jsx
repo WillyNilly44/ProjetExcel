@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { extractDateInfo } from '../utils/dateUtils';
 
-export default function Filters({ originalData, setFilteredData, setCurrentPage, onMonthFilterChange }) {
+export default function Filters({ originalData, setFilteredData, setCurrentPage, onMonthFilterChange, onMonthYearChange }) {
   const [years, setYears] = useState([]);
   const [months, setMonths] = useState([]);
   const [weeks, setWeeks] = useState([]);
@@ -63,6 +63,13 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
     setWeeks(uniqueWeeks);
     if (onMonthFilterChange) {
       onMonthFilterChange(!!selectedMonth);
+    }
+    if (onMonthYearChange) {
+      const y = Number(selectedYear);
+      const m = Number(selectedMonth);
+      if (!isNaN(y) && !isNaN(m)) {
+        onMonthYearChange(new Date(y, m, 1));
+      }
     }
   }, [selectedMonth]);
 

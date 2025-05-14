@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
-export default function CalendarView({ data }) {
+export default function CalendarView({ data, initialDate  }) {
   const events = data.map((row, index) => {
     const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date'));
     if (!dateKey || !row[dateKey]) return null;
@@ -23,6 +23,7 @@ export default function CalendarView({ data }) {
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        initialDate={initialDate}
         locale="fr"
         events={events}
         height="auto"
