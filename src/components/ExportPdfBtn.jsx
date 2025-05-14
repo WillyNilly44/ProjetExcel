@@ -12,6 +12,14 @@ export default function ExportPdfBtn({ sheetName }) {
       return;
     }
 
+    const columnRenames = {
+      "Assigned": "Resource",
+      "Note": "Summary",
+      "Date": "Scheduled date & time",
+      "Acc. time": "Duration (hrs)",
+      "District": "Affected site",
+    };
+
     // Clone le tableau HTML visible
     const cloned = table.cloneNode(true);
 
@@ -19,7 +27,7 @@ export default function ExportPdfBtn({ sheetName }) {
     const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
 
     // Ordre final désiré pour l’export
-    const exportOrder = ["Ticket #", "Assigned", "Note", "Date", "Acc. time", "Temps Réel", "District"];
+    const exportOrder = ["Ticket #", "Assigned", "Note", "Date", "Acc. time", "District"];
 
     // Étape 1 : Trouver en-têtes
     const headerCells = Array.from(cloned.querySelectorAll('thead th'));
@@ -51,11 +59,16 @@ export default function ExportPdfBtn({ sheetName }) {
       return orderedIndexes.map(idx => cells[idx]?.textContent.trim() ?? '');
     });
 
+
+
+    const headersRenamed = orderedHeaders.map(h => columnRenames[h] || h);
+
+
     // Étape 6 : Export PDF
     doc.setFontSize(10);
     doc.text(sheetName || 'Export', 14, 15);
     doc.autoTable({
-      head: [orderedHeaders],
+      head: [headersRenamed],
       body,
       startY: 20,
       styles: {
