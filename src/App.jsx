@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import FileUpload from './components/FileUpload';
-import SheetSelector from './components/SheetSelector';
 import Filters from './components/Filters';
 import DataTable from './components/DataTable';
 import CalendarView from './components/CalendarView';
 import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
-import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
+import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 
 function App() {
   const [workbook, setWorkbook] = useState(null);
@@ -23,21 +22,25 @@ function App() {
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [adminView, setAdminView] = useState(false);
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('admin') === 'true');
+  const [dataSource, setDataSource] = useState('fusion'); // 'fusion', 'operational', 'application'
 
   const handleWorkbookLoaded = (wb, validSheets) => {
     setWorkbook(wb);
     setSheetNames(validSheets);
-    setSelectedSheet(validSheets[0]);
-    loadSheet(wb, validSheets[0]);
+    setSelectedSheet('fusion');
+    loadDataFromSheets(wb, validSheets); // par défaut, tout
   };
 
-  const loadSheet = (wb, sheetName) => {
-    const sheet = wb.Sheets[sheetName];
-    let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
-    rawData = cleanEmptyValues(rawData, sheetName);
-    rawData = removeFirstColumn(rawData);
-    setData(rawData);
-    setFilteredData(rawData);
+  const loadDataFromSheets = (wb, sheets) => {
+    const allData = sheets.flatMap((sheetName) => {
+      const sheet = wb.Sheets[sheetName];
+      let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
+      rawData = cleanEmptyValues(rawData, sheetName);
+      rawData = removeFirstColumn(rawData);
+      return rawData;
+    });
+    setData(allData);
+    setFilteredData(allData);
     setCurrentPage(0);
   };
 
@@ -60,6 +63,30 @@ function App() {
       <h2>Operational & Application Logs</h2>
       <FileUpload onWorkbookLoaded={handleWorkbookLoaded} />
 
+      {sheetNames.length > 1 && (
+        <div style={{ marginBottom: '10px' }}>
+          <label>Feuilles à afficher : </label>
+          <select
+            value={dataSource}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDataSource(value);
+              const sheetsToLoad =
+                value === 'operational'
+                  ? [sheetNames.find(s => s.toLowerCase().includes('operational'))]
+                  : value === 'application'
+                    ? [sheetNames.find(s => s.toLowerCase().includes('application'))]
+                    : sheetNames;
+              loadDataFromSheets(workbook, sheetsToLoad);
+            }}
+          >
+            <option value="fusion">Fusionnées</option>
+            <option value="operational">Operational Logs</option>
+            <option value="application">Application Logs</option>
+          </select>
+        </div>
+      )}
+
       <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between' }}>
         <button onClick={() => setAdminView(true)}>🔒 Page Admin</button>
         {sheetNames.length > 0 && (
@@ -71,14 +98,6 @@ function App() {
 
       {sheetNames.length > 0 && (
         <>
-          <SheetSelector
-            sheetNames={sheetNames}
-            selectedSheet={selectedSheet}
-            onSelect={(name) => {
-              setSelectedSheet(name);
-              loadSheet(workbook, name);
-            }}
-          />
           <Filters
             originalData={data}
             setFilteredData={setFilteredData}
