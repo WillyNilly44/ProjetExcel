@@ -36,7 +36,7 @@ const excludedColumns = ["Maint. (#)", "Maint. (hrs)", "Incid. (#)","Incid. (hrs
       <table>
         <thead>
           <tr>
-            {poop.forEach(h =>
+            {poop.map(h =>
               <th key={h}>{h}</th>)}
           </tr>
         </thead>
