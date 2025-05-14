@@ -17,13 +17,17 @@ const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
             case "__EMPTY_1":
               return "Incid."
             case "__EMPTY_2":
-              return "Est.";
-            case "__EMPTY_3":
               return "Start";
-            case "__EMPTY_4":
+            case "__EMPTY_3":
               return "End";
+            case "__EMPTY_4":
+              return "";
             case "__EMPTY_5":
               return "Acc. time ";
+            case "Business Impact?":
+              return "Impact?";
+            case "Duration (hrs)":
+              return "Est. time";
           }
         }
         return h;
