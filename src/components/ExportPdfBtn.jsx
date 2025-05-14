@@ -51,7 +51,7 @@ export default function ExportPdfBtn({ sheetName }) {
 
     // Étape 4 : Réordonner selon exportOrder
     const orderedIndexes = exportOrder.map(col => {
-      if (col === "Date+Début") return ["Date", "Start"];
+      if (col === "Date + Start") return ["Date", "Start"];
       return finalHeaders.indexOf(col);
     }).filter(i => i !== -1);
     const orderedHeaders = exportOrder.filter(col => finalHeaders.includes(col));
@@ -60,9 +60,9 @@ export default function ExportPdfBtn({ sheetName }) {
     const body = Array.from(cloned.querySelectorAll('tbody tr')).map(row => {
   const cells = Array.from(row.children);
   return exportOrder.map(col => {
-    if (col === "Date+Début") {
+    if (col === "Date + Start") {
       const idxDate = finalHeaders.indexOf("Date");
-      const idxStart = finalHeaders.indexOf("Début"); // ou "Start"
+      const idxStart = finalHeaders.indexOf("Start");
       const date = cells[idxDate]?.textContent.trim() ?? '';
       const start = cells[idxStart]?.textContent.trim() ?? '';
       return `${date} ${start}`.trim();
