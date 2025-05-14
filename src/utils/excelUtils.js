@@ -32,8 +32,17 @@ export function cleanEmptyValues(dataArray, sheetName) {
         }
       }
 
-    
-      const hourLikeColumns = ["Est.(hrs)", "Acc. time ", "", "End","Start"]; 
+      if (typeof value === "number" && value > 0 && value < 1) {
+        const totalSeconds = Math.round(value * 24 * 60 * 60);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const hourLikeColumns = ["Est. (hrs)", "Acc. time"]; 
+        hourLikeColumns.includes()
+
+        value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+
+      const hourLikeColumns = ["Est.(hrs)", "Acc. time", "", "End","Start"]; 
       if (
         typeof value === "number" &&
         value > 0 &&
