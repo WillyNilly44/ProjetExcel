@@ -4,7 +4,7 @@ export default function AdminLogin({ onLogin }) {
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    if (password === 'tonMotDePasseSecret') {
+    if (password === 'admin') {
       localStorage.setItem('admin', 'true');
       onLogin();
     } else {
