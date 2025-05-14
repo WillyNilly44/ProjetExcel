@@ -73,7 +73,7 @@ th, td {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-td:nth-child(3) {
+td:nth-child(3),td:nth-child(5),td:nth-child(6) {
   max-width: 200px;
 }
 
