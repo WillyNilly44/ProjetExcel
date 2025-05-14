@@ -13,7 +13,7 @@ export default function DataTable({ data, pageSize, currentPage }) {
   const headers = Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
   const poop = headers.map(h => {
     switch (h) {
-      case "Business impact?":
+      case "Business impact ?":
         return "Impact?";
       case "Duration (hrs)":
         return "Est. (hrs)";

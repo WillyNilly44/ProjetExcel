@@ -2,27 +2,46 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-export default function ExportPdfBtn({ filteredData, currentPage, pageSize, sheetName }) {
+export default function ExportPdfBtn({ sheetName }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
 
-    const excludedColumns = ["Stack Trace", "Durée"]; // <- à personnaliser
-    const start = currentPage * pageSize;
-    const pageData = filteredData.slice(start, start + pageSize);
-
-    if (pageData.length === 0) {
-      alert('Aucune donnée à exporter.');
+    // 1. Trouver le tableau visible
+    const table = document.querySelector('table');
+    if (!table) {
+      alert("Aucun tableau trouvé à l'écran.");
       return;
     }
 
-    const headers = Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
-    const body = pageData.map(row => headers.map(h => row[h] ?? ''));
+    // 2. Cloner le tableau pour le modifier sans toucher à l'original
+    const cloned = table.cloneNode(true);
 
+    // 3. Colonnes à exclure (exact nom d'en-tête visible)
+    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "__EMPTY_4"]; // adapte selon ton contexte
+
+    // 4. Trouver les index des colonnes à exclure
+    const headerCells = Array.from(cloned.querySelectorAll('thead th'));
+    const indexesToRemove = headerCells
+      .map((cell, idx) => (excludedColumns.includes(cell.textContent.trim()) ? idx : -1))
+      .filter(idx => idx !== -1);
+
+    // 5. Supprimer les colonnes exclues dans le head
+    headerCells.forEach((cell, idx) => {
+      if (indexesToRemove.includes(idx)) cell.remove();
+    });
+
+    // 6. Supprimer les colonnes exclues dans chaque ligne
+    cloned.querySelectorAll('tbody tr').forEach(row => {
+      indexesToRemove.forEach(idx => {
+        if (row.children[idx]) row.children[idx].remove();
+      });
+    });
+
+    // 7. Exporter avec autoTable
     doc.setFontSize(10);
-    doc.text(sheetName, 14, 15);
+    doc.text(sheetName || 'Export', 14, 15);
     doc.autoTable({
-      head: [headers],
-      body,
+      html: cloned,
       startY: 20,
       styles: {
         fontSize: 8,
@@ -38,10 +57,12 @@ export default function ExportPdfBtn({ filteredData, currentPage, pageSize, shee
       margin: { left: 10, right: 10 }
     });
 
-    doc.save(sheetName + '.pdf');
+    doc.save(`${sheetName || 'export'}.pdf`);
   };
 
   return (
-    <button onClick={exportPdf} style={{ marginBottom: '15px' }}>📄 Export</button>
+    <button onClick={exportPdf} style={{ marginBottom: '15px' }}>
+      📄 Exporter (sans colonnes exclues)
+    </button>
   );
 }
