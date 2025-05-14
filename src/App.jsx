@@ -10,6 +10,8 @@ import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 import * as XLSX from 'xlsx';
+import AdminLogin from './AdminLogin';
+import AdminPanel from './AdminPanel';
 
 
 function App() {
@@ -23,6 +25,9 @@ function App() {
   const [viewMode, setViewMode] = useState('table');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    return localStorage.getItem('admin') === 'true';
+  });
 
 
 
@@ -46,6 +51,10 @@ function App() {
   return (
     <div className="App">
       <h2>Operational & Application Logs</h2>
+      <Route path="/admin" element={
+        isAdmin ? <AdminPanel /> : <AdminLogin onLogin={() => setIsAdmin(true)} />
+      } />
+
       <FileUpload onWorkbookLoaded={handleWorkbookLoaded} />
       {sheetNames.length > 0 && (
         <>
@@ -83,12 +92,12 @@ function App() {
                 currentPage={currentPage}
               />
               {!isMonthSelected && (
-              <PaginationControls
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                totalItems={filteredData.length}
-                pageSize={pageSize}
-              />
+                <PaginationControls
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  totalItems={filteredData.length}
+                  pageSize={pageSize}
+                />
               )}
             </>
           ) : (
