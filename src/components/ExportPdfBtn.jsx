@@ -15,10 +15,10 @@ export default function ExportPdfBtn({ sheetName }) {
     const columnRenames = {
       "Assigned": "Resource",
       "Note": "Summary",
-      "Date": "Scheduled date & time",
+      "Date+Start": "Scheduled date & time",
       "Acc. time": "Duration (hrs)",
       "District": "Affected site",
-      "No": "No",
+      "No": "#",
     };
 
     // Clone le tableau HTML visible
@@ -28,7 +28,7 @@ export default function ExportPdfBtn({ sheetName }) {
     const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
 
     // Ordre final désiré pour l’export
-    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date + Start", "Acc. time", "District"];
+    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
 
     // Étape 1 : Trouver en-têtes
     const headerCells = Array.from(cloned.querySelectorAll('thead th'));
@@ -52,10 +52,10 @@ export default function ExportPdfBtn({ sheetName }) {
 
     // Étape 4 : Réordonner selon exportOrder
     const orderedIndexes = exportOrder.map(col => {
-      if (col === "Date + Start") return ["Date", "Start"];
+      if (col === "Date+Start") return ["Date", "Start"];
       return finalHeaders.indexOf(col);
     }).filter(i => i !== -1);
-    const orderedHeaders = exportOrder.filter(col => finalHeaders.includes(col));
+    const orderedHeaders = exportOrder;
 
     // Étape 5 : Lire lignes dans l’ordre
     const body = Array.from(cloned.querySelectorAll('tbody tr')).map((row, i) => {
@@ -64,31 +64,27 @@ export default function ExportPdfBtn({ sheetName }) {
         if (col === "No") {
           return (i + 1).toString();
         }
-        if (col === "Date+Début") {
+        if (col === "Date+Start") {
           const idxDate = finalHeaders.indexOf("Date");
-          const idxStart = finalHeaders.indexOf("Début"); // ou "Start"
-          const date = cells[idxDate]?.textContent.trim() ?? '';
-          const start = cells[idxStart]?.textContent.trim() ?? '';
+          const idxStart = finalHeaders.indexOf("Start"); // ou "Début"
+          const date = idxDate !== -1 ? cells[idxDate]?.textContent.trim() : '';
+          const start = idxStart !== -1 ? cells[idxStart]?.textContent.trim() : '';
           return `${date} ${start}`.trim();
         } else {
           const idx = finalHeaders.indexOf(col);
-          return cells[idx]?.textContent.trim() ?? '';
+          return idx !== -1 ? cells[idx]?.textContent.trim() ?? '' : '';
         }
       });
     });
 
-
-
-
-    const headersRenamed = orderedHeaders.map(h => columnRenames[h] || h);
-
+    const headersRenamed = exportOrder.map(h => columnRenames[h] || h);
 
     // Étape 6 : Export PDF
     doc.setFontSize(10);
     doc.text(sheetName || 'Export', 14, 15);
     doc.autoTable({
       head: [headersRenamed],
-      body:body,
+      body: body,
       startY: 20,
       styles: {
         fontSize: 8,
