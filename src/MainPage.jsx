@@ -19,6 +19,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     const [dataSource, setDataSource] = useState('fusion');
     const [isMonthSelected, setIsMonthSelected] = useState(false);
     const [calendarStartDate, setCalendarStartDate] = useState(null);
+    
 
     const handleWorkbookLoaded = (wb, validSheets) => {
         setWorkbook(wb);
@@ -96,7 +97,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                                     {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
                                 </button>
                             </div>
-
                             <DataTable
                                 data={filteredData}
                                 pageSize={isMonthSelected ? -1 : pageSize}
