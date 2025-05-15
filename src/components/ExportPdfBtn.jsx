@@ -89,7 +89,8 @@ export default function ExportPdfBtn({adminNotes = [] }) {
         const colIdx = data.column.index;
         const colName = headersRenamed[colIdx];
 
-        if (colName === "Note") {
+        if (colName === "Summary") {
+          console.log("here");
           const content = data.cell.text.join(' ').toLowerCase();
           const match = adminNotes.some(note =>
             content.includes(note.toLowerCase())
