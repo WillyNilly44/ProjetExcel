@@ -9,6 +9,8 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
   const [adminView, setAdminView] = useState(false);
   const [adminNotes, setAdminNotes] = useState([]);
+  const [workbook, setWorkbook] = useState(null);
+  const [sheetNames, setSheetNames] = useState([]);
 
   if (adminView) {
     if (!isAdmin) {
@@ -21,7 +23,6 @@ function App() {
         />
       );
     }
-
     return (
       <AdminPanel
         onLogout={() => {
@@ -48,9 +49,20 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={<MainPage adminNotes={adminNotes} />}
+          element={
+            <MainPage
+              workbook={workbook}
+              setWorkbook={setWorkbook}
+              sheetNames={sheetNames}
+              setSheetNames={setSheetNames}
+              adminNotes={adminNotes}
+            />
+          }
         />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/dashboard"
+          element={<DashboardPage workbook={workbook} />}
+        />
       </Routes>
     </Router>
   );
