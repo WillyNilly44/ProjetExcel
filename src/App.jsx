@@ -9,6 +9,9 @@ import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 import * as XLSX from 'xlsx';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import DashboardPage from './DashboardPage';
+import MainPage from './MainPage';
 
 
 function App() {
@@ -29,6 +32,7 @@ function App() {
 
 
   const handleWorkbookLoaded = (wb, validSheets) => {
+    window.workbookDashboard = workbook;
     setWorkbook(wb);
     setSheetNames(validSheets);
     setSelectedSheet('fusion');
@@ -108,6 +112,17 @@ function App() {
           </button>
         )}
       </div>
+      <Router>
+        <nav style={{ margin: 10 }}>
+          <Link to="/" style={{ marginRight: 10 }}>🏠 Logs</Link>
+          <Link to="/dashboard">📊 Dashboard</Link>
+        </nav>
+
+        <Routes>
+          <Route path="/" element={<MainPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+        </Routes>
+      </Router>
 
       {sheetNames.length > 0 && (
         <>
