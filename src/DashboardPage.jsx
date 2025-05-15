@@ -33,13 +33,20 @@ function normalizeMonth(rawMonth) {
 }
 
 function formatMonthLabel(monthValue) {
+  if (!monthValue || typeof monthValue !== 'string' || !monthValue.includes('-')) return monthValue;
+
   const [year, month] = monthValue.split('-');
   const monthNames = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ];
-  return `${monthNames[parseInt(month, 10) - 1]} ${year}`;
+
+  const index = parseInt(month, 10);
+  if (!year || isNaN(index) || index < 1 || index > 12) return monthValue;
+
+  return `${monthNames[index - 1]} ${year}`;
 }
+
 
 export default function DashboardPage({ workbook }) {
   const [summaryData, setSummaryData] = useState([]);
