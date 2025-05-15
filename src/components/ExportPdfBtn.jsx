@@ -80,7 +80,7 @@ export default function ExportPdfBtn({ sheetName }) {
 
 
 
-    const headersRenamed = exportOrder.map(h => columnRenames[h] || h);
+    const headersRenamed = orderedHeaders.map(h => columnRenames[h] || h);
 
 
     // Étape 6 : Export PDF
