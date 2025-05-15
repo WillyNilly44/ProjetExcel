@@ -43,3 +43,4 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
             </div>
         );
     }
+}
