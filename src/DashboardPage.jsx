@@ -93,9 +93,7 @@ export default function DashboardPage({ workbook }) {
                     } else if (key.toLowerCase().includes('incident')) {
                       if (val >= 30) backgroundColor = '#fffacc'; // jaune
                       else backgroundColor = '#d5fdd5'; // vert
-                    } else if (key.toLowerCase().includes('impact') && val > 0) {
-                      backgroundColor = '#ffe0e0';
-                    }
+                    } // impact déjà géré au-dessus, rien à faire ici
                   } else if (key.toLowerCase().includes('impact') && val > 0) {
                       backgroundColor = '#ffe0e0';
                     }
