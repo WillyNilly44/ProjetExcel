@@ -51,13 +51,17 @@ export default function DashboardPage({ workbook }) {
       range: 'A18',
       defval: ''
     }).filter(row => row.some(cell => cell !== ''));
-    
-    const allSheetRows = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      defval: ''
-    });
 
-    console.log("📄 Toutes les lignes de la feuille :", allSheetRows);
+    const allSheetRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    const firstRowsPreview = allSheetRows.slice(0, 30);
+    console.log("🔍 Aperçu des 30 premières lignes :", firstRowsPreview);
+
+    const weekHeaderIndex = allSheetRows.findIndex(row =>
+      row.includes("Week") || row.includes("Month")
+    );
+    console.log("✅ Index de l'en-tête hebdomadaire :", weekHeaderIndex);
+
 
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
