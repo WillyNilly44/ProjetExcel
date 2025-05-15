@@ -80,7 +80,7 @@ export default function ExportPdfBtn({ sheetName }) {
 
 
 
-    const headersRenamed = orderedHeaders.map(h => columnRenames[h] || h);
+    const headersRenamed = exportOrder.map(h => columnRenames[h] || h);
 
 
     // Étape 6 : Export PDF
@@ -88,7 +88,7 @@ export default function ExportPdfBtn({ sheetName }) {
     doc.text(sheetName || 'Export', 14, 15);
     doc.autoTable({
       head: [headersRenamed],
-      body,
+      body:body,
       startY: 20,
       styles: {
         fontSize: 8,
