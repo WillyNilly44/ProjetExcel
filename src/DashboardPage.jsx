@@ -1,3 +1,6 @@
+// ===============================
+// DashboardPage.jsx
+
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
@@ -18,7 +21,7 @@ export default function DashboardPage({ workbook }) {
     // Lire les deux tableaux manuellement
     const range1 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     const summaryStartIndex = range1.findIndex(row => Array.isArray(row) && row.includes("Année"));
-    const summaryRows = range1.slice(summaryStartIndex + 1).filter(row => row.some(cell => cell !== ''));
+    const summaryRows = range1.slice(summaryStartIndex + 1, summaryStartIndex + 15).filter(row => row.some(cell => cell !== ''));
     const summaryHeaders = range1[summaryStartIndex];
     const formattedSummary = summaryRows.map(row => {
       const obj = {};
@@ -79,9 +82,30 @@ export default function DashboardPage({ workbook }) {
           <tbody>
             {weeklyData.map((row, rIdx) => (
               <tr key={rIdx}>
-                {Object.values(row).map((val, cIdx) => (
-                  <td key={cIdx} style={{ border: '1px solid #eee', padding: 8 }}>{val}</td>
-                ))}
+                {Object.entries(row).map(([key, val], cIdx) => {
+                  const isImpact = typeof val === 'number' && key.toLowerCase().includes('impact') && val > 0;
+                  let backgroundColor;
+                  if (typeof val === 'number') {
+                    if (key.toLowerCase().includes('maintenance')) {
+                      if (val > 16) backgroundColor = '#ffcccc'; // rouge
+                      else if (val >= 5) backgroundColor = '#fffacc'; // jaune
+                      else backgroundColor = '#d5fdd5'; // vert
+                    } else if (key.toLowerCase().includes('incident')) {
+                      if (val >= 30) backgroundColor = '#fffacc'; // jaune
+                      else backgroundColor = '#d5fdd5'; // vert
+                    } else if (key.toLowerCase().includes('impact') && val > 0) {
+                      backgroundColor = '#ffe0e0';
+                    }
+                  } else if (key.toLowerCase().includes('impact') && val > 0) {
+                      backgroundColor = '#ffe0e0';
+                    }
+                  const style = {
+                    border: '1px solid #eee',
+                    padding: 8,
+                    backgroundColor
+                  };
+                  return <td key={cIdx} style={style}>{val}</td>;
+                })}
               </tr>
             ))}
           </tbody>
