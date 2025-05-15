@@ -19,8 +19,16 @@ export default function DashboardPage({ workbook }) {
     const sheet = workbook.Sheets[dashboardSheetName];
 
     // Lire les deux tableaux manuellement
-    const range1 = XLSX.utils.sheet_to_json(sheet, { range: "F5:I13", header: 1 });
-    const range2 = XLSX.utils.sheet_to_json(sheet, { range: "A17:K50", defval: '' });
+    const range1 = XLSX.utils.sheet_to_json(sheet, { range: "F5:I10", header: 1 });
+    const range2 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const weeklyStartIndex = range2.findIndex(row => Array.isArray(row) && row.includes("Week"));
+    const weeklyRows = range2.slice(weeklyStartIndex + 1).filter(row => row.some(cell => cell !== ''));
+    const weeklyHeaders = range2[weeklyStartIndex];
+    const formattedWeekly = weeklyRows.map(row => {
+      const obj = {};
+      weeklyHeaders.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
 
     // Nettoyage du premier tableau : transformer [ [Année, Maint, Incid]... ] en objets
     const headers1 = range1[0];
@@ -32,7 +40,7 @@ export default function DashboardPage({ workbook }) {
     });
 
     setSummaryData(formattedSummary);
-    setWeeklyData(range2);
+    setWeeklyData(formattedWeekly);
   }, [workbook]);
 
   return (
