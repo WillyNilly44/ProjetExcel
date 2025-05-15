@@ -41,7 +41,7 @@ export default function DashboardPage({ workbook }) {
 
     const avgRowRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'A12:H17',
+      range: 'B12:I17',
       defval: ''
     })[0] || [];
 
@@ -49,7 +49,7 @@ export default function DashboardPage({ workbook }) {
 
     const dataRows = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'A18',
+      range: 'B18',
       defval: ''
     }).filter(row => row.some(cell => cell !== ''));
 
@@ -62,6 +62,8 @@ export default function DashboardPage({ workbook }) {
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
+    console.log("📊 Données hebdomadaires :", formattedWeekly);
+
   }, [workbook]);
 
   return (
