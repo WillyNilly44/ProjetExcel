@@ -44,33 +44,28 @@ export default function DashboardPage({ workbook }) {
       range: 'B13:I13',
       defval: ''
     })[0] || [];
-    const averageLineFixed = weeklyHeadersRow.map((_, idx) => avgRowRaw[idx] ?? '');
 
-    const dataRows = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      range: 'A18',
-      defval: ''
-    }).filter(row => row.some(cell => cell !== ''));
+    const fullSheet = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-    const allSheetRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const weeklyStartIndex = 10;
 
-    const firstRowsPreview = allSheetRows.slice(0, 30);
-    console.log("🔍 Aperçu des 30 premières lignes :", firstRowsPreview);
+    const rawAvgRow = fullSheet[weeklyStartIndex + 1] || [];
+    const averageLineFixed = weeklyHeadersRow.map((_, idx) => rawAvgRow[idx] ?? '');
 
-    const weekHeaderIndex = allSheetRows.findIndex(row =>
-      row.includes("Week") || row.includes("Month")
-    );
-    console.log("✅ Index de l'en-tête hebdomadaire :", weekHeaderIndex);
-
+    const dataRows = fullSheet
+      .slice(weeklyStartIndex + 2)
+      .filter(row => row.some(cell => cell !== ''));
 
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
+
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
+
 
   }, [workbook]);
 
