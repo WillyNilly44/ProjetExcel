@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 
 export default function DashboardPage({ workbook }) {
+  const [summaryData, setSummaryData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
   const [weeklyHeaders, setWeeklyHeaders] = useState([]);
   const [averageLine, setAverageLine] = useState([]);
@@ -17,18 +18,31 @@ export default function DashboardPage({ workbook }) {
 
     const sheet = workbook.Sheets[dashboardSheetName];
 
-    // Lecture comme dans MainPage
+    // === LECTURE DU TABLEAU 1 : Résumé annuel (Année / Stats)
+    const rawMatrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const summaryStartIndex = rawMatrix.findIndex(row => row.includes("Année"));
+    const summaryHeaders = rawMatrix[summaryStartIndex] || [];
+    const summaryRows = rawMatrix
+      .slice(summaryStartIndex + 1, summaryStartIndex + 15)
+      .filter(row => row.some(cell => cell !== ''));
+    const formattedSummary = summaryRows.map(row => {
+      const obj = {};
+      summaryHeaders.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
+    setSummaryData(formattedSummary);
+
+    // === LECTURE DU TABLEAU 2 : Détails hebdomadaires (format MainPage)
     let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
     rawData = cleanEmptyValues(rawData, dashboardSheetName);
     rawData = removeFirstColumn(rawData);
 
-    if (rawData.length === 0) return;
+    if (rawData.length > 0) {
+      setWeeklyHeaders(Object.keys(rawData[0]));
+      setWeeklyData(rawData);
+    }
 
-    setWeeklyHeaders(Object.keys(rawData[0]));
-    setWeeklyData(rawData);
-
-    // Lecture de la ligne "Average = ..." directement dans le sheet brut
-    const rawMatrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    // === Ligne "Average = ..." (après en-tête)
     const weeklyStartIndex = rawMatrix.findIndex(row => row.includes("Week"));
     const avgRow = rawMatrix[weeklyStartIndex + 1] || [];
     setAverageLine(avgRow);
@@ -36,14 +50,43 @@ export default function DashboardPage({ workbook }) {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>📊 Dashboard – Détails hebdomadaires</h2>
+      <h2>📊 Dashboard</h2>
 
+      {/* === Tableau 1 === */}
+      <h3>Statistiques globales (par année)</h3>
+      {summaryData.length > 0 ? (
+        <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 30 }}>
+          <thead>
+            <tr>
+              {Object.keys(summaryData[0]).map((col, idx) => (
+                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>{col}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {summaryData.map((row, rIdx) => (
+              <tr key={rIdx}>
+                {Object.values(row).map((val, cIdx) => (
+                  <td key={cIdx} style={{ border: '1px solid #eee', padding: 8 }}>{val}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les statistiques globales.</p>
+      )}
+
+      {/* === Tableau 2 === */}
+      <h3>Détails hebdomadaires</h3>
       {weeklyData.length > 0 ? (
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
               {weeklyHeaders.map((col, idx) => (
-                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>{col}</th>
+                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>
+                  {col.startsWith('__EMPTY') ? '' : col}
+                </th>
               ))}
             </tr>
             <tr>
@@ -92,7 +135,7 @@ export default function DashboardPage({ workbook }) {
           </tbody>
         </table>
       ) : (
-        <p style={{ color: 'gray' }}>Aucune donnée disponible pour le Dashboard.</p>
+        <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les semaines.</p>
       )}
     </div>
   );
