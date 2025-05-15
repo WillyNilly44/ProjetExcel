@@ -19,7 +19,7 @@ export default function DashboardPage({ workbook }) {
     const sheet = workbook.Sheets[dashboardSheetName];
 
     // Lire les deux tableaux manuellement
-    const range1 = XLSX.utils.sheet_to_json(sheet, { range: "G5:I13", header: 1 });
+    const range1 = XLSX.utils.sheet_to_json(sheet, { range: "F5:I13", header: 1 });
     const range2 = XLSX.utils.sheet_to_json(sheet, { range: "A17:K50", defval: '' });
 
     // Nettoyage du premier tableau : transformer [ [Année, Maint, Incid]... ] en objets
