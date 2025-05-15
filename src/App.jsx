@@ -25,14 +25,14 @@ function App() {
   const [adminView, setAdminView] = useState(false);
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
   const [dataSource, setDataSource] = useState('fusion');
-  const [adminNotes, setAdminNotes] = useState();
+  const [adminNotes, setAdminNotes] = useState([]);
 
 
   const handleWorkbookLoaded = (wb, validSheets) => {
     setWorkbook(wb);
     setSheetNames(validSheets);
     setSelectedSheet('fusion');
-    loadDataFromSheets(wb, validSheets); // par défaut, tout
+    loadDataFromSheets(wb, validSheets);
   };
 
   const loadDataFromSheets = (wb, sheets) => {
