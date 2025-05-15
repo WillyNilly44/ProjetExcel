@@ -41,7 +41,7 @@ export default function DashboardPage({ workbook }) {
 
     const avgRowRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'B12:I13',
+      range: 'B13:I13',
       defval: ''
     })[0] || [];
 
