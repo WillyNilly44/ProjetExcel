@@ -5,7 +5,7 @@ export default function AdminLogin({ onLogin }) {
 
   const handleLogin = () => {
     if (password === 'admin') {
-      sessionStorage.setItem('admin', 'true');
+      localStorage.setItem('admin', 'true');
       onLogin();
     } else {
       alert('Mot de passe incorrect');
