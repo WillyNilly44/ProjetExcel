@@ -51,6 +51,14 @@ export default function DashboardPage({ workbook }) {
       range: 'A18',
       defval: ''
     }).filter(row => row.some(cell => cell !== ''));
+    
+    const allSheetRows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      defval: ''
+    });
+
+    console.log("📄 Toutes les lignes de la feuille :", allSheetRows);
+
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
