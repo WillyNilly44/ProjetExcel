@@ -52,11 +52,16 @@ export default function DashboardPage({ workbook }) {
       .slice(weeklyStartIndex + 2)
       .filter(row => row.some(cell => cell !== ''));
 
+
+
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
-      weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
+      weeklyHeadersRow.forEach((h, i) => {
+        obj[h] = h === "Month" ? row[i]?.toString().trim() : row[i];
+      });
       return obj;
     });
+
 
     // Tri décroissant par date de "Month"
     formattedWeekly.sort((a, b) => {
@@ -66,7 +71,10 @@ export default function DashboardPage({ workbook }) {
     });
 
     // Extraire tous les mois disponibles
-    const months = Array.from(new Set(formattedWeekly.map(row => row["Month"]))).sort((a, b) => new Date(b) - new Date(a));
+    const months = Array.from(new Set(formattedWeekly.map(row =>
+      row["Month"].toString().trim()
+    ))).sort((a, b) => new Date(b) - new Date(a));
+
     setAvailableMonths(["Tous", ...months]);
 
     setWeeklyHeaders(weeklyHeadersRow);
