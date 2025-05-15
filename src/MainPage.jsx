@@ -84,6 +84,11 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                         onMonthFilterChange={setIsMonthSelected}
                         onMonthYearChange={setCalendarStartDate}
                     />
+                    <div style={{ margin: '10px 0' }}>
+                                <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
+                                    {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
+                                </button>
+                            </div>
                     {viewMode === 'table' ? (
                         <>
                             <ExportPdfBtn
@@ -92,11 +97,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                                 pageSize={isMonthSelected ? -1 : pageSize}
                                 adminNotes={adminNotes}
                             />
-                            <div style={{ margin: '10px 0' }}>
-                                <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
-                                    {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
-                                </button>
-                            </div>
                             <DataTable
                                 data={filteredData}
                                 pageSize={isMonthSelected ? -1 : pageSize}
