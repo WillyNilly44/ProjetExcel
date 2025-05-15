@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 
 export default function DashboardPage({ workbook }) {
   const [summaryData, setSummaryData] = useState([]);
@@ -18,13 +17,13 @@ export default function DashboardPage({ workbook }) {
 
     const sheet = workbook.Sheets[dashboardSheetName];
 
-    // === LECTURE DU TABLEAU 1 : Résumé annuel (Année / Stats)
-    const rawMatrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    const summaryStartIndex = rawMatrix.findIndex(row => row.includes("Année"));
-    const summaryHeaders = rawMatrix[summaryStartIndex] || [];
-    const summaryRows = rawMatrix
-      .slice(summaryStartIndex + 1, summaryStartIndex + 15)
-      .filter(row => row.some(cell => cell !== ''));
+    // === TABLEAU 1 : Statistiques globales — plage rigide F5:I13
+    const summaryRaw = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      range: 'F5:I12',
+      defval: ''
+    });
+    const [summaryHeaders, ...summaryRows] = summaryRaw;
     const formattedSummary = summaryRows.map(row => {
       const obj = {};
       summaryHeaders.forEach((h, i) => obj[h] = row[i]);
@@ -32,27 +31,31 @@ export default function DashboardPage({ workbook }) {
     });
     setSummaryData(formattedSummary);
 
-    // === LECTURE DU TABLEAU 2 : Détails hebdomadaires (format MainPage)
-    let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
-    rawData = cleanEmptyValues(rawData, dashboardSheetName);
-    rawData = removeFirstColumn(rawData);
+    // === TABLEAU 2 : Détails hebdomadaires — plage à partir de A17
+    const fullSheet = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const weeklyStartIndex = fullSheet.findIndex(row =>
+      Array.isArray(row) && row.includes('Week')
+    );
+    const weeklyHeadersRow = fullSheet[weeklyStartIndex] || [];
+    const averageRow = fullSheet[weeklyStartIndex + 1] || [];
+    const dataRows = fullSheet.slice(weeklyStartIndex + 2).filter(r => r.some(cell => cell !== ''));
 
-    if (rawData.length > 0) {
-      setWeeklyHeaders(Object.keys(rawData[0]));
-      setWeeklyData(rawData);
-    }
+    const formattedWeekly = dataRows.map(row => {
+      const obj = {};
+      weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
 
-    // === Ligne "Average = ..." (après en-tête)
-    const weeklyStartIndex = rawMatrix.findIndex(row => row.includes("Week"));
-    const avgRow = rawMatrix[weeklyStartIndex + 1] || [];
-    setAverageLine(avgRow);
+    setWeeklyHeaders(weeklyHeadersRow);
+    setAverageLine(averageRow);
+    setWeeklyData(formattedWeekly);
   }, [workbook]);
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>📊 Dashboard</h2>
+      <h2>📊 Feuille Dashboard</h2>
 
-      {/* === Tableau 1 === */}
+      {/* --- Tableau 1 --- */}
       <h3>Statistiques globales (par année)</h3>
       {summaryData.length > 0 ? (
         <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 30 }}>
@@ -73,11 +76,9 @@ export default function DashboardPage({ workbook }) {
             ))}
           </tbody>
         </table>
-      ) : (
-        <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les statistiques globales.</p>
-      )}
+      ) : <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les statistiques globales.</p>}
 
-      {/* === Tableau 2 === */}
+      {/* --- Tableau 2 --- */}
       <h3>Détails hebdomadaires</h3>
       {weeklyData.length > 0 ? (
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -112,7 +113,6 @@ export default function DashboardPage({ workbook }) {
 
                   if (typeof val === 'number') {
                     const k = key.toLowerCase();
-
                     if (k.includes('maintenance')) {
                       if (val > 16) backgroundColor = '#ffcccc'; // rouge
                       else if (val >= 5) backgroundColor = '#fffacc'; // jaune
