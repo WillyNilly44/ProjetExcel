@@ -1,6 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
+// === Dictionnaire mois pour conversion en YYYY-MM
+const MONTHS_FR_EN = {
+  jan: '01', janvier: '01', january: '01',
+  fév: '02', fev: '02', février: '02', february: '02', feb: '02',
+  mars: '03', march: '03',
+  avril: '04', april: '04',
+  mai: '05', may: '05',
+  juin: '06', june: '06',
+  juil: '07', juillet: '07', july: '07',
+  août: '08', aout: '08', august: '08',
+  sept: '09', septembre: '09', september: '09',
+  oct: '10', octobre: '10', october: '10',
+  nov: '11', novembre: '11', november: '11',
+  déc: '12', dec: '12', décembre: '12', december: '12'
+};
+
+function normalizeMonth(rawMonth) {
+  if (!rawMonth) return '';
+  const str = rawMonth.toString().toLowerCase().trim();
+  const parts = str.split(/[\s,-]+/);
+
+  const year = parts.find(p => /^\d{4}$/.test(p));
+  const monthKey = parts.find(p => isNaN(p));
+
+  const month = Object.entries(MONTHS_FR_EN).find(([key]) =>
+    monthKey?.includes(key)
+  )?.[1];
+
+  return year && month ? `${year}-${month}` : rawMonth;
+}
+
+function formatMonthLabel(monthValue) {
+  const [year, month] = monthValue.split('-');
+  const monthNames = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+  return `${monthNames[parseInt(month, 10) - 1]} ${year}`;
+}
+
 export default function DashboardPage({ workbook }) {
   const [summaryData, setSummaryData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
@@ -52,35 +92,24 @@ export default function DashboardPage({ workbook }) {
       .slice(weeklyStartIndex + 2)
       .filter(row => row.some(cell => cell !== ''));
 
-
-
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => {
-        obj[h] = h === "Month" ? row[i]?.toString().trim() : row[i];
+        obj[h] = h === "Month" ? normalizeMonth(row[i]) : row[i];
       });
       return obj;
     });
 
+    // Tri du plus récent au plus ancien
+    formattedWeekly.sort((a, b) => new Date(b["Month"]) - new Date(a["Month"]));
 
-    // Tri décroissant par date de "Month"
-    formattedWeekly.sort((a, b) => {
-      const dateA = new Date(a["Month"]);
-      const dateB = new Date(b["Month"]);
-      return dateB - dateA;
-    });
-
-    // Extraire tous les mois disponibles
-    const months = Array.from(new Set(formattedWeekly.map(row =>
-      row["Month"].toString().trim()
-    ))).sort((a, b) => new Date(b) - new Date(a));
-
+    // Extraire les mois disponibles
+    const months = Array.from(new Set(formattedWeekly.map(row => row["Month"])));
     setAvailableMonths(["Tous", ...months]);
-
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
-    setFilteredData(formattedWeekly); // initial display = all
+    setFilteredData(formattedWeekly);
   }, [workbook]);
 
   useEffect(() => {
@@ -95,7 +124,7 @@ export default function DashboardPage({ workbook }) {
     <div style={{ padding: 20 }}>
       <h2>📊 Feuille Dashboard</h2>
 
-      {/* --- Tableau 1 --- */}
+      {/* === Tableau 1 === */}
       <h3>Statistiques globales (par année)</h3>
       {summaryData.length > 0 ? (
         <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 30 }}>
@@ -118,15 +147,15 @@ export default function DashboardPage({ workbook }) {
         </table>
       ) : <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les statistiques globales.</p>}
 
-      {/* --- Tableau 2 --- */}
+      {/* === Tableau 2 === */}
       <h3>Détails hebdomadaires</h3>
 
-      {/* Filtres par mois */}
+      {/* Menu filtre par mois */}
       <div style={{ marginBottom: 10 }}>
         <label>Filtrer par mois : </label>
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
           {availableMonths.map((m, i) => (
-            <option key={i} value={m}>{m}</option>
+            <option key={i} value={m}>{m === 'Tous' ? 'Tous' : formatMonthLabel(m)}</option>
           ))}
         </select>
       </div>
