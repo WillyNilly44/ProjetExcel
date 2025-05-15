@@ -44,7 +44,7 @@ export default function DashboardPage({ workbook }) {
       range: 'B13:I13',
       defval: ''
     })[0] || [];
-
+    console.log("📊 Ligne moyenne :", avgRowRaw);
     const averageLineFixed = weeklyHeadersRow.map((_, idx) => avgRowRaw[idx] ?? '');
 
     const dataRows = XLSX.utils.sheet_to_json(sheet, {
