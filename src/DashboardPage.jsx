@@ -20,7 +20,7 @@ export default function DashboardPage({ workbook }) {
     // === TABLEAU 1 : Statistiques globales — plage rigide F2:I12
     const summaryRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'F2:I11',
+      range: 'F2:H11',
       defval: ''
     });
     const [summaryHeaders, ...summaryRows] = summaryRaw;
