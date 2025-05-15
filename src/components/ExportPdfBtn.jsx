@@ -2,7 +2,7 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-export default function ExportPdfBtn({ sheetName }) {
+export default function ExportPdfBtn({adminNotes = [] }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
 

@@ -124,7 +124,6 @@ function App() {
                 filteredData={filteredData}
                 currentPage={currentPage}
                 pageSize={isMonthSelected ? -1 : pageSize}
-                sheetName={selectedSheet}
                 adminNotes={adminNotes}
               />
               <DataTable
