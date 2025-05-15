@@ -85,6 +85,22 @@ export default function ExportPdfBtn({ sheetName }) {
     doc.autoTable({
       head: [headersRenamed],
       body: body,
+      willDrawCell: function (data) {
+        const colIdx = data.column.index;
+        const colName = headersRenamed[colIdx];
+
+        if (colName === "Summary") {
+          const content = data.cell.text.join(' ').toLowerCase();
+          const match = adminNotes.some(note =>
+            content.includes(note.toLowerCase())
+          );
+
+          if (match) {
+            data.cell.styles.fillColor = [255, 250, 205]; // jaune clair
+            data.cell.styles.textColor = [200, 0, 0];     // rouge foncé
+          }
+        }
+      },
       startY: 20,
       styles: {
         fontSize: 8,
@@ -100,7 +116,7 @@ export default function ExportPdfBtn({ sheetName }) {
       margin: { left: 10, right: 10 }
     });
 
-    doc.save(`${sheetName || 'Data'}.pdf`);
+    doc.save(`Export.pdf`);
   };
 
   return (

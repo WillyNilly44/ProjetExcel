@@ -24,7 +24,9 @@ function App() {
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [adminView, setAdminView] = useState(false);
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('admin') === 'true');
-  const [dataSource, setDataSource] = useState('fusion'); // 'fusion', 'operational', 'application'
+  const [dataSource, setDataSource] = useState('fusion');
+  const [adminNotes, setAdminNotes] = useState([]);
+
 
   const handleWorkbookLoaded = (wb, validSheets) => {
     setWorkbook(wb);
@@ -34,23 +36,23 @@ function App() {
   };
 
   const loadDataFromSheets = (wb, sheets) => {
-  const allData = sheets.flatMap((sheetName) => {
-    const sheet = wb.Sheets[sheetName];
-    let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
-    rawData = cleanEmptyValues(rawData, sheetName);
-    rawData = removeFirstColumn(rawData);
-    return rawData;
-  });
-  allData.sort((a, b) => {
-    const dateA = new Date(Object.values(a).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) || 0);
-    const dateB = new Date(Object.values(b).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) || 0);
-    return dateB - dateA;
-  });
+    const allData = sheets.flatMap((sheetName) => {
+      const sheet = wb.Sheets[sheetName];
+      let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
+      rawData = cleanEmptyValues(rawData, sheetName);
+      rawData = removeFirstColumn(rawData);
+      return rawData;
+    });
+    allData.sort((a, b) => {
+      const dateA = new Date(Object.values(a).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) || 0);
+      const dateB = new Date(Object.values(b).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) || 0);
+      return dateB - dateA;
+    });
 
-  setData(allData);
-  setFilteredData(allData);
-  setCurrentPage(0);
-};
+    setData(allData);
+    setFilteredData(allData);
+    setCurrentPage(0);
+  };
 
 
   if (adminView) {
@@ -64,7 +66,9 @@ function App() {
       localStorage.removeItem('admin');
       setIsAdmin(false);
       setAdminView(false);
-    }} />;
+    }}
+      adminNotes={adminNotes}
+      setAdminNotes={setAdminNotes} />;
   }
 
   return (
@@ -121,6 +125,7 @@ function App() {
                 currentPage={currentPage}
                 pageSize={isMonthSelected ? -1 : pageSize}
                 sheetName={selectedSheet}
+                adminNotes={adminNotes}
               />
               <DataTable
                 data={filteredData}
