@@ -5,40 +5,43 @@ import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 export default function DashboardPage({ workbook }) {
-  const [summaryData, setSummaryData] = useState([]); // Tableau 1
-  const [weeklyData, setWeeklyData] = useState([]);   // Tableau 2
+  const [summaryData, setSummaryData] = useState([]);
+  const [weeklyData, setWeeklyData] = useState([]);
 
   useEffect(() => {
     if (!workbook) return;
 
-    const dashboardSheetName = workbook.SheetNames.find(s =>
-      s.toLowerCase().includes('dashboard')
+    const dashboardSheetName = workbook.SheetNames.find(name =>
+      name.toLowerCase().includes('dashboard')
     );
     if (!dashboardSheetName) return;
 
     const sheet = workbook.Sheets[dashboardSheetName];
+    const fullRange = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-    // Lire les deux tableaux manuellement
-    const range1 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    const summaryStartIndex = range1.findIndex(row => Array.isArray(row) && row.includes("Année"));
-    const summaryRows = range1.slice(summaryStartIndex + 1, summaryStartIndex + 15).filter(row => row.some(cell => cell !== ''));
-    const summaryHeaders = range1[summaryStartIndex] || [];
+    // ---- Tableau 1 : Statistiques globales (par année)
+    const summaryStartIndex = fullRange.findIndex(row => row.includes("Année"));
+    const summaryHeaders = fullRange[summaryStartIndex] || [];
+    const summaryRows = fullRange
+      .slice(summaryStartIndex + 1, summaryStartIndex + 15)
+      .filter(row => row.some(cell => cell !== ''));
     const formattedSummary = summaryRows.map(row => {
       const obj = {};
       summaryHeaders.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
 
-    const range2 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    const weeklyStartIndex = range2.findIndex(row => Array.isArray(row) && row.includes("Week"));
-    const weeklyRows = range2.slice(weeklyStartIndex + 1).filter(row => row.some(cell => cell !== ''));
-    const weeklyHeaders = range2[weeklyStartIndex] || [];
+    // ---- Tableau 2 : Détails hebdomadaires
+    const weeklyStartIndex = fullRange.findIndex(row => row.includes("Week"));
+    const weeklyHeaders = fullRange[weeklyStartIndex] || [];
+    const weeklyRows = fullRange
+      .slice(weeklyStartIndex + 1)
+      .filter(row => row.some(cell => cell !== ''));
     const formattedWeekly = weeklyRows.map(row => {
       const obj = {};
       weeklyHeaders.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
-
 
     setSummaryData(formattedSummary);
     setWeeklyData(formattedWeekly);
@@ -84,26 +87,31 @@ export default function DashboardPage({ workbook }) {
             {weeklyData.map((row, rIdx) => (
               <tr key={rIdx}>
                 {Object.entries(row).map(([key, val], cIdx) => {
-                  const isImpact = typeof val === 'number' && key.toLowerCase().includes('impact') && val > 0;
                   let backgroundColor;
+
                   if (typeof val === 'number') {
-                    if (key.toLowerCase().includes('maintenance')) {
+                    const k = key.toLowerCase();
+
+                    if (k.includes('maintenance')) {
                       if (val > 16) backgroundColor = '#ffcccc'; // rouge
                       else if (val >= 5) backgroundColor = '#fffacc'; // jaune
                       else backgroundColor = '#d5fdd5'; // vert
-                    } else if (key.toLowerCase().includes('incident')) {
-                      if (val >= 30) backgroundColor = '#fffacc'; // jaune
-                      else backgroundColor = '#d5fdd5'; // vert
-                    } // impact déjà géré au-dessus, rien à faire ici
-                  } else if (key.toLowerCase().includes('impact') && val > 0) {
-                    backgroundColor = '#ffe0e0';
+                    }
+
+                    else if (k.includes('incident')) {
+                      backgroundColor = val >= 30 ? '#fffacc' : '#d5fdd5';
+                    }
+
+                    else if (k.includes('impact') && val > 0) {
+                      backgroundColor = '#ffe0e0';
+                    }
                   }
-                  const style = {
-                    border: '1px solid #eee',
-                    padding: 8,
-                    backgroundColor
-                  };
-                  return <td key={cIdx} style={style}>{val}</td>;
+
+                  return (
+                    <td key={cIdx} style={{ border: '1px solid #eee', padding: 8, backgroundColor }}>
+                      {val}
+                    </td>
+                  );
                 })}
               </tr>
             ))}
