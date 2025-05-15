@@ -17,10 +17,10 @@ export default function DashboardPage({ workbook }) {
 
     const sheet = workbook.Sheets[dashboardSheetName];
 
-    // === TABLEAU 1 : Statistiques globales — plage rigide F5:I13
+    // === TABLEAU 1 : Statistiques globales — plage rigide F2:I12
     const summaryRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'F2:I12',
+      range: 'F2:I11',
       defval: ''
     });
     const [summaryHeaders, ...summaryRows] = summaryRaw;
@@ -31,16 +31,27 @@ export default function DashboardPage({ workbook }) {
     });
     setSummaryData(formattedSummary);
 
-    // === TABLEAU 2 : Détails hebdomadaires — plage à partir de A17
-    const fullSheet = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-    const weeklyStartIndex = fullSheet.findIndex(row =>
-      Array.isArray(row) && row.includes('Week')
-    );
-    const rawHeaders = fullSheet[weeklyStartIndex] || [];
-    const weeklyHeadersRow = rawHeaders.filter(h => h !== undefined && h !== '');
-    const rawAvgRow = fullSheet[weeklyStartIndex + 1] || [];
-    const averageLineFixed = weeklyHeadersRow.map((_, idx) => rawAvgRow[idx] ?? '');
-    const dataRows = fullSheet.slice(weeklyStartIndex + 2).filter(r => r.some(cell => cell !== ''));
+    // === TABLEAU 2 : Détails hebdomadaires — lecture rigide
+    const weeklyHeadersRow = [
+      "Month", "Week",
+      "Maintenance (count)", "Maintenance (hrs)",
+      "Incidents (count)", "Incidents (hrs)",
+      "Business Impact (count)", "Business Impact (hrs)"
+    ];
+
+    const avgRowRaw = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      range: 'A12:H17',
+      defval: ''
+    })[0] || [];
+
+    const averageLineFixed = weeklyHeadersRow.map((_, idx) => avgRowRaw[idx] ?? '');
+
+    const dataRows = XLSX.utils.sheet_to_json(sheet, {
+      header: 1,
+      range: 'A18',
+      defval: ''
+    }).filter(row => row.some(cell => cell !== ''));
 
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
@@ -88,7 +99,7 @@ export default function DashboardPage({ workbook }) {
             <tr>
               {weeklyHeaders.map((col, idx) => (
                 <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>
-                  {col.startsWith('__EMPTY') ? '' : col}
+                  {col}
                 </th>
               ))}
             </tr>
@@ -101,7 +112,7 @@ export default function DashboardPage({ workbook }) {
                   color: '#888',
                   padding: 6
                 }}>
-                  {typeof val === 'string' && val.toLowerCase().includes('average') ? val : ''}
+                  {val}
                 </td>
               ))}
             </tr>
