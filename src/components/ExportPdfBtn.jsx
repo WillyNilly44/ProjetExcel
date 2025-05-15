@@ -27,7 +27,7 @@ export default function ExportPdfBtn({ sheetName }) {
     const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
 
     // Ordre final désiré pour l’export
-    const exportOrder = ["Ticket #", "Assigned", "Note", "Date + Start", "Acc. time", "District"];
+    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date + Start", "Acc. time", "District"];
 
     // Étape 1 : Trouver en-têtes
     const headerCells = Array.from(cloned.querySelectorAll('thead th'));
@@ -57,21 +57,24 @@ export default function ExportPdfBtn({ sheetName }) {
     const orderedHeaders = exportOrder.filter(col => finalHeaders.includes(col));
 
     // Étape 5 : Lire lignes dans l’ordre
-    const body = Array.from(cloned.querySelectorAll('tbody tr')).map(row => {
-  const cells = Array.from(row.children);
-  return exportOrder.map(col => {
-    if (col === "Date + Start") {
-      const idxDate = finalHeaders.indexOf("Date");
-      const idxStart = finalHeaders.indexOf("Start");
-      const date = cells[idxDate]?.textContent.trim() ?? '';
-      const start = cells[idxStart]?.textContent.trim() ?? '';
-      return `${date} ${start}`.trim();
-    } else {
-      const idx = finalHeaders.indexOf(col);
-      return cells[idx]?.textContent.trim() ?? '';
-    }
-  });
-});
+    const body = Array.from(cloned.querySelectorAll('tbody tr')).map((row, i) => {
+      const cells = Array.from(row.children);
+      return exportOrder.map(col => {
+        if (col === "No") {
+          return (i + 1).toString();
+        }
+        if (col === "Date+Début") {
+          const idxDate = finalHeaders.indexOf("Date");
+          const idxStart = finalHeaders.indexOf("Début"); // ou "Start"
+          const date = cells[idxDate]?.textContent.trim() ?? '';
+          const start = cells[idxStart]?.textContent.trim() ?? '';
+          return `${date} ${start}`.trim();
+        } else {
+          const idx = finalHeaders.indexOf(col);
+          return cells[idx]?.textContent.trim() ?? '';
+        }
+      });
+    });
 
 
 
