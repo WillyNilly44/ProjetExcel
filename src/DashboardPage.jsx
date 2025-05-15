@@ -45,7 +45,6 @@ export default function DashboardPage({ workbook }) {
       defval: ''
     })[0] || [];
     const averageLineFixed = weeklyHeadersRow.map((_, idx) => avgRowRaw[idx] ?? '');
-    console.log("📊 Ligne moyenne :", averageLineFixed);
 
     const dataRows = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
@@ -58,11 +57,10 @@ export default function DashboardPage({ workbook }) {
       weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
-
+    console.log("📊 Données hebdomadaires :", formattedWeekly);
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
-    console.log("📊 Données hebdomadaires :", formattedWeekly);
 
   }, [workbook]);
 
