@@ -22,23 +22,24 @@ export default function DashboardPage({ workbook }) {
     const range1 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     const summaryStartIndex = range1.findIndex(row => Array.isArray(row) && row.includes("Année"));
     const summaryRows = range1.slice(summaryStartIndex + 1, summaryStartIndex + 15).filter(row => row.some(cell => cell !== ''));
-    const summaryHeaders = range1[summaryStartIndex];
+    const summaryHeaders = range1[summaryStartIndex] || [];
     const formattedSummary = summaryRows.map(row => {
       const obj = {};
       summaryHeaders.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
+
     const range2 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     const weeklyStartIndex = range2.findIndex(row => Array.isArray(row) && row.includes("Week"));
     const weeklyRows = range2.slice(weeklyStartIndex + 1).filter(row => row.some(cell => cell !== ''));
-    const weeklyHeaders = range2[weeklyStartIndex];
+    const weeklyHeaders = range2[weeklyStartIndex] || [];
     const formattedWeekly = weeklyRows.map(row => {
       const obj = {};
       weeklyHeaders.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
 
-    // Nettoyage du premier tableau : transformer [ [Année, Maint, Incid]... ] en objets
+
     setSummaryData(formattedSummary);
     setWeeklyData(formattedWeekly);
   }, [workbook]);
@@ -95,8 +96,8 @@ export default function DashboardPage({ workbook }) {
                       else backgroundColor = '#d5fdd5'; // vert
                     } // impact déjà géré au-dessus, rien à faire ici
                   } else if (key.toLowerCase().includes('impact') && val > 0) {
-                      backgroundColor = '#ffe0e0';
-                    }
+                    backgroundColor = '#ffe0e0';
+                  }
                   const style = {
                     border: '1px solid #eee',
                     padding: 8,
