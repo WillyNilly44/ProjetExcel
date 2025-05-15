@@ -1,6 +1,3 @@
-// ===============================
-// DashboardPage.jsx
-
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
@@ -19,7 +16,15 @@ export default function DashboardPage({ workbook }) {
     const sheet = workbook.Sheets[dashboardSheetName];
 
     // Lire les deux tableaux manuellement
-    const range1 = XLSX.utils.sheet_to_json(sheet, { range: "F5:I10", header: 1 });
+    const range1 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const summaryStartIndex = range1.findIndex(row => Array.isArray(row) && row.includes("Année"));
+    const summaryRows = range1.slice(summaryStartIndex + 1).filter(row => row.some(cell => cell !== ''));
+    const summaryHeaders = range1[summaryStartIndex];
+    const formattedSummary = summaryRows.map(row => {
+      const obj = {};
+      summaryHeaders.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
     const range2 = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     const weeklyStartIndex = range2.findIndex(row => Array.isArray(row) && row.includes("Week"));
     const weeklyRows = range2.slice(weeklyStartIndex + 1).filter(row => row.some(cell => cell !== ''));
@@ -31,14 +36,6 @@ export default function DashboardPage({ workbook }) {
     });
 
     // Nettoyage du premier tableau : transformer [ [Année, Maint, Incid]... ] en objets
-    const headers1 = range1[0];
-    const rows1 = range1.slice(1);
-    const formattedSummary = rows1.map(row => {
-      const obj = {};
-      headers1.forEach((h, i) => obj[h] = row[i]);
-      return obj;
-    });
-
     setSummaryData(formattedSummary);
     setWeeklyData(formattedWeekly);
   }, [workbook]);
