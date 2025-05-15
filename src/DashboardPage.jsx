@@ -20,7 +20,7 @@ export default function DashboardPage({ workbook }) {
     // === TABLEAU 1 : Statistiques globales — plage rigide F5:I13
     const summaryRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'F5:I12',
+      range: 'F2:I12',
       defval: ''
     });
     const [summaryHeaders, ...summaryRows] = summaryRaw;
@@ -36,8 +36,10 @@ export default function DashboardPage({ workbook }) {
     const weeklyStartIndex = fullSheet.findIndex(row =>
       Array.isArray(row) && row.includes('Week')
     );
-    const weeklyHeadersRow = fullSheet[weeklyStartIndex] || [];
-    const averageRow = fullSheet[weeklyStartIndex + 1] || [];
+    const rawHeaders = fullSheet[weeklyStartIndex] || [];
+    const weeklyHeadersRow = rawHeaders.filter(h => h !== undefined && h !== '');
+    const rawAvgRow = fullSheet[weeklyStartIndex + 1] || [];
+    const averageLineFixed = weeklyHeadersRow.map((_, idx) => rawAvgRow[idx] ?? '');
     const dataRows = fullSheet.slice(weeklyStartIndex + 2).filter(r => r.some(cell => cell !== ''));
 
     const formattedWeekly = dataRows.map(row => {
@@ -47,7 +49,7 @@ export default function DashboardPage({ workbook }) {
     });
 
     setWeeklyHeaders(weeklyHeadersRow);
-    setAverageLine(averageRow);
+    setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
   }, [workbook]);
 
