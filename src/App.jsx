@@ -23,9 +23,9 @@ function App() {
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [adminView, setAdminView] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('admin') === 'true');
+  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
   const [dataSource, setDataSource] = useState('fusion');
-  const [adminNotes, setAdminNotes] = useState([]);
+  const [adminNotes, setAdminNotes] = useState();
 
 
   const handleWorkbookLoaded = (wb, validSheets) => {
@@ -58,12 +58,12 @@ function App() {
   if (adminView) {
     if (!isAdmin) {
       return <AdminLogin onLogin={() => {
-        localStorage.setItem('admin', 'true');
+        sessionStorage.setItem('admin', 'true');
         setIsAdmin(true);
       }} />;
     }
     return <AdminPanel onLogout={() => {
-      localStorage.removeItem('admin');
+      sessionStorage.removeItem('admin');
       setIsAdmin(false);
       setAdminView(false);
     }}
