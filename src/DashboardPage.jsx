@@ -4,8 +4,11 @@ import * as XLSX from 'xlsx';
 export default function DashboardPage({ workbook }) {
   const [summaryData, setSummaryData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [weeklyHeaders, setWeeklyHeaders] = useState([]);
   const [averageLine, setAverageLine] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('Tous');
+  const [availableMonths, setAvailableMonths] = useState([]);
 
   useEffect(() => {
     if (!workbook) return;
@@ -17,7 +20,7 @@ export default function DashboardPage({ workbook }) {
 
     const sheet = workbook.Sheets[dashboardSheetName];
 
-    // === TABLEAU 1 : Statistiques globales — plage rigide F2:I12
+    // === TABLEAU 1 : Statistiques globales
     const summaryRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
       range: 'F2:H11',
@@ -31,7 +34,7 @@ export default function DashboardPage({ workbook }) {
     });
     setSummaryData(formattedSummary);
 
-    // === TABLEAU 2 : Détails hebdomadaires — lecture rigide
+    // === TABLEAU 2 : Détails hebdomadaires
     const weeklyHeadersRow = [
       "Month", "Week",
       "Maintenance (count)", "Maintenance (hrs)",
@@ -39,14 +42,7 @@ export default function DashboardPage({ workbook }) {
       "Business Impact (count)", "Business Impact (hrs)"
     ];
 
-    const avgRowRaw = XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      range: 'B13:I13',
-      defval: ''
-    })[0] || [];
-
     const fullSheet = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
     const weeklyStartIndex = 10;
 
     const rawAvgRow = fullSheet[weeklyStartIndex + 1] || [];
@@ -62,12 +58,30 @@ export default function DashboardPage({ workbook }) {
       return obj;
     });
 
+    // Tri décroissant par date de "Month"
+    formattedWeekly.sort((a, b) => {
+      const dateA = new Date(a["Month"]);
+      const dateB = new Date(b["Month"]);
+      return dateB - dateA;
+    });
+
+    // Extraire tous les mois disponibles
+    const months = Array.from(new Set(formattedWeekly.map(row => row["Month"]))).sort((a, b) => new Date(b) - new Date(a));
+    setAvailableMonths(["Tous", ...months]);
+
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
-
-
+    setFilteredData(formattedWeekly); // initial display = all
   }, [workbook]);
+
+  useEffect(() => {
+    if (selectedMonth === "Tous") {
+      setFilteredData(weeklyData);
+    } else {
+      setFilteredData(weeklyData.filter(row => row["Month"] === selectedMonth));
+    }
+  }, [selectedMonth, weeklyData]);
 
   return (
     <div style={{ padding: 20 }}>
@@ -98,7 +112,18 @@ export default function DashboardPage({ workbook }) {
 
       {/* --- Tableau 2 --- */}
       <h3>Détails hebdomadaires</h3>
-      {weeklyData.length > 0 ? (
+
+      {/* Filtres par mois */}
+      <div style={{ marginBottom: 10 }}>
+        <label>Filtrer par mois : </label>
+        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
+          {availableMonths.map((m, i) => (
+            <option key={i} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+
+      {filteredData.length > 0 ? (
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
@@ -123,7 +148,7 @@ export default function DashboardPage({ workbook }) {
             </tr>
           </thead>
           <tbody>
-            {weeklyData.map((row, rIdx) => (
+            {filteredData.map((row, rIdx) => (
               <tr key={rIdx}>
                 {weeklyHeaders.map((key, cIdx) => {
                   const val = row[key];
