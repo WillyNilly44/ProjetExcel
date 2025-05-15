@@ -48,10 +48,9 @@ export default function DashboardPage({ workbook }) {
 
     const dataRows = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
-      range: 'B18',
+      range: 'A18',
       defval: ''
     }).filter(row => row.some(cell => cell !== ''));
-    console.log(dataRows);
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
