@@ -81,7 +81,7 @@ export default function ExportPdfBtn({ sheetName }) {
 
     // Étape 6 : Export PDF
     doc.setFontSize(10);
-    doc.text(sheetName || 'Export', 14, 15);
+    doc.text('Export', 14, 15);
     doc.autoTable({
       head: [headersRenamed],
       body: body,
@@ -100,7 +100,7 @@ export default function ExportPdfBtn({ sheetName }) {
       margin: { left: 10, right: 10 }
     });
 
-    doc.save(`${sheetName || 'export'}.pdf`);
+    doc.save(`${sheetName || 'Data'}.pdf`);
   };
 
   return (
