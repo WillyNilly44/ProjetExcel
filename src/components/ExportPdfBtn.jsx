@@ -90,11 +90,11 @@ export default function ExportPdfBtn({adminNotes = [] }) {
         const colName = headersRenamed[colIdx];
 
         if (colName === "Summary") {
-          console.log("here");
           const content = data.cell.text.join(' ').toLowerCase();
           const match = adminNotes.some(note =>
-            content.includes(note.toLowerCase())
+            content.includes(note.toLowerCase())  
           );
+          console.log(content);
 
           if (match) {
             data.cell.styles.fillColor = [255, 250, 205]; // jaune clair
