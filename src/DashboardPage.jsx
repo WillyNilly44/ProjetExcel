@@ -20,7 +20,7 @@ export default function DashboardPage({ workbook }) {
     const fullRange = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
     // ---- Tableau 1 : Statistiques globales (par année)
-    const summaryStartIndex = fullRange.findIndex(row => row.includes("Année"));
+    const summaryStartIndex = fullRange.findIndex(row => row.includes("Stats"));
     const summaryHeaders = fullRange[summaryStartIndex] || [];
     const summaryRows = fullRange
       .slice(summaryStartIndex + 1, summaryStartIndex + 15)
@@ -34,6 +34,8 @@ export default function DashboardPage({ workbook }) {
     // ---- Tableau 2 : Détails hebdomadaires
     const weeklyStartIndex = fullRange.findIndex(row => row.includes("Week"));
     const weeklyHeaders = fullRange[weeklyStartIndex] || [];
+    const averageLine = fullRange[weeklyStartIndex + 1] || [];
+
     const weeklyRows = fullRange
       .slice(weeklyStartIndex + 1)
       .filter(row => row.some(cell => cell !== ''));
@@ -78,11 +80,31 @@ export default function DashboardPage({ workbook }) {
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <thead>
             <tr>
-              {Object.keys(weeklyData[0]).map((col, idx) => (
-                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>{col}</th>
+              {weeklyHeaders.map((col, idx) => (
+                <th key={idx} style={{
+                  border: '1px solid #ccc',
+                  background: '#f0f4f8',
+                  padding: 8
+                }}>
+                  {col.startsWith('__EMPTY') ? '' : col}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {averageLine.map((val, idx) => (
+                <td key={idx} style={{
+                  border: '1px solid #ddd',
+                  background: '#fefefe',
+                  fontStyle: 'italic',
+                  color: '#888',
+                  padding: 6
+                }}>
+                  {typeof val === 'string' && val.toLowerCase().includes('average') ? val : ''}
+                </td>
               ))}
             </tr>
           </thead>
+
           <tbody>
             {weeklyData.map((row, rIdx) => (
               <tr key={rIdx}>
