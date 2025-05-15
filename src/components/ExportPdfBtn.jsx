@@ -18,6 +18,7 @@ export default function ExportPdfBtn({ sheetName }) {
       "Date": "Scheduled date & time",
       "Acc. time": "Duration (hrs)",
       "District": "Affected site",
+      "No": "No",
     };
 
     // Clone le tableau HTML visible
