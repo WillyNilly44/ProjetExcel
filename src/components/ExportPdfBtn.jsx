@@ -97,6 +97,7 @@ export default function ExportPdfBtn({adminNotes = [] }) {
           console.log(content);
 
           if (match) {
+            console.log("here");
             data.cell.styles.fillColor = [255, 250, 205]; // jaune clair
             data.cell.styles.textColor = [200, 0, 0];     // rouge foncé
           }
