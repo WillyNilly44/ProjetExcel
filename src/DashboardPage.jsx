@@ -51,13 +51,12 @@ export default function DashboardPage({ workbook }) {
       range: 'B18',
       defval: ''
     }).filter(row => row.some(cell => cell !== ''));
-
+    console.log(dataRows);
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => obj[h] = row[i]);
       return obj;
     });
-    console.log("📊 Données hebdomadaires :", formattedWeekly);
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
