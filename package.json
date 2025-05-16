@@ -10,7 +10,7 @@
     "@fullcalendar/daygrid": "^6.1.8",
     "@fullcalendar/interaction": "^6.1.8",
     "@fullcalendar/react": "^6.1.8",
-    "@fullcalendar/core": "­^6.1.10ss",
+    "@fullcalendar/core": "­^6.1.10",
     "@fullcalendar/timegrid": "^6.1.10",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.5.29",
