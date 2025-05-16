@@ -44,14 +44,11 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     const finalHeaders = finalHeaderCells.map(cell => cell.textContent.trim());
 
     const orderedHeaders = exportOrder;
-    const orderedIndexes = exportOrder.map(col => {
-      if (col === "Date+Start") return ["Date", "Start"];
-      return finalHeaders.indexOf(col);
-    }).filter(i => i !== -1);
+    const summaryIndex = orderedHeaders.indexOf("Note");
 
     const body = Array.from(cloned.querySelectorAll('tbody tr')).map((row, i) => {
       const cells = Array.from(row.children);
-      return exportOrder.map(col => {
+      const rowData = exportOrder.map(col => {
         if (col === "No") return (i + 1).toString();
 
         if (col === "Date+Start") {
@@ -65,20 +62,20 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         const idx = finalHeaders.indexOf(col);
         return idx !== -1 ? cells[idx]?.textContent.trim() ?? '' : '';
       });
+
+      // Ajout de données personnalisées
+      const summaryText = rowData[summaryIndex]?.toLowerCase().trim() || '';
+      const isAdminNote = adminNotes.some(note =>
+        summaryText.includes(note.toLowerCase().trim())
+      );
+
+      rowData.raw = { isAdminNote }; // Pour autoTable
+
+      return rowData;
     });
 
     const headersRenamed = exportOrder.map(h => columnRenames[h] || h);
 
-    // === Détecter quelles lignes doivent être surlignées ===
-    const normalizedNotes = adminNotes.map(n => n.toLowerCase().trim());
-
-    const highlightRows = body.map(row => {
-      const summaryIndex = headersRenamed.indexOf("Summary");
-      const summaryText = row[summaryIndex]?.toLowerCase().trim() || '';
-      return normalizedNotes.some(note => summaryText.includes(note));
-    });
-
-    // === Génération du PDF avec autoTable ===
     doc.setFontSize(10);
     doc.text('Export', 14, 15);
 
@@ -86,9 +83,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       head: [headersRenamed],
       body: body,
       willDrawCell: function (data) {
-        const rowIndex = data.row.index;
-
-        if (highlightRows[rowIndex]) {
+        if (data.row.raw?.isAdminNote) {
           data.cell.styles.fillColor = [255, 250, 205]; // jaune clair
           data.cell.styles.textColor = [200, 0, 0];     // rouge foncé
         }
