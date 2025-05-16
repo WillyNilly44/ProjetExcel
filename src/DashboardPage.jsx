@@ -183,15 +183,13 @@ export default function DashboardPage({ workbook }) {
                     const k = key.toLowerCase();
                     if (k.includes('maintenance')) {
                       if (val >= 25) backgroundColor = '#ffcccc'; // rouge
-                      else if (val < 25 && val >15) backgroundColor = '#fffacc'; // jaune
+                      else if (val < 25 && val > 15) backgroundColor = '#fffacc'; // jaune
                       else backgroundColor = '#d5fdd5'; // vert
                     } else if (k.includes('incident')) {
-                      if(val >=6)
-                      {
+                      if (val >= 6) {
                         backgroundColor = '#ffcccc'; // rouge
                       }
-                      else if(val <6&& val>=5)
-                      {
+                      else if (val < 6 && val >= 5) {
                         backgroundColor = '#fffacc'; // jaune
                       }
                       else backgroundColor = '#d5fdd5'; // vert
