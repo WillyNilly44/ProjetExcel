@@ -1,60 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-// === Dictionnaire mois pour conversion en YYYY-MM
-function normalizeMonth(rawMonth) {
-  if (!rawMonth || typeof rawMonth !== 'string') return '';
-
-  const str = rawMonth
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
-    .toLowerCase().trim();
-
-  const parts = str.split(/[\s,-]+/);
-  const year = parts.find(p => /^\d{4}$/.test(p));
-  const monthKey = parts.find(p => isNaN(p));
-
-  const MONTHS_FR_EN = {
-    jan: '01', janvier: '01', january: '01',
-    fev: '02', fevrier: '02', february: '02', feb: '02',
-    mar: '03', mars: '03', march: '03',
-    avr: '04', avril: '04', april: '04',
-    mai: '05', may: '05',
-    juin: '06', june: '06',
-    juil: '07', juillet: '07', july: '07',
-    aout: '08', août: '08', august: '08',
-    sep: '09', septembre: '09', september: '09',
-    oct: '10', octobre: '10', october: '10',
-    nov: '11', novembre: '11', november: '11',
-    dec: '12', decembre: '12', december: '12'
-  };
-
-  const month = Object.entries(MONTHS_FR_EN).find(([key]) =>
-    monthKey?.startsWith(key)
-  )?.[1];
-
-  if (year && month) return `${year}-${month}`;
-  if (/^\d{4}-\d{2}$/.test(rawMonth)) return rawMonth;
-
-  return rawMonth;
-}
-
-
-
-function formatMonthLabel(monthValue) {
-  if (!monthValue || typeof monthValue !== 'string' || !monthValue.includes('-')) return monthValue;
-
-  const [year, month] = monthValue.split('-');
-  const monthNames = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-  ];
-
-  const index = parseInt(month, 10);
-  if (!year || isNaN(index) || index < 1 || index > 12) return monthValue;
-
-  return `${monthNames[index - 1]} ${year}`;
-}
-
+// Liste statique des mois (en français)
+const MONTH_OPTIONS = [
+  'Tous', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+];
 
 export default function DashboardPage({ workbook }) {
   const [summaryData, setSummaryData] = useState([]);
@@ -63,7 +14,6 @@ export default function DashboardPage({ workbook }) {
   const [weeklyHeaders, setWeeklyHeaders] = useState([]);
   const [averageLine, setAverageLine] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('Tous');
-  const [availableMonths, setAvailableMonths] = useState([]);
 
   useEffect(() => {
     if (!workbook) return;
@@ -110,18 +60,18 @@ export default function DashboardPage({ workbook }) {
     const formattedWeekly = dataRows.map(row => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => {
-        obj[h] = h === "Month" ? normalizeMonth(row[i]) : row[i];
+        obj[h] = row[i];
       });
       return obj;
     });
 
+    // Tri du plus récent au plus ancien (basé sur la valeur Month brute)
+    formattedWeekly.sort((a, b) => {
+      const dateA = new Date(a["Month"]);
+      const dateB = new Date(b["Month"]);
+      return dateB - dateA;
+    });
 
-    // Tri du plus récent au plus ancien
-    formattedWeekly.sort((a, b) => new Date(b["Month"]) - new Date(a["Month"]));
-
-    // Extraire les mois disponibles
-    const months = Array.from(new Set(formattedWeekly.map(row => row["Month"])));
-    setAvailableMonths(["Tous", ...months]);
     setWeeklyHeaders(weeklyHeadersRow);
     setAverageLine(averageLineFixed);
     setWeeklyData(formattedWeekly);
@@ -132,7 +82,12 @@ export default function DashboardPage({ workbook }) {
     if (selectedMonth === "Tous") {
       setFilteredData(weeklyData);
     } else {
-      setFilteredData(weeklyData.filter(row => row["Month"] === selectedMonth));
+      const moisMinuscule = selectedMonth.toLowerCase();
+      setFilteredData(
+        weeklyData.filter(row =>
+          row["Month"]?.toString().toLowerCase().includes(moisMinuscule)
+        )
+      );
     }
   }, [selectedMonth, weeklyData]);
 
@@ -170,8 +125,8 @@ export default function DashboardPage({ workbook }) {
       <div style={{ marginBottom: 10 }}>
         <label>Filtrer par mois : </label>
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
-          {availableMonths.map((m, i) => (
-            <option key={i} value={m}>{m === 'Tous' ? 'Tous' : formatMonthLabel(m)}</option>
+          {MONTH_OPTIONS.map((m, i) => (
+            <option key={i} value={m}>{m}</option>
           ))}
         </select>
       </div>
