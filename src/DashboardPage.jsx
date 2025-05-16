@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 
 // Liste statique des mois (en français)
 const MONTH_OPTIONS = [
-  'Tous', 'January', 'Febuary', 'March', 'April', 'May', 'June',
+  'Tous', 'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
@@ -85,7 +85,7 @@ export default function DashboardPage({ workbook }) {
       const moisMinuscule = selectedMonth.toLowerCase();
       setFilteredData(
         weeklyData.filter(row =>
-          row["Month"]?.toString().toLowerCase().includes(moisMinuscule)
+          row["Week"]?.toString().toLowerCase().includes(moisMinuscule)
         )
       );
     }
