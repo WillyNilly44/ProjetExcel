@@ -98,11 +98,11 @@ export default function DashboardPage({ workbook }) {
       {/* === Tableau 1 === */}
       <h3>Statistiques globales (par année)</h3>
       {summaryData.length > 0 ? (
-        <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 30 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 10, fontSize: '0.85rem' }}>
           <thead>
             <tr>
               {Object.keys(summaryData[0]).map((col, idx) => (
-                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>{col}</th>
+                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 6 }}>{col}</th>
               ))}
             </tr>
           </thead>
@@ -110,7 +110,7 @@ export default function DashboardPage({ workbook }) {
             {summaryData.map((row, rIdx) => (
               <tr key={rIdx}>
                 {Object.values(row).map((val, cIdx) => (
-                  <td key={cIdx} style={{ border: '1px solid #eee', padding: 8 }}>{val}</td>
+                  <td key={cIdx} style={{ border: '1px solid #eee', padding: 6 }}>{val}</td>
                 ))}
               </tr>
             ))}
