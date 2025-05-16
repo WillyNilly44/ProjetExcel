@@ -106,7 +106,7 @@ export default function DashboardPage({ workbook }) {
                   border: '1px solid #ccc',
                   background: '#f0f4f8',
                   padding: 6,
-                  width: '120px', // ← Ajuste selon tes besoins
+                  width: '50px', // ← Ajuste selon tes besoins
                   whiteSpace: 'nowrap'
                 }}>
                   {col}
