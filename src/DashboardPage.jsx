@@ -156,7 +156,7 @@ export default function DashboardPage({ workbook }) {
             </tr>
           </thead>
           <tbody>
-            {filteredData.map((row, rIdx) => (
+            {[...filteredData].reverse().map((row, rIdx) => (
               <tr key={rIdx}>
                 {weeklyHeaders.map((key, cIdx) => {
                   const val = row[key];
