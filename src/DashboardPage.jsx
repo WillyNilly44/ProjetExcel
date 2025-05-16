@@ -3,8 +3,8 @@ import * as XLSX from 'xlsx';
 
 // Liste statique des mois (en français)
 const MONTH_OPTIONS = [
-  'Tous', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  'Tous', 'January', 'Febuary', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 export default function DashboardPage({ workbook }) {
