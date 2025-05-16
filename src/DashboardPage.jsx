@@ -102,7 +102,16 @@ export default function DashboardPage({ workbook }) {
           <thead>
             <tr>
               {Object.keys(summaryData[0]).map((col, idx) => (
-                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 6 }}>{col}</th>
+                <th key={idx} style={{
+                  border: '1px solid #ccc',
+                  background: '#f0f4f8',
+                  padding: 6,
+                  width: '120px', // ← Ajuste selon tes besoins
+                  whiteSpace: 'nowrap'
+                }}>
+                  {col}
+                </th>
+
               ))}
             </tr>
           </thead>
@@ -110,7 +119,15 @@ export default function DashboardPage({ workbook }) {
             {summaryData.map((row, rIdx) => (
               <tr key={rIdx}>
                 {Object.values(row).map((val, cIdx) => (
-                  <td key={cIdx} style={{ border: '1px solid #eee', padding: 6 }}>{val}</td>
+                  <td key={cIdx} style={{
+                    border: '1px solid #eee',
+                    padding: 6,
+                    whiteSpace: 'nowrap',
+                    textAlign: 'center'
+                  }}>
+                    {val}
+                  </td>
+
                 ))}
               </tr>
             ))}
