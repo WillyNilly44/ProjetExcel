@@ -3,12 +3,14 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
 
 export default function CalendarView({ data, initialDate }) {
   const events = data.map((row, index) => {
     const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date'));
     const startTime = row['Start'] || row['Heure'] || '08:00';
-    const duration = parseFloat(row['Acc. time']) || 1; // en heures
+    const duration = parseFloat(row['Acc. time']) || 1;
 
     if (!dateKey || !row[dateKey]) return null;
 
@@ -24,7 +26,11 @@ export default function CalendarView({ data, initialDate }) {
       end: endDate,
       allDay: false,
       extendedProps: {
-        description: row['Note'] || row['Incident'] || row['App Name']
+        note: row['Note'],
+        incident: row['Incident'],
+        app: row['App Name'],
+        district: row['District'],
+        duration: row['Acc. time']
       }
     };
   }).filter(Boolean);
@@ -42,9 +48,32 @@ export default function CalendarView({ data, initialDate }) {
         height="auto"
         nowIndicator={true}
         allDaySlot={false}
-        eventDidMount={(info) => {
-          const tooltipText = info.event.extendedProps.description || info.event.title;
-          info.el.setAttribute("title", tooltipText);
+        eventContent={(arg) => {
+          const { note, incident, app, district, duration } = arg.event.extendedProps;
+          const title = arg.event.title;
+
+          return (
+            <Tippy
+              content={
+                <div style={{ padding: '6px', maxWidth: 250 }}>
+                  <strong>{title}</strong>
+                  <br />
+                  {incident && <><strong>Incident :</strong> {incident}<br /></>}
+                  {note && <><strong>Note :</strong> {note}<br /></>}
+                  {app && <><strong>Application :</strong> {app}<br /></>}
+                  {district && <><strong>District :</strong> {district}<br /></>}
+                  {duration && <><strong>Durée :</strong> {duration}h</>}
+                </div>
+              }
+              placement="top"
+              arrow={true}
+              theme="light-border"
+              delay={[100, 0]}
+              interactive={true}
+            >
+              <div>{title}</div>
+            </Tippy>
+          );
         }}
       />
     </div>
