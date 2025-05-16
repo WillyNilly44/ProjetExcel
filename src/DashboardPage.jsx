@@ -98,7 +98,7 @@ export default function DashboardPage({ workbook }) {
       {/* === Tableau 1 === */}
       <h3>Statistiques globales (par année)</h3>
       {summaryData.length > 0 ? (
-        <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: 10, fontSize: '0.85rem' }}>
+        <table style={{ borderCollapse: 'collapse', width: '65%', marginBottom: 10, fontSize: '0.85rem' }}>
           <thead>
             <tr>
               {Object.keys(summaryData[0]).map((col, idx) => (
