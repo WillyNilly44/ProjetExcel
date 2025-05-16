@@ -2,7 +2,7 @@ import React from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-export default function ExportPdfBtn({adminNotes = [] }) {
+export default function ExportPdfBtn({ adminNotes = [] }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
 
@@ -21,20 +21,20 @@ export default function ExportPdfBtn({adminNotes = [] }) {
       "No": "#",
     };
 
-    // Clone le tableau HTML visible
+    // Clone du tableau HTML visible
     const cloned = table.cloneNode(true);
 
-    // Colonnes à exclure (exactes, sensibles à la casse)
+    // Colonnes à exclure
     const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
 
-    // Ordre final désiré pour l’export
+    // Ordre désiré à l’export
     const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
 
-    // Étape 1 : Trouver en-têtes
+    // === Étape 1 : En-têtes
     const headerCells = Array.from(cloned.querySelectorAll('thead th'));
     const headerNames = headerCells.map(cell => cell.textContent.trim());
 
-    // Étape 2 : Supprimer colonnes exclues (descendant pour garder index valides)
+    // === Étape 2 : Supprimer colonnes exclues
     const indexesToRemove = headerNames
       .map((name, idx) => (excludedColumns.includes(name) ? idx : -1))
       .filter(idx => idx !== -1);
@@ -46,42 +46,45 @@ export default function ExportPdfBtn({adminNotes = [] }) {
       });
     });
 
-    // Étape 3 : Recalculer les en-têtes restants
+    // === Étape 3 : Nouvelles entêtes
     const finalHeaderCells = Array.from(cloned.querySelectorAll('thead th'));
     const finalHeaders = finalHeaderCells.map(cell => cell.textContent.trim());
 
-    // Étape 4 : Réordonner selon exportOrder
+    // === Étape 4 : Réordonner selon exportOrder
+    const orderedHeaders = exportOrder;
     const orderedIndexes = exportOrder.map(col => {
       if (col === "Date+Start") return ["Date", "Start"];
       return finalHeaders.indexOf(col);
     }).filter(i => i !== -1);
-    const orderedHeaders = exportOrder;
 
-    // Étape 5 : Lire lignes dans l’ordre
+    // === Étape 5 : Construire les lignes
     const body = Array.from(cloned.querySelectorAll('tbody tr')).map((row, i) => {
       const cells = Array.from(row.children);
       return exportOrder.map(col => {
-        if (col === "No") {
-          return (i + 1).toString();
-        }
+        if (col === "No") return (i + 1).toString();
+
         if (col === "Date+Start") {
           const idxDate = finalHeaders.indexOf("Date");
-          const idxStart = finalHeaders.indexOf("Start"); // ou "Début"
+          const idxStart = finalHeaders.indexOf("Start");
           const date = idxDate !== -1 ? cells[idxDate]?.textContent.trim() : '';
           const start = idxStart !== -1 ? cells[idxStart]?.textContent.trim() : '';
           return `${date} ${start}`.trim();
-        } else {
-          const idx = finalHeaders.indexOf(col);
-          return idx !== -1 ? cells[idx]?.textContent.trim() ?? '' : '';
         }
+
+        const idx = finalHeaders.indexOf(col);
+        return idx !== -1 ? cells[idx]?.textContent.trim() ?? '' : '';
       });
     });
 
+    // === Étape 6 : Traduire les noms de colonnes
     const headersRenamed = exportOrder.map(h => columnRenames[h] || h);
 
-    // Étape 6 : Export PDF
+    // === Étape 7 : Export PDF avec surlignage de notes
     doc.setFontSize(10);
     doc.text('Export', 14, 15);
+
+    const normalizedNotes = adminNotes.map(n => n.toLowerCase().trim());
+
     doc.autoTable({
       head: [headersRenamed],
       body: body,
@@ -90,15 +93,15 @@ export default function ExportPdfBtn({adminNotes = [] }) {
         const colName = headersRenamed[colIdx];
 
         if (colName === "Summary") {
-          const content = data.cell.text.join(' ').toLowerCase();
-          const match = adminNotes.some(note =>
-            content.includes(note.toLowerCase())  
+          const content = data.cell.text.join(' ').toLowerCase().trim();
+
+          const match = normalizedNotes.some(note =>
+            content.includes(note)
           );
-          console.log(content);
 
           if (match) {
-            console.log("here");
-            data.cell.styles.fillColor = [255, 250, 205]; // jaune clair
+            console.log("🔍 Note trouvée dans Summary:", content);
+            data.cell.styles.fillColor = [255, 250, 205]; // jaune pâle
             data.cell.styles.textColor = [200, 0, 0];     // rouge foncé
           }
         }

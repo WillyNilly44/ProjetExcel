@@ -123,8 +123,7 @@ export default function DashboardPage({ workbook }) {
                     border: '1px solid #eee',
                     padding: 6,
                     whiteSpace: 'nowrap',
-                    textAlign: 'center',
-                    width: '50px', // ← Ajuste selon tes besoins
+                    textAlign: 'center'
                   }}>
                     {val}
                   </td>
