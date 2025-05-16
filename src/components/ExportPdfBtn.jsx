@@ -83,7 +83,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       head: [headersRenamed],
       body: body,
       willDrawCell: function (data) {
-        if (data.row.raw?.isAdminNote) {
+        if (data.row.raw) {
           console.log("here");
           data.cell.styles.fillColor = [255, 250, 205]; // jaune clair
           data.cell.styles.textColor = [200, 0, 0];     // rouge foncé
