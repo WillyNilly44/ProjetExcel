@@ -62,11 +62,11 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       const summaryIndex = exportOrder.indexOf(summaryCol);
       const summaryValue = data[summaryIndex]?.toLowerCase() ?? "";
 
+      console.log(summaryValue);
+
       const isNoteMatched = adminNotes
         .map(n => n.toLowerCase().trim())
         .some(note => summaryValue.includes(note));
-
-        console.log(isNoteMatched);
 
       // Ajouter métadonnée de surlignage
       data.raw = { highlight: isNoteMatched };
