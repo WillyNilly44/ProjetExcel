@@ -4,7 +4,6 @@ import 'jspdf-autotable';
 
 export default function ExportPdfBtn({ adminNotes = [] }) {
   const exportPdf = () => {
-    console.log(adminNotes);
     const doc = new jsPDF({ orientation: 'landscape' });
 
     const table = document.querySelector('table');
@@ -66,6 +65,8 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       const isNoteMatched = adminNotes
         .map(n => n.toLowerCase().trim())
         .some(note => summaryValue.includes(note));
+
+        console.log(isNoteMatched);
 
       // Ajouter métadonnée de surlignage
       data.raw = { highlight: isNoteMatched };
