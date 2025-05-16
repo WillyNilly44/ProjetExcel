@@ -2,35 +2,42 @@ import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 // === Dictionnaire mois pour conversion en YYYY-MM
-const MONTHS_FR_EN = {
-  jan: '01', janvier: '01', january: '01',
-  fév: '02', fev: '02', février: '02', february: '02', feb: '02',
-  mars: '03', march: '03',
-  avril: '04', april: '04',
-  mai: '05', may: '05',
-  juin: '06', june: '06',
-  juil: '07', juillet: '07', july: '07',
-  août: '08', aout: '08', august: '08',
-  sept: '09', septembre: '09', september: '09',
-  oct: '10', octobre: '10', october: '10',
-  nov: '11', novembre: '11', november: '11',
-  déc: '12', dec: '12', décembre: '12', december: '12'
-};
-
 function normalizeMonth(rawMonth) {
-  if (!rawMonth) return '';
-  const str = rawMonth.toString().toLowerCase().trim();
-  const parts = str.split(/[\s,-]+/);
+  if (!rawMonth || typeof rawMonth !== 'string') return '';
 
+  const str = rawMonth
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
+    .toLowerCase().trim();
+
+  // ex: "july 2023" => ["july", "2023"]
+  const parts = str.split(/[\s,-]+/);
   const year = parts.find(p => /^\d{4}$/.test(p));
   const monthKey = parts.find(p => isNaN(p));
 
+  const MONTHS_FR_EN = {
+    jan: '01', janvier: '01', january: '01',
+    fev: '02', fevrier: '02', february: '02', feb: '02',
+    mar: '03', mars: '03', march: '03',
+    avr: '04', avril: '04', april: '04',
+    mai: '05', may: '05',
+    juin: '06', june: '06',
+    juil: '07', juillet: '07', july: '07',
+    aout: '08', août: '08', august: '08',
+    sep: '09', septembre: '09', september: '09',
+    oct: '10', octobre: '10', october: '10',
+    nov: '11', novembre: '11', november: '11',
+    dec: '12', decembre: '12', december: '12'
+  };
+
   const month = Object.entries(MONTHS_FR_EN).find(([key]) =>
-    monthKey?.includes(key)
+    monthKey?.startsWith(key)
   )?.[1];
 
-  return year && month ? `${year}-${month}` : rawMonth;
+  if (year && month) return `${year}-${month}`;
+  if (/^\d{4}-\d{2}$/.test(rawMonth)) return rawMonth; // déjà bon
+  return ''; // si invalide
 }
+
 
 function formatMonthLabel(monthValue) {
   if (!monthValue || typeof monthValue !== 'string' || !monthValue.includes('-')) return monthValue;
@@ -100,12 +107,13 @@ export default function DashboardPage({ workbook }) {
       .filter(row => row.some(cell => cell !== ''));
 
     const formattedWeekly = dataRows.map(row => {
-      const obj = {};
-      weeklyHeadersRow.forEach((h, i) => {
-        obj[h] = h === "Month" ? normalizeMonth(row[i]) : row[i];
-      });
-      return obj;
-    });
+  const obj = {};
+  weeklyHeadersRow.forEach((h, i) => {
+    obj[h] = h === "Month" ? normalizeMonth(row[i]) : row[i];
+  });
+  return obj;
+});
+
 
     // Tri du plus récent au plus ancien
     formattedWeekly.sort((a, b) => new Date(b["Month"]) - new Date(a["Month"]));
