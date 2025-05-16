@@ -9,7 +9,6 @@ function normalizeMonth(rawMonth) {
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
     .toLowerCase().trim();
 
-  // ex: "july 2023" => ["july", "2023"]
   const parts = str.split(/[\s,-]+/);
   const year = parts.find(p => /^\d{4}$/.test(p));
   const monthKey = parts.find(p => isNaN(p));
@@ -34,9 +33,11 @@ function normalizeMonth(rawMonth) {
   )?.[1];
 
   if (year && month) return `${year}-${month}`;
-  if (/^\d{4}-\d{2}$/.test(rawMonth)) return rawMonth; // déjà bon
-  return ''; // si invalide
+  if (/^\d{4}-\d{2}$/.test(rawMonth)) return rawMonth;
+
+  return rawMonth;
 }
+
 
 
 function formatMonthLabel(monthValue) {
@@ -107,12 +108,12 @@ export default function DashboardPage({ workbook }) {
       .filter(row => row.some(cell => cell !== ''));
 
     const formattedWeekly = dataRows.map(row => {
-  const obj = {};
-  weeklyHeadersRow.forEach((h, i) => {
-    obj[h] = h === "Month" ? normalizeMonth(row[i]) : row[i];
-  });
-  return obj;
-});
+      const obj = {};
+      weeklyHeadersRow.forEach((h, i) => {
+        obj[h] = h === "Month" ? normalizeMonth(row[i]) : row[i];
+      });
+      return obj;
+    });
 
 
     // Tri du plus récent au plus ancien
