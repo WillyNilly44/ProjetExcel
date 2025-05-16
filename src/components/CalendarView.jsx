@@ -22,7 +22,10 @@ export default function CalendarView({ data, initialDate }) {
       title: row['Incident'] || row['Note'] || row['App Name'] || 'Événement',
       start: startDate,
       end: endDate,
-      allDay: false
+      allDay: false,
+      extendedProps: {
+        description: row['Note'] || row['Incident'] || row['App Name']
+      }
     };
   }).filter(Boolean);
 
@@ -39,6 +42,10 @@ export default function CalendarView({ data, initialDate }) {
         height="auto"
         nowIndicator={true}
         allDaySlot={false}
+        eventDidMount={(info) => {
+          const tooltipText = info.event.extendedProps.description || info.event.title;
+          info.el.setAttribute("title", tooltipText);
+        }}
       />
     </div>
   );
