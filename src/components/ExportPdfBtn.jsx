@@ -25,15 +25,6 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
     const summaryCol = "Note";
 
-    const adminKeyMap = {
-      "Ticket #": "ticket_number",
-      "Assigned": "assigned",
-      "Note": "note",
-      "Date+Start": { date: "date", time: "start_duration_hrs" },
-      "Acc. time": "real_time_duration_hrs",
-      "District": "district"
-    };
-
     // === Cloner et nettoyer le tableau HTML ===
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
@@ -78,9 +69,20 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return row;
     });
 
-    // === Entrées admin complètes
-    const adminFormatted = adminNotes
-      .filter(n => typeof n === 'object' && n.date)
+    // Clés snake_case utilisées pour les entrées admin
+const adminKeyMap = {
+  "Ticket #": "ticket_number",
+  "Assigned": "assigned",
+  "Note": "note",
+  "Date+Start": { date: "date", time: "start_duration_hrs" },
+  "Acc. time": "real_time_duration_hrs",
+  "District": "district"
+};
+
+// Formater les entrées admin (objets)
+const adminFormatted = Array.isArray(adminNotes)
+  ? adminNotes
+      .filter(note => typeof note === 'object' && note !== null && note.date)
       .map((entry, i) => {
         const data = exportOrder.map(col => {
           if (col === "No") return `A${i + 1}`;
@@ -95,7 +97,9 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
         data.raw = { fromAdmin: true };
         return data;
-      });
+      })
+  : [];
+
 
     const allRows = [...body, ...adminFormatted];
 
