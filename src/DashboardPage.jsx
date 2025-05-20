@@ -173,12 +173,12 @@ export default function DashboardPage({ workbook, thresholds }) {
                   if (typeof val === 'number') {
                     const k = key.toLowerCase();
                     if (k.includes('maintenance')) {
-                      if (val >= thresholds.maintenanceRed) backgroundColor = '#ffcccc';
-                      else if (val >= thresholds.maintenanceYellow) backgroundColor = '#fffacc';
+                      if (val >= thresholds.maintenance_red) backgroundColor = '#ffcccc';
+                      else if (val >= thresholds.maintenance_yellow) backgroundColor = '#fffacc';
                       else backgroundColor = '#d5fdd5';
                     } else if (k.includes('incident')) {
-                      if (val >= thresholds.incidentRed) backgroundColor = '#ffcccc';
-                      else if (val >= thresholds.incidentYellow) backgroundColor = '#fffacc';
+                      if (val >= thresholds.incident_red) backgroundColor = '#ffcccc';
+                      else if (val >= thresholds.incident_yellow) backgroundColor = '#fffacc';
                       else backgroundColor = '#d5fdd5';
                     } else if (k.includes('impact') && val > thresholds.impact) {
                       backgroundColor = '#ffe0e0';

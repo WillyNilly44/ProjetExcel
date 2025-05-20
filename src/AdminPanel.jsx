@@ -88,32 +88,32 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             Maintenance (jaune)
             <input
               type="number"
-              value={localThresholds.maintenanceYellow}
-              onChange={handleThresholdChange('maintenanceYellow')}
+              value={localThresholds.maintenance_yellow}
+              onChange={handleThresholdChange('maintenance_yellow')}
             />
           </label>
           <label>
             Maintenance (rouge)
             <input
               type="number"
-              value={localThresholds.maintenanceRed}
-              onChange={handleThresholdChange('maintenanceRed')}
+              value={localThresholds.maintenance_red}
+              onChange={handleThresholdChange('maintenance_red')}
             />
           </label>
           <label>
             Incident (jaune)
             <input
               type="number"
-              value={localThresholds.incidentYellow}
-              onChange={handleThresholdChange('incidentYellow')}
+              value={localThresholds.incident_yellow}
+              onChange={handleThresholdChange('incident_yellow')}
             />
           </label>
           <label>
             Incident (rouge)
             <input
               type="number"
-              value={localThresholds.incidentRed}
-              onChange={handleThresholdChange('incidentRed')}
+              value={localThresholds.incident_red}
+              onChange={handleThresholdChange('incident_red')}
             />
           </label>
           <label>
