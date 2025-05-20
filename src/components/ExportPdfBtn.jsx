@@ -20,6 +20,15 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "District": "Affected site",
       "No": "#",
     };
+    const adminKeyMap = {
+      "Ticket #": "ticket_number",
+      "Assigned": "assigned",
+      "Note": "note",
+      "Date+Start": { date: "date", time: "start_duration_hrs" },
+      "Acc. time": "real_time_duration_hrs",
+      "District": "district"
+    };
+
 
     const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
     const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
@@ -72,14 +81,17 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       .filter(n => typeof n === 'object' && n.date)
       .map((entry, i) => {
         const rowData = exportOrder.map(col => {
-          if (col === "No") return `A${i + 1}`; // A = Admin
+          if (col === "No") return `A${i + 1}`;
           if (col === "Date+Start") {
-            const d = entry.date || '';
-            const h = entry["Start"] || entry["Start(Duration (hrs))"] || '';
+            const d = entry[adminKeyMap[col].date] || '';
+            const h = entry[adminKeyMap[col].time] || '';
             return `${d} ${h}`.trim();
           }
-          return entry[col] || entry[col.replace(" ", "_")] || '';
+
+          const key = adminKeyMap[col] || col;
+          return entry[key] || '';
         });
+
 
         rowData.raw = { fromAdmin: true };
         return rowData;
