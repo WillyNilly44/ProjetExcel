@@ -69,20 +69,17 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return row;
     });
 
-    // Clés snake_case utilisées pour les entrées admin
-const adminKeyMap = {
-  "Ticket #": "ticket_number",
-  "Assigned": "assigned",
-  "Note": "note",
-  "Date+Start": { date: "date", time: "start_duration_hrs" },
-  "Acc. time": "real_time_duration_hrs",
-  "District": "district"
-};
+    const adminKeyMap = {
+      "Ticket #": "ticket_number",
+      "Assigned": "assigned",
+      "Note": "note",
+      "Date+Start": { date: "date", time: "start_duration_hrs" },
+      "Acc. time": "real_time_duration_hrs",
+      "District": "district"
+    };
 
-// Formater les entrées admin (objets)
-const adminFormatted = Array.isArray(adminNotes)
-  ? adminNotes
-      .filter(note => typeof note === 'object' && note !== null && note.date)
+    const adminFormatted = adminNotes
+      .filter(note => typeof note === 'object' && note.date)
       .map((entry, i) => {
         const data = exportOrder.map(col => {
           if (col === "No") return `A${i + 1}`;
@@ -97,19 +94,18 @@ const adminFormatted = Array.isArray(adminNotes)
 
         data.raw = { fromAdmin: true };
         return data;
-      })
-  : [];
+      });
+
 
 
     const allRows = [...body, ...adminFormatted];
 
-    // === Tri chronologique
+    // Tri par date (optionnel)
     const dateIdx = exportOrder.indexOf("Date+Start");
-    allRows.sort((a, b) => {
-      const d1 = new Date(a[dateIdx] || '');
-      const d2 = new Date(b[dateIdx] || '');
-      return d1 - d2;
-    });
+    allRows.sort((a, b) => new Date(a[dateIdx]) - new Date(b[dateIdx]));
+
+    const finalBody = allRows;
+
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
