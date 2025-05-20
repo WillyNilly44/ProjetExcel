@@ -62,28 +62,43 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
         <div style={{ padding: 40 }}>
             <h2>Page de Gestion Admin</h2>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: 20 }}>
-                {Object.keys(form).map((key) => (
-                    <input
-                        key={key}
-                        type={
-                            key.includes('date') ? 'date' :
-                                key.includes('start') || key.includes('end') || key.includes('time') ? 'time' :
-                                    'text'
-                        }
-                        step={
-                            key.includes('start') || key.includes('end') || key.includes('time') ? '900' : undefined
-                        }
-                        placeholder={fieldLabels[key] || key}
-                        value={form[key]}
-                        onChange={handleChange(key)}
-                        style={{ flex: '1 1 200px' }}
-                    />
-                ))}
-
+            <div className="admin-form-container">
+                <h3>Ajouter une entrée</h3>
+                <div className="admin-form-grid">
+                    {Object.keys(form).map((key) => (
+                        <input
+                            key={key}
+                            type={
+                                key.includes('date') ? 'date' :
+                                    key.includes('start') || key.includes('end') || key.includes('time') ? 'time' :
+                                        'text'
+                            }
+                            step={
+                                key.includes('start') || key.includes('end') || key.includes('time') ? '900' : undefined
+                            }
+                            placeholder={fieldLabels[key] || key}
+                            value={form[key]}
+                            onChange={handleChange(key)}
+                            style={{
+                                padding: '8px',
+                                borderRadius: '4px',
+                                border: '1px solid #ccc'
+                            }}
+                        />
+                    ))}
+                </div>
+                <button onClick={addNote} style={{
+                    padding: '10px 20px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                }}>
+                    Ajouter l'entrée
+                </button>
             </div>
 
-            <button onClick={addNote}>Ajouter</button>
 
             <h3 style={{ marginTop: 20 }}>Entrées Admin</h3>
             <ul>
