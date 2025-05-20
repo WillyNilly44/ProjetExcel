@@ -76,37 +76,30 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return data;
     });
 
-    // === Entrées admin (complètes)
-    const adminFullRows = adminNotes
-      .filter(n => typeof n === 'object' && n.date)
+    const adminFormatted = adminNotes
+      .filter(note => typeof note === 'object' && note.date)
       .map((entry, i) => {
-        const rowData = exportOrder.map(col => {
+        const data = exportOrder.map(col => {
           if (col === "No") return `A${i + 1}`;
           if (col === "Date+Start") {
-            const d = entry[adminKeyMap[col].date] || '';
-            const h = entry[adminKeyMap[col].time] || '';
+            const d = entry[adminKeyMap[col]?.date] || '';
+            const h = entry[adminKeyMap[col]?.time] || '';
             return `${d} ${h}`.trim();
           }
-
           const key = adminKeyMap[col] || col;
           return entry[key] || '';
         });
 
-
-        rowData.raw = { fromAdmin: true };
-        return rowData;
+        data.raw = { fromAdmin: true };
+        return data;
       });
 
-    const allRows = [...body, ...adminFullRows];
 
-    // === Trié par date (col Date+Start si possible)
-    const dateIndex = exportOrder.indexOf("Date+Start");
+    const allRows = [...body, ...adminFormatted];
+    const dateIdx = exportOrder.indexOf("Date+Start");
+    allRows.sort((a, b) => new Date(a[dateIdx]) - new Date(b[dateIdx]));
 
-    allRows.sort((a, b) => {
-      const da = new Date(a[dateIndex] || '');
-      const db = new Date(b[dateIndex] || '');
-      return da - db;
-    });
+    const finalBody = allRows;
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
@@ -116,16 +109,16 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     doc.autoTable({
       head: [translatedHeaders],
       body: allRows,
-      willDrawCell(data) {
-        const meta = data.row.raw;
-        if (meta?.fromAdmin) {
-          data.cell.styles.fillColor = [220, 255, 220]; // vert pâle
-          data.cell.styles.textColor = [0, 100, 0];     // vert foncé
-        } else if (meta?.highlight) {
-          data.cell.styles.fillColor = [255, 250, 205]; // jaune
-          data.cell.styles.textColor = [200, 0, 0];     // rouge
+      willDrawCell: function (data) {
+        if (data.row.raw?.fromAdmin) {
+          data.cell.styles.fillColor = [220, 255, 220];
+          data.cell.styles.textColor = [0, 100, 0];
+        } else if (data.row.raw?.highlight) {
+          data.cell.styles.fillColor = [255, 250, 205];
+          data.cell.styles.textColor = [200, 0, 0];
         }
-      },
+      }
+      ,
       startY: 20,
       styles: {
         fontSize: 8,
