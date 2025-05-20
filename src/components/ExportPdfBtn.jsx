@@ -20,6 +20,11 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "District": "Affected site",
       "No": "#",
     };
+
+    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
+    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
+    const summaryCol = "Note";
+
     const adminKeyMap = {
       "Ticket #": "ticket_number",
       "Assigned": "assigned",
@@ -29,11 +34,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "District": "district"
     };
 
-
-    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
-    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
-    const summaryCol = "Note";
-
+    // === Cloner et nettoyer le tableau HTML ===
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
@@ -48,16 +49,17 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
-    // === Lignes du tableau HTML ===
+    // === Lignes normales (issues du tableau HTML)
     const body = Array.from(cloned.querySelectorAll('tbody tr')).map((tr, i) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
-      const data = exportOrder.map(col => {
+
+      const row = exportOrder.map(col => {
         if (col === "No") return `${i + 1}`;
         if (col === "Date+Start") {
-          const dateIdx = headersAfter.indexOf("Date");
-          const startIdx = headersAfter.indexOf("Start");
-          const date = dateIdx !== -1 ? cells[dateIdx] : '';
-          const start = startIdx !== -1 ? cells[startIdx] : '';
+          const d = headersAfter.indexOf("Date");
+          const s = headersAfter.indexOf("Start");
+          const date = d !== -1 ? cells[d] : '';
+          const start = s !== -1 ? cells[s] : '';
           return `${date} ${start}`.trim();
         }
         const idx = headersAfter.indexOf(col);
@@ -65,19 +67,20 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       });
 
       const summaryIndex = exportOrder.indexOf(summaryCol);
-      const summaryValue = data[summaryIndex]?.toLowerCase() ?? '';
+      const summaryValue = row[summaryIndex]?.toLowerCase() ?? '';
 
       const isNoteMatched = adminNotes
         .filter(n => typeof n === 'string')
         .map(n => n.toLowerCase().trim())
         .some(note => summaryValue.includes(note));
 
-      data.raw = { highlight: isNoteMatched, fromAdmin: false };
-      return data;
+      row.raw = { highlight: isNoteMatched, fromAdmin: false };
+      return row;
     });
 
+    // === Entrées admin complètes
     const adminFormatted = adminNotes
-      .filter(note => typeof note === 'object' && note.date)
+      .filter(n => typeof n === 'object' && n.date)
       .map((entry, i) => {
         const data = exportOrder.map(col => {
           if (col === "No") return `A${i + 1}`;
@@ -94,37 +97,35 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         return data;
       });
 
-
     const allRows = [...body, ...adminFormatted];
-    // Index de la colonne "Date+Start"
-const dateIdx = exportOrder.indexOf("Date+Start");
 
-// Trier toutes les lignes par la date combinée (formatée ou vide)
-allRows.sort((a, b) => {
-  const d1 = new Date(a[dateIdx] || '');
-  const d2 = new Date(b[dateIdx] || '');
-  return d1 - d2;
-});
-
+    // === Tri chronologique
+    const dateIdx = exportOrder.indexOf("Date+Start");
+    allRows.sort((a, b) => {
+      const d1 = new Date(a[dateIdx] || '');
+      const d2 = new Date(b[dateIdx] || '');
+      return d1 - d2;
+    });
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
+    // === Génération PDF
     doc.setFontSize(10);
     doc.text('Export', 14, 15);
 
     doc.autoTable({
       head: [translatedHeaders],
       body: allRows,
-      willDrawCell: function (data) {
-        if (data.row.raw?.fromAdmin) {
-          data.cell.styles.fillColor = [220, 255, 220];
+      willDrawCell(data) {
+        const meta = data.row.raw;
+        if (meta?.fromAdmin) {
+          data.cell.styles.fillColor = [220, 255, 220]; // vert pâle
           data.cell.styles.textColor = [0, 100, 0];
-        } else if (data.row.raw?.highlight) {
-          data.cell.styles.fillColor = [255, 250, 205];
+        } else if (meta?.highlight) {
+          data.cell.styles.fillColor = [255, 250, 205]; // jaune
           data.cell.styles.textColor = [200, 0, 0];
         }
-      }
-      ,
+      },
       startY: 20,
       styles: {
         fontSize: 8,
