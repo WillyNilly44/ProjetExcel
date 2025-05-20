@@ -25,6 +25,15 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
     const summaryCol = "Note";
 
+    const adminKeyMap = {
+      "Ticket #": "ticket_number",
+      "Assigned": "assigned",
+      "Note": "note",
+      "Date+Start": { date: "date", time: "start_duration_hrs" },
+      "Acc. time": "real_time_duration_hrs",
+      "District": "district"
+    };
+
     // === Cloner et nettoyer le tableau HTML ===
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
@@ -69,15 +78,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return row;
     });
 
-    const adminKeyMap = {
-      "Ticket #": "ticket_number",
-      "Assigned": "assigned",
-      "Note": "note",
-      "Date+Start": { date: "date", time: "start_duration_hrs" },
-      "Acc. time": "real_time_duration_hrs",
-      "District": "district"
-    };
-
+    // === Entrées admin (objets Supabase)
     const adminFormatted = adminNotes
       .filter(note => typeof note === 'object' && note.date)
       .map((entry, i) => {
@@ -98,11 +99,19 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const allRows = [...body, ...adminFormatted];
 
-    // Tri par date (optionnel)
+    // === Tri chronologique sur Date+Start
     const dateIdx = exportOrder.indexOf("Date+Start");
-    allRows.sort((a, b) => new Date(a[dateIdx]) - new Date(b[dateIdx]));
+    allRows.sort((a, b) => {
+      const d1 = new Date(a[dateIdx] || '');
+      const d2 = new Date(b[dateIdx] || '');
+      return d1 - d2;
+    });
 
-    const finalBody = allRows;
+    const finalBody = allRows.map(row => {
+      const values = [...row]; // clone les données
+      values.raw = row.raw;    // attache la métadonnée
+      return values;
+    });
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
@@ -112,17 +121,17 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     doc.autoTable({
       head: [translatedHeaders],
-      body: allRows,
+      body: finalBody,
       willDrawCell: function (data) {
-        if (data.row.raw?.fromAdmin) {
-          data.cell.styles.fillColor = [220, 255, 220];
+        const meta = data.row.raw;
+        if (meta?.fromAdmin) {
+          data.cell.styles.fillColor = [220, 255, 220]; // vert pâle
           data.cell.styles.textColor = [0, 100, 0];
-        } else if (data.row.raw?.highlight) {
-          data.cell.styles.fillColor = [255, 250, 205];
+        } else if (meta?.highlight) {
+          data.cell.styles.fillColor = [255, 250, 205]; // jaune
           data.cell.styles.textColor = [200, 0, 0];
         }
-      }
-      ,
+      },
       startY: 20,
       styles: {
         fontSize: 8,
