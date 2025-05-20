@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import DashboardPage from './DashboardPage';
 import MainPage from './MainPage';
-import { supabase } from './supabaseClient';
+import { supabase } from './supabaseClient'; // ← important
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
@@ -13,17 +13,17 @@ function App() {
   const [workbook, setWorkbook] = useState(null);
   const [sheetNames, setSheetNames] = useState([]);
 
-
+  // ✅ Chargement automatique des notes admin dès le démarrage
   useEffect(() => {
     const fetchAdminNotes = async () => {
       const { data, error } = await supabase
         .from('admin_notes')
         .select('*');
 
-      if (!error) {
-        setAdminNotes(data);
+      if (error) {
+        console.error("Erreur lors du chargement des notes admin :", error.message);
       } else {
-        console.error("Erreur de chargement des notes admin :", error.message);
+        setAdminNotes(data);
       }
     };
 
