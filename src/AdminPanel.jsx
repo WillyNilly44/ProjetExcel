@@ -62,42 +62,111 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
         <div style={{ padding: 40 }}>
             <h2>Page de Gestion Admin</h2>
 
-            <div className="admin-form-container">
-                <h3>Ajouter une entrée</h3>
-                <div className="admin-form-grid">
-                    {Object.keys(form).map((key) => (
-                        <input
-                            key={key}
-                            type={
-                                key.includes('date') ? 'date' :
-                                    key.includes('start') || key.includes('end') || key.includes('time') ? 'time' :
-                                        'text'
-                            }
-                            step={
-                                key.includes('start') || key.includes('end') || key.includes('time') ? '900' : undefined
-                            }
-                            placeholder={fieldLabels[key] || key}
-                            value={form[key]}
-                            onChange={handleChange(key)}
-                            style={{
-                                padding: '8px',
-                                borderRadius: '4px',
-                                border: '1px solid #ccc'
-                            }}
-                        />
-                    ))}
+            <div style={{
+                border: '1px solid #ccc',
+                borderRadius: '10px',
+                padding: '20px',
+                backgroundColor: '#f8f9fa',
+                maxWidth: 1000,
+                marginBottom: 30
+            }}>
+                <h3>➕ Ajouter une entrée admin</h3>
+
+                <div className="form-section">
+                    <h4>Identification</h4>
+                    <div className="form-grid">
+                        <label>
+                            Incident
+                            <input type="text" value={form.incident} onChange={handleChange('incident')} />
+                        </label>
+                        <label>
+                            District
+                            <input type="text" value={form.district} onChange={handleChange('district')} />
+                        </label>
+                        <label>
+                            Ticket #
+                            <input type="text" value={form.ticket_number} onChange={handleChange('ticket_number')} />
+                        </label>
+                        <label>
+                            Assigné à
+                            <input type="text" value={form.assigned} onChange={handleChange('assigned')} />
+                        </label>
+                    </div>
                 </div>
+                <div className="form-section">
+                    <h4>Horaire</h4>
+                    <div className="form-grid">
+                        <label>
+                            Date
+                            <input type="date" value={form.date} onChange={handleChange('date')} />
+                        </label>
+                        <label>
+                            Début (heure)
+                            <input type="time" step="900" value={form.start_duration_hrs} onChange={handleChange('start_duration_hrs')} />
+                        </label>
+                        <label>
+                            Fin (heure)
+                            <input type="time" step="900" value={form.end_duration_hrs} onChange={handleChange('end_duration_hrs')} />
+                        </label>
+                    </div>
+                </div>
+                <div className="form-section">
+                    <h4>Durées</h4>
+                    <div className="form-grid">
+                        <label>
+                            Estimée (h)
+                            <input type="text" value={form.est_duration_hrs} onChange={handleChange('est_duration_hrs')} />
+                        </label>
+                        <label>
+                            Réelle (h)
+                            <input type="text" value={form.real_time_duration_hrs} onChange={handleChange('real_time_duration_hrs')} />
+                        </label>
+                    </div>
+                </div>
+                <div className="form-section">
+                    <h4>Détails supplémentaires</h4>
+                    <div className="form-grid">
+                        <label>
+                            Maintenance (événement)
+                            <input type="text" value={form.maint_event} onChange={handleChange('maint_event')} />
+                        </label>
+                        <label>
+                            Incident (événement)
+                            <input type="text" value={form.incid_event} onChange={handleChange('incid_event')} />
+                        </label>
+                        <label>
+                            Impact business
+                            <input type="text" value={form.business_impact} onChange={handleChange('business_impact')} />
+                        </label>
+                        <label>
+                            RCA
+                            <input type="text" value={form.rca} onChange={handleChange('rca')} />
+                        </label>
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h4>Note</h4>
+                    <div className="form-grid">
+                        <label>
+                            Résumé / Note
+                            <input type="text" value={form.note} onChange={handleChange('note')} />
+                        </label>
+                    </div>
+                </div>
+
                 <button onClick={addNote} style={{
                     padding: '10px 20px',
-                    backgroundColor: '#28a745',
+                    backgroundColor: '#007bff',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
                     cursor: 'pointer'
                 }}>
-                    Ajouter l'entrée
+                    ➕ Ajouter l'entrée
                 </button>
             </div>
+
 
 
             <h3 style={{ marginTop: 20 }}>Entrées Admin</h3>
