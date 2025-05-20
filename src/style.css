@@ -161,4 +161,55 @@ tr:nth-child(even) {
   font-size: 0.85rem;
   color: #333;
 }
+/* === Barre de navigation améliorée === */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+header nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+header nav a {
+  text-decoration: none;
+  color: var(--primary-hover);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+header nav a:hover {
+  text-decoration: underline;
+}
+
+header .admin-button {
+  background-color: var(--primary);
+  color: white;
+  border-radius: 6px;
+  padding: 8px 14px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+header .admin-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 1.6rem;
+  margin-bottom: 30px;
+  font-weight: bold;
+  color: var(--text-color);
+}
 

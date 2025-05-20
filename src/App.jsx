@@ -4,7 +4,7 @@ import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import DashboardPage from './DashboardPage';
 import MainPage from './MainPage';
-import { supabase } from './supabaseClient'; // ← important
+import { supabase } from './supabaseClient';
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
@@ -21,37 +21,30 @@ function App() {
   });
 
   useEffect(() => {
-  const fetchThresholds = async () => {
-    const { data, error } = await supabase
-      .from('dashboard_thresholds')
-      .select('*')
-      .order('updated_at', { ascending: false })
-      .limit(1);
-
-    if (!error && data && data.length > 0) {
-      setThresholds(data[0]);
-    }
-  };
-
-  fetchThresholds();
-}, []);
+    const fetchThresholds = async () => {
+      const { data, error } = await supabase
+        .from('dashboard_thresholds')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (!error && data?.length) {
+        setThresholds(data[0]);
+      }
+    };
+    fetchThresholds();
+  }, []);
 
   useEffect(() => {
     const fetchAdminNotes = async () => {
       const { data, error } = await supabase
         .from('admin_notes')
         .select('*');
-
-      if (error) {
-        console.error("Erreur lors du chargement des notes admin :", error.message);
-      } else {
+      if (!error && data) {
         setAdminNotes(data);
       }
     };
-
     fetchAdminNotes();
   }, []);
-
 
   if (adminView) {
     if (!isAdmin) {
@@ -67,50 +60,58 @@ function App() {
     return (
       <Suspense fallback={<p>Interface loading...</p>}>
         <AdminPanel
-        onLogout={() => {
-          sessionStorage.removeItem('admin');
-          setIsAdmin(false);
-          setAdminView(false);
-        }}
-        adminNotes={adminNotes}
-        setAdminNotes={setAdminNotes}
-        thresholds={thresholds}
-        setThresholds={setThresholds}
-      />
+          onLogout={() => {
+            sessionStorage.removeItem('admin');
+            setIsAdmin(false);
+            setAdminView(false);
+          }}
+          adminNotes={adminNotes}
+          setAdminNotes={setAdminNotes}
+          thresholds={thresholds}
+          setThresholds={setThresholds}
+        />
       </Suspense>
     );
   }
 
   return (
     <Router>
-      <nav style={{ margin: 10 }}>
-        <Link to="/" style={{ marginRight: 10 }}>🏠 Logs</Link>
-        <Link to="/dashboard">📊 Dashboard</Link>
-        <button onClick={() => setAdminView(true)} style={{ marginLeft: 10 }}>
-          🔒 Admin
-        </button>
-      </nav>
+      <div style={{ padding: '20px' }}>
+        <header>
+          <nav>
+            <Link to="/">🏠 Logs</Link>
+            <Link to="/dashboard">📊 Dashboard</Link>
+          </nav>
+          <button onClick={() => setAdminView(true)} className="admin-button">
+            🔒 Admin
+          </button>
+        </header>
 
-       <Suspense fallback={<p>Chargement...</p>}>
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <MainPage
-                workbook={workbook}
-                setWorkbook={setWorkbook}
-                sheetNames={sheetNames}
-                setSheetNames={setSheetNames}
-                adminNotes={adminNotes}
-              />
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={<DashboardPage workbook={workbook} thresholds={thresholds} />}
-          />
-        </Routes>
-      </Suspense>
+        <div className="page-title">
+          📁 Operational & Application Logs
+        </div>
+
+        <Suspense fallback={<p>Chargement...</p>}>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <MainPage
+                  workbook={workbook}
+                  setWorkbook={setWorkbook}
+                  sheetNames={sheetNames}
+                  setSheetNames={setSheetNames}
+                  adminNotes={adminNotes}
+                />
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={<DashboardPage workbook={workbook} thresholds={thresholds} />}
+            />
+          </Routes>
+        </Suspense>
+      </div>
     </Router>
   );
 }
