@@ -30,19 +30,15 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
   };
 
   const updateThresholds = async () => {
-  const { error } = await supabase
-    .from('dashboard_thresholds')
-    .insert([{ ...localThresholds }]);
-
-  if (!error) {
-    setThresholds(localThresholds);
-    alert("Seuils enregistrés dans Supabase !");
-  } else {
-    console.error("Erreur Supabase :", error.message);
-    alert("Échec de l'enregistrement.");
-  }
-};
-
+    const { error } = await supabase.from('dashboard_thresholds').insert([{ ...localThresholds }]);
+    if (!error) {
+      setThresholds(localThresholds);
+      alert("Seuils enregistrés dans Supabase !");
+    } else {
+      console.error("Erreur Supabase :", error.message);
+      alert("Échec de l'enregistrement.");
+    }
+  };
 
   const addNote = async () => {
     if (!form.date && !form.note) return;
@@ -70,220 +66,91 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
   };
 
   return (
-    <div style={{ padding: 40 }}>
+    <div className="admin-panel">
       <h2>Page de Gestion Admin</h2>
 
-      {/* === Bloc seuils === */}
-      <div style={{
-        border: '1px solid #ccc',
-        borderRadius: 8,
-        padding: 20,
-        marginBottom: 30,
-        backgroundColor: '#f4f4f4',
-        maxWidth: 600
-      }}>
+      <div className="thresholds-box">
         <h3>🎛 Modifier les seuils du Dashboard</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-          <label>
-            Maintenance (jaune)
-            <input
-              type="number"
-              value={localThresholds.maintenance_yellow}
-              onChange={handleThresholdChange('maintenance_yellow')}
-            />
-          </label>
-          <label>
-            Maintenance (rouge)
-            <input
-              type="number"
-              value={localThresholds.maintenance_red}
-              onChange={handleThresholdChange('maintenance_red')}
-            />
-          </label>
-          <label>
-            Incident (jaune)
-            <input
-              type="number"
-              value={localThresholds.incident_yellow}
-              onChange={handleThresholdChange('incident_yellow')}
-            />
-          </label>
-          <label>
-            Incident (rouge)
-            <input
-              type="number"
-              value={localThresholds.incident_red}
-              onChange={handleThresholdChange('incident_red')}
-            />
-          </label>
-          <label>
-            Impact (seuil)
-            <input
-              type="number"
-              value={localThresholds.impact}
-              onChange={handleThresholdChange('impact')}
-            />
-          </label>
+        <div className="form-grid">
+          {[
+            ['maintenance_yellow', 'Maintenance (jaune)'],
+            ['maintenance_red', 'Maintenance (rouge)'],
+            ['incident_yellow', 'Incident (jaune)'],
+            ['incident_red', 'Incident (rouge)'],
+            ['impact', 'Impact (seuil)']
+          ].map(([key, label]) => (
+            <label key={key}>
+              {label}
+              <input
+                type="number"
+                value={localThresholds[key]}
+                onChange={handleThresholdChange(key)}
+              />
+            </label>
+          ))}
         </div>
-
-        <button onClick={updateThresholds} style={{
-          marginTop: 15,
-          padding: '8px 16px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: 5,
-          cursor: 'pointer'
-        }}>
-          💾 Enregistrer les seuils
-        </button>
+        <button className="primary-button" onClick={updateThresholds}>💾 Enregistrer les seuils</button>
       </div>
 
-      {/* === Formulaire d'ajout admin note === */}
-      <div style={{
-        border: '1px solid #ccc',
-        borderRadius: '10px',
-        padding: '20px',
-        backgroundColor: '#f8f9fa',
-        maxWidth: 1000,
-        marginBottom: 30
-      }}>
+      <div className="admin-form-container">
         <h3>➕ Ajouter une entrée admin</h3>
 
-        {/* Identification */}
-        <h4>Identification</h4>
-        <div className="form-grid" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-          <label>
-            Incident
-            <input type="text" value={form.incident} onChange={handleChange('incident')} />
-          </label>
-          <label>
-            District
-            <input type="text" value={form.district} onChange={handleChange('district')} />
-          </label>
-          <label>
-            Ticket #
-            <input type="text" value={form.ticket_number} onChange={handleChange('ticket_number')} />
-          </label>
-          <label>
-            Assigné à
-            <input type="text" value={form.assigned} onChange={handleChange('assigned')} />
-          </label>
+        <div className="form-section">
+          <h4>Identification</h4>
+          <div className="form-grid">
+            <label>Incident<input type="text" value={form.incident} onChange={handleChange('incident')} /></label>
+            <label>District<input type="text" value={form.district} onChange={handleChange('district')} /></label>
+            <label>Ticket #<input type="text" value={form.ticket_number} onChange={handleChange('ticket_number')} /></label>
+            <label>Assigné à<input type="text" value={form.assigned} onChange={handleChange('assigned')} /></label>
+          </div>
         </div>
 
-        {/* Horaire */}
-        <h4>Horaire</h4>
-        <div className="form-grid" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-          <label>
-            Date
-            <input type="date" value={form.date} onChange={handleChange('date')} />
-          </label>
-          <label>
-            Début (heure)
-            <input type="time" step="900" value={form.start_duration_hrs} onChange={handleChange('start_duration_hrs')} />
-          </label>
-          <label>
-            Fin (heure)
-            <input type="time" step="900" value={form.end_duration_hrs} onChange={handleChange('end_duration_hrs')} />
-          </label>
+        <div className="form-section">
+          <h4>Horaire</h4>
+          <div className="form-grid">
+            <label>Date<input type="date" value={form.date} onChange={handleChange('date')} /></label>
+            <label>Début<input type="time" value={form.start_duration_hrs} onChange={handleChange('start_duration_hrs')} /></label>
+            <label>Fin<input type="time" value={form.end_duration_hrs} onChange={handleChange('end_duration_hrs')} /></label>
+          </div>
         </div>
 
-        {/* Durées */}
-        <h4>Durées</h4>
-        <div className="form-grid" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-          <label>
-            Estimée (h)
-            <input type="text" value={form.est_duration_hrs} onChange={handleChange('est_duration_hrs')} />
-          </label>
-          <label>
-            Réelle (h)
-            <input type="text" value={form.real_time_duration_hrs} onChange={handleChange('real_time_duration_hrs')} />
-          </label>
+        <div className="form-section">
+          <h4>Durées</h4>
+          <div className="form-grid">
+            <label>Estimée (h)<input type="text" value={form.est_duration_hrs} onChange={handleChange('est_duration_hrs')} /></label>
+            <label>Réelle (h)<input type="text" value={form.real_time_duration_hrs} onChange={handleChange('real_time_duration_hrs')} /></label>
+          </div>
         </div>
 
-        {/* Détails */}
-        <h4>Détails supplémentaires</h4>
-        <div className="form-grid" style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-          <label>
-            Maintenance (événement)
-            <input type="text" value={form.maint_event} onChange={handleChange('maint_event')} />
-          </label>
-          <label>
-            Incident (événement)
-            <input type="text" value={form.incid_event} onChange={handleChange('incid_event')} />
-          </label>
-          <label>
-            Impact business
-            <input type="text" value={form.business_impact} onChange={handleChange('business_impact')} />
-          </label>
-          <label>
-            RCA
-            <input type="text" value={form.rca} onChange={handleChange('rca')} />
-          </label>
+        <div className="form-section">
+          <h4>Détails</h4>
+          <div className="form-grid">
+            <label>Maintenance<input type="text" value={form.maint_event} onChange={handleChange('maint_event')} /></label>
+            <label>Incident<input type="text" value={form.incid_event} onChange={handleChange('incid_event')} /></label>
+            <label>Impact business<input type="text" value={form.business_impact} onChange={handleChange('business_impact')} /></label>
+            <label>RCA<input type="text" value={form.rca} onChange={handleChange('rca')} /></label>
+          </div>
         </div>
 
-        {/* Note */}
-        <h4>Résumé / Note</h4>
-        <div>
-          <input
-            type="text"
-            value={form.note}
-            onChange={handleChange('note')}
-            style={{ width: '100%', marginTop: 5 }}
-          />
+        <div className="form-section">
+          <h4>Résumé / Note</h4>
+          <input type="text" value={form.note} onChange={handleChange('note')} className="admin-note-field" />
         </div>
 
-        <button onClick={addNote} style={{
-          marginTop: 20,
-          padding: '10px 20px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer'
-        }}>
-          ➕ Ajouter l'entrée
-        </button>
+        <button className="primary-button" onClick={addNote}>➕ Ajouter l'entrée</button>
       </div>
 
-      {/* Liste des notes */}
-      <h3 style={{ marginTop: 20 }}>Entrées Admin</h3>
-      <ul>
+      <h3>Entrées Admin</h3>
+      <ul className="admin-note-list">
         {adminNotes.map((note, idx) => (
-          <li key={note.id || idx} style={{ marginBottom: 5 }}>
-            <span>
-              📌 <strong>{note.note}</strong> — {note.date} — {note.incident} — {note.district} — {note.assigned}
-            </span>
-            <button
-              onClick={() => removeNote(note.id)}
-              style={{
-                marginLeft: 10,
-                color: 'white',
-                backgroundColor: '#dc3545',
-                border: 'none',
-                borderRadius: 4,
-                padding: '2px 8px',
-                cursor: 'pointer'
-              }}
-            >
-              Supprimer
-            </button>
+          <li key={note.id || idx}>
+            📌 <strong>{note.note}</strong> — {note.date} — {note.incident} — {note.district} — {note.assigned}
+            <button className="danger-button" onClick={() => removeNote(note.id)}>Supprimer</button>
           </li>
         ))}
       </ul>
 
-      <button
-        onClick={onLogout}
-        style={{
-          marginTop: 30,
-          padding: '10px 20px',
-          backgroundColor: '#dc3545',
-          color: 'white',
-          border: 'none',
-          borderRadius: 6,
-          cursor: 'pointer'
-        }}
-      >
+      <button className="danger-button" onClick={onLogout}>
         🔓 Retourner
       </button>
     </div>
