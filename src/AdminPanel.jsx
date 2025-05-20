@@ -50,7 +50,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         <ul>
           {adminNotes.map((note, idx) => (
             <li key={idx} style={{ marginTop: 5 }}>
-              <span>{note}</span>
+              <span>{typeof note === 'object' ? note.note : note}</span>
               <button onClick={() => removeNote(note)} style={{
                 marginLeft: 10,
                 color: 'white',

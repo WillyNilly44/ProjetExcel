@@ -13,11 +13,13 @@ function App() {
   const [workbook, setWorkbook] = useState(null);
   const [sheetNames, setSheetNames] = useState([]);
   const [thresholds, setThresholds] = useState({
-  maintenance: 5,
-  maintenanceHigh: 16,
-  incident: 30,
-  impact: 0
-});
+    maintenanceYellow: 15,
+    maintenanceRed: 25,
+    incidentYellow: 5,
+    incidentRed: 6,
+    impact: 0
+  });
+
 
   useEffect(() => {
     const fetchAdminNotes = async () => {
@@ -34,7 +36,7 @@ function App() {
 
     fetchAdminNotes();
   }, []);
-  
+
 
   if (adminView) {
     if (!isAdmin) {
