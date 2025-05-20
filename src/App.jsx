@@ -87,10 +87,6 @@ function App() {
           </button>
         </header>
 
-        <div className="page-title">
-          📁 Operational & Application Logs
-        </div>
-
         <Suspense fallback={<p>Chargement...</p>}>
           <Routes>
             <Route
