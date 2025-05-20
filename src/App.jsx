@@ -13,10 +13,10 @@ function App() {
   const [workbook, setWorkbook] = useState(null);
   const [sheetNames, setSheetNames] = useState([]);
   const [thresholds, setThresholds] = useState({
-    maintenanceYellow: 15,
-    maintenanceRed: 25,
-    incidentYellow: 5,
-    incidentRed: 6,
+    maintenance_yellow: 15,
+    maintenance_red: 25,
+    incident_yellow: 5,
+    incident_red: 6,
     impact: 0
   });
 
