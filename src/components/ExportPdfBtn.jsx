@@ -23,7 +23,6 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
     const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
-    const summaryCol = "Note";
 
     const adminKeyMap = {
       "Ticket #": "ticket_number",
@@ -34,7 +33,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "District": "district"
     };
 
-    // === Cloner et nettoyer le tableau HTML ===
+    // === Nettoyage du tableau HTML ===
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
@@ -49,11 +48,10 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
-    // === Lignes normales (issues du tableau HTML)
-    const body = Array.from(cloned.querySelectorAll('tbody tr')).map((tr, i) => {
+    const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr, i) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
 
-      const row = exportOrder.map(col => {
+      return exportOrder.map(col => {
         if (col === "No") return `${i + 1}`;
         if (col === "Date+Start") {
           const d = headersAfter.indexOf("Date");
@@ -65,24 +63,13 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         const idx = headersAfter.indexOf(col);
         return idx !== -1 ? cells[idx] : '';
       });
-
-      const summaryIndex = exportOrder.indexOf(summaryCol);
-      const summaryValue = row[summaryIndex]?.toLowerCase() ?? '';
-
-      const isNoteMatched = adminNotes
-        .filter(n => typeof n === 'string')
-        .map(n => n.toLowerCase().trim())
-        .some(note => summaryValue.includes(note));
-
-      row.raw = { highlight: isNoteMatched, fromAdmin: false };
-      return row;
     });
 
-    // === Entrées admin (objets Supabase)
-    const adminFormatted = adminNotes
-      .filter(note => typeof note === 'object' && note.date)
+    // === Ajouter les lignes admin à la fin
+    const adminRows = adminNotes
+      .filter(n => typeof n === 'object' && n.date)
       .map((entry, i) => {
-        const data = exportOrder.map(col => {
+        return exportOrder.map(col => {
           if (col === "No") return `A${i + 1}`;
           if (col === "Date+Start") {
             const d = entry[adminKeyMap[col]?.date] || '';
@@ -92,26 +79,9 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
           const key = adminKeyMap[col] || col;
           return entry[key] || '';
         });
-
-        data.raw = { fromAdmin: true };
-        return data;
       });
 
-    const allRows = [...body, ...adminFormatted];
-
-    // === Tri chronologique sur Date+Start
-    const dateIdx = exportOrder.indexOf("Date+Start");
-    allRows.sort((a, b) => {
-      const d1 = new Date(a[dateIdx] || '');
-      const d2 = new Date(b[dateIdx] || '');
-      return d1 - d2;
-    });
-
-    const finalBody = allRows.map(row => {
-      const values = [...row]; // clone les données
-      values.raw = row.raw;    // attache la métadonnée
-      return values;
-    });
+    const finalBody = [...tableRows, ...adminRows];
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
@@ -122,16 +92,6 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     doc.autoTable({
       head: [translatedHeaders],
       body: finalBody,
-      willDrawCell: function (data) {
-        const meta = data.row.raw;
-        if (meta?.fromAdmin) {
-          data.cell.styles.fillColor = [220, 255, 220]; // vert pâle
-          data.cell.styles.textColor = [0, 100, 0];
-        } else if (meta?.highlight) {
-          data.cell.styles.fillColor = [255, 250, 205]; // jaune
-          data.cell.styles.textColor = [200, 0, 0];
-        }
-      },
       startY: 20,
       styles: {
         fontSize: 8,
