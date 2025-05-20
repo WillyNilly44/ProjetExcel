@@ -1,3 +1,4 @@
+// === ExportPdfBtn.jsx ===
 import React from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -5,7 +6,6 @@ import 'jspdf-autotable';
 export default function ExportPdfBtn({ adminNotes = [] }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
-
     const table = document.querySelector('table');
     if (!table) {
       alert("Aucun tableau trouvé à l'écran.");
@@ -13,83 +13,57 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     }
 
     const columnRenames = {
+      "Incident": "Incident",
+      "District": "District",
+      "Date": "Date",
+      "Maint.(event)": "Maint.",
+      "Incid.(Event)": "Incid.",
+      "Business impact": "Impact",
+      "RCA": "RCA",
+      "Est.(Duration (hrs))": "Est.",
+      "Start(Duration (hrs))": "Start",
+      "End(Duration (hrs))": "End",
+      "Real time(Duration (hrs))": "Real",
+      "Ticket #": "Ticket",
       "Assigned": "Resource",
-      "Note": "Summary",
-      "Date+Start": "Scheduled date & time",
-      "Acc. time": "Duration (hrs)",
-      "District": "Affected site",
-      "No": "#",
+      "Note": "Summary"
     };
 
-    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
-    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
-    const summaryCol = "Note";
+    const exportOrder = Object.keys(columnRenames);
+    const headersRenamed = exportOrder.map(h => columnRenames[h]);
 
-    // === Clonage du tableau ===
+    // === Lignes du tableau HTML ===
     const cloned = table.cloneNode(true);
+    const headerCells = Array.from(cloned.querySelectorAll('thead th'));
+    const headerNames = headerCells.map(cell => cell.textContent.trim());
 
-    const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
-
-    // Supprimer colonnes exclues
-    const indexesToRemove = headers
-      .map((name, idx) => excludedColumns.includes(name) ? idx : -1)
-      .filter(idx => idx !== -1);
-
-    [...indexesToRemove].sort((a, b) => b - a).forEach(idx => {
-      cloned.querySelectorAll('thead tr').forEach(tr => tr.children[idx]?.remove());
-      cloned.querySelectorAll('tbody tr').forEach(tr => tr.children[idx]?.remove());
-    });
-
-    // Recalculer les headers restants
-    const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
-
-    // === Construction des lignes ===
-    const body = Array.from(cloned.querySelectorAll('tbody tr')).map((tr, i) => {
-      const cells = Array.from(tr.children).map(td => td.textContent.trim());
-      const data = exportOrder.map(col => {
-        if (col === "No") return `${i + 1}`;
-        if (col === "Date+Start") {
-          const dateIdx = headersAfter.indexOf("Date");
-          const startIdx = headersAfter.indexOf("Start");
-          const date = dateIdx !== -1 ? cells[dateIdx] : '';
-          const start = startIdx !== -1 ? cells[startIdx] : '';
-          return `${date} ${start}`.trim();
-        }
-        const idx = headersAfter.indexOf(col);
-        return idx !== -1 ? cells[idx] : '';
+    const finalHeaders = exportOrder.filter(h => headerNames.includes(h));
+    const body = Array.from(cloned.querySelectorAll('tbody tr')).map((row, i) => {
+      const cells = Array.from(row.children);
+      const rowData = exportOrder.map(col => {
+        const idx = headerNames.indexOf(col);
+        return idx !== -1 ? cells[idx]?.textContent.trim() ?? '' : '';
       });
-
-      const summaryIndex = exportOrder.indexOf(summaryCol);
-      const summaryValue = data[summaryIndex]?.toLowerCase() ?? "";
-
-      console.log(summaryValue);
-
-      const isNoteMatched = adminNotes
-        .map(n => n.toLowerCase().trim())
-        .some(note => summaryValue.includes(note));
-
-      // Ajouter métadonnée de surlignage
-      data.raw = { highlight: isNoteMatched };
-
-      return data;
+      const rowObj = Object.fromEntries(exportOrder.map((k, i) => [k, rowData[i]]));
+      return rowObj;
     });
 
-    // Traduire les colonnes
-    const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
+    // === Ajouter les entrées admin ===
+    const allData = [...body, ...adminNotes];
 
-    // === Génération PDF ===
+    // === Tri par date ===
+    allData.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+
+    const finalBody = allData.map((row, i) => (
+      exportOrder.map(k => row[k] ?? '')
+    ));
+
     doc.setFontSize(10);
     doc.text('Export', 14, 15);
 
     doc.autoTable({
-      head: [translatedHeaders],
-      body,
-      willDrawCell: function (data) {
-        if (data.row.raw?.highlight) {
-          data.cell.styles.fillColor = [255, 250, 205];
-          data.cell.styles.textColor = [200, 0, 0];
-        }
-      },
+      head: [headersRenamed],
+      body: finalBody,
       startY: 20,
       styles: {
         fontSize: 8,
@@ -105,7 +79,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       margin: { left: 10, right: 10 }
     });
 
-    doc.save('Export.pdf');
+    doc.save(`Export.pdf`);
   };
 
   return (
