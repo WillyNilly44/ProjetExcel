@@ -96,13 +96,13 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         return data;
       });
 
-
-
     const allRows = [...body, ...adminFormatted];
 
     // Tri par date (optionnel)
     const dateIdx = exportOrder.indexOf("Date+Start");
     allRows.sort((a, b) => new Date(a[dateIdx]) - new Date(b[dateIdx]));
+
+    const finalBody = allRows;
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
