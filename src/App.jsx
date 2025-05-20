@@ -4,6 +4,7 @@ import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import DashboardPage from './DashboardPage';
 import MainPage from './MainPage';
+import { supabase } from './supabaseClient';
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
@@ -11,6 +12,23 @@ function App() {
   const [adminNotes, setAdminNotes] = useState([]);
   const [workbook, setWorkbook] = useState(null);
   const [sheetNames, setSheetNames] = useState([]);
+
+
+  useEffect(() => {
+    const fetchAdminNotes = async () => {
+      const { data, error } = await supabase
+        .from('admin_notes')
+        .select('*');
+
+      if (!error) {
+        setAdminNotes(data);
+      } else {
+        console.error("Erreur de chargement des notes admin :", error.message);
+      }
+    };
+
+    fetchAdminNotes();
+  }, []);
 
   if (adminView) {
     if (!isAdmin) {
