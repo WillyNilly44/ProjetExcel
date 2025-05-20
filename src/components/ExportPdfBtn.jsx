@@ -96,10 +96,16 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
 
     const allRows = [...body, ...adminFormatted];
-    const dateIdx = exportOrder.indexOf("Date+Start");
-    allRows.sort((a, b) => new Date(a[dateIdx]) - new Date(b[dateIdx]));
+    // Index de la colonne "Date+Start"
+const dateIdx = exportOrder.indexOf("Date+Start");
 
-    const finalBody = allRows;
+// Trier toutes les lignes par la date combinée (formatée ou vide)
+allRows.sort((a, b) => {
+  const d1 = new Date(a[dateIdx] || '');
+  const d2 = new Date(b[dateIdx] || '');
+  return d1 - d2;
+});
+
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
