@@ -104,9 +104,6 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     const dateIdx = exportOrder.indexOf("Date+Start");
     allRows.sort((a, b) => new Date(a[dateIdx]) - new Date(b[dateIdx]));
 
-    const finalBody = allRows;
-
-
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
     // === Génération PDF
@@ -116,16 +113,16 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
     doc.autoTable({
       head: [translatedHeaders],
       body: allRows,
-      willDrawCell(data) {
-        const meta = data.row.raw;
-        if (meta?.fromAdmin) {
-          data.cell.styles.fillColor = [220, 255, 220]; // vert pâle
+      willDrawCell: function (data) {
+        if (data.row.raw?.fromAdmin) {
+          data.cell.styles.fillColor = [220, 255, 220];
           data.cell.styles.textColor = [0, 100, 0];
-        } else if (meta?.highlight) {
-          data.cell.styles.fillColor = [255, 250, 205]; // jaune
+        } else if (data.row.raw?.highlight) {
+          data.cell.styles.fillColor = [255, 250, 205];
           data.cell.styles.textColor = [200, 0, 0];
         }
-      },
+      }
+      ,
       startY: 20,
       styles: {
         fontSize: 8,
