@@ -65,7 +65,8 @@ function App() {
       );
     }
     return (
-      <AdminPanel
+      <Suspense fallback={<p>Interface loading...</p>}>
+        <AdminPanel
         onLogout={() => {
           sessionStorage.removeItem('admin');
           setIsAdmin(false);
@@ -76,6 +77,7 @@ function App() {
         thresholds={thresholds}
         setThresholds={setThresholds}
       />
+      </Suspense>
     );
   }
 
@@ -89,24 +91,26 @@ function App() {
         </button>
       </nav>
 
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <MainPage
-              workbook={workbook}
-              setWorkbook={setWorkbook}
-              sheetNames={sheetNames}
-              setSheetNames={setSheetNames}
-              adminNotes={adminNotes}
-            />
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={<DashboardPage workbook={workbook} thresholds={thresholds} />}
-        />
-      </Routes>
+       <Suspense fallback={<p>Chargement...</p>}>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <MainPage
+                workbook={workbook}
+                setWorkbook={setWorkbook}
+                sheetNames={sheetNames}
+                setSheetNames={setSheetNames}
+                adminNotes={adminNotes}
+              />
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={<DashboardPage workbook={workbook} thresholds={thresholds} />}
+          />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
