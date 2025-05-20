@@ -20,6 +20,21 @@ function App() {
     impact: 0
   });
 
+  useEffect(() => {
+  const fetchThresholds = async () => {
+    const { data, error } = await supabase
+      .from('dashboard_thresholds')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (!error && data && data.length > 0) {
+      setThresholds(data[0]);
+    }
+  };
+
+  fetchThresholds();
+}, []);
 
   useEffect(() => {
     const fetchAdminNotes = async () => {

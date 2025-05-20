@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
+export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds }) {
   const [form, setForm] = useState({
     incident: '', district: '', date: '', maint_event: '', incid_event: '',
     business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
     end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
   });
+
+  const [localThresholds, setLocalThresholds] = useState(thresholds);
 
   useEffect(() => {
     const fetchNotes = async () => {
@@ -19,6 +21,28 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
   };
+
+  const handleThresholdChange = (field) => (e) => {
+    setLocalThresholds(prev => ({
+      ...prev,
+      [field]: Number(e.target.value)
+    }));
+  };
+
+  const updateThresholds = async () => {
+  const { error } = await supabase
+    .from('dashboard_thresholds')
+    .insert([{ ...localThresholds }]);
+
+  if (!error) {
+    setThresholds(localThresholds);
+    alert("Seuils enregistrés dans Supabase !");
+  } else {
+    console.error("Erreur Supabase :", error.message);
+    alert("Échec de l'enregistrement.");
+  }
+};
+
 
   const addNote = async () => {
     if (!form.date && !form.note) return;
@@ -49,7 +73,73 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
     <div style={{ padding: 40 }}>
       <h2>Page de Gestion Admin</h2>
 
-      {/* === Formulaire d'ajout === */}
+      {/* === Bloc seuils === */}
+      <div style={{
+        border: '1px solid #ccc',
+        borderRadius: 8,
+        padding: 20,
+        marginBottom: 30,
+        backgroundColor: '#f4f4f4',
+        maxWidth: 600
+      }}>
+        <h3>🎛 Modifier les seuils du Dashboard</h3>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+          <label>
+            Maintenance (jaune)
+            <input
+              type="number"
+              value={localThresholds.maintenanceYellow}
+              onChange={handleThresholdChange('maintenanceYellow')}
+            />
+          </label>
+          <label>
+            Maintenance (rouge)
+            <input
+              type="number"
+              value={localThresholds.maintenanceRed}
+              onChange={handleThresholdChange('maintenanceRed')}
+            />
+          </label>
+          <label>
+            Incident (jaune)
+            <input
+              type="number"
+              value={localThresholds.incidentYellow}
+              onChange={handleThresholdChange('incidentYellow')}
+            />
+          </label>
+          <label>
+            Incident (rouge)
+            <input
+              type="number"
+              value={localThresholds.incidentRed}
+              onChange={handleThresholdChange('incidentRed')}
+            />
+          </label>
+          <label>
+            Impact (seuil)
+            <input
+              type="number"
+              value={localThresholds.impact}
+              onChange={handleThresholdChange('impact')}
+            />
+          </label>
+        </div>
+
+        <button onClick={updateThresholds} style={{
+          marginTop: 15,
+          padding: '8px 16px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: 5,
+          cursor: 'pointer'
+        }}>
+          💾 Enregistrer les seuils
+        </button>
+      </div>
+
+      {/* === Formulaire d'ajout admin note === */}
       <div style={{
         border: '1px solid #ccc',
         borderRadius: '10px',
@@ -156,7 +246,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes }) {
         </button>
       </div>
 
-      {/* === Liste des notes === */}
+      {/* Liste des notes */}
       <h3 style={{ marginTop: 20 }}>Entrées Admin</h3>
       <ul>
         {adminNotes.map((note, idx) => (
