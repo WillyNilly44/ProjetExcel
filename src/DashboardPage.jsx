@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
-// Liste statique des mois (en français)
 const MONTH_OPTIONS = [
   'Tous', 'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-export default function DashboardPage({ workbook }) {
+export default function DashboardPage({ workbook, thresholds }) {
   const [summaryData, setSummaryData] = useState([]);
   const [weeklyData, setWeeklyData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -25,7 +24,6 @@ export default function DashboardPage({ workbook }) {
 
     const sheet = workbook.Sheets[dashboardSheetName];
 
-    // === TABLEAU 1 : Statistiques globales
     const summaryRaw = XLSX.utils.sheet_to_json(sheet, {
       header: 1,
       range: 'F2:H11',
@@ -39,7 +37,6 @@ export default function DashboardPage({ workbook }) {
     });
     setSummaryData(formattedSummary);
 
-    // === TABLEAU 2 : Détails hebdomadaires
     const weeklyHeadersRow = [
       "Month", "Week",
       "Maintenance (count)", "Maintenance (hrs)",
@@ -65,7 +62,6 @@ export default function DashboardPage({ workbook }) {
       return obj;
     });
 
-    // Tri du plus récent au plus ancien (basé sur la valeur Month brute)
     formattedWeekly.sort((a, b) => {
       const dateA = new Date(a["Month"]);
       const dateB = new Date(b["Month"]);
@@ -95,7 +91,6 @@ export default function DashboardPage({ workbook }) {
     <div style={{ padding: 20 }}>
       <h2>📊 Feuille Dashboard</h2>
 
-      {/* === Tableau 1 === */}
       <h3>Statistiques globales (par année)</h3>
       {summaryData.length > 0 ? (
         <table style={{ borderCollapse: 'collapse', width: '65%', marginBottom: 10, fontSize: '0.85rem' }}>
@@ -106,12 +101,11 @@ export default function DashboardPage({ workbook }) {
                   border: '1px solid #ccc',
                   background: '#f0f4f8',
                   padding: 6,
-                  width: '50px', // ← Ajuste selon tes besoins
+                  width: '50px',
                   whiteSpace: 'nowrap'
                 }}>
                   {col}
                 </th>
-
               ))}
             </tr>
           </thead>
@@ -127,7 +121,6 @@ export default function DashboardPage({ workbook }) {
                   }}>
                     {val}
                   </td>
-
                 ))}
               </tr>
             ))}
@@ -135,10 +128,8 @@ export default function DashboardPage({ workbook }) {
         </table>
       ) : <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les statistiques globales.</p>}
 
-      {/* === Tableau 2 === */}
       <h3>Détails hebdomadaires</h3>
 
-      {/* Menu filtre par mois */}
       <div style={{ marginBottom: 10 }}>
         <label>Filtrer par mois : </label>
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
@@ -182,18 +173,14 @@ export default function DashboardPage({ workbook }) {
                   if (typeof val === 'number') {
                     const k = key.toLowerCase();
                     if (k.includes('maintenance')) {
-                      if (val >= 25) backgroundColor = '#ffcccc'; // rouge
-                      else if (val < 25 && val > 15) backgroundColor = '#fffacc'; // jaune
-                      else backgroundColor = '#d5fdd5'; // vert
+                      if (val >= thresholds.maintenanceRed) backgroundColor = '#ffcccc';
+                      else if (val >= thresholds.maintenanceYellow) backgroundColor = '#fffacc';
+                      else backgroundColor = '#d5fdd5';
                     } else if (k.includes('incident')) {
-                      if (val >= 6) {
-                        backgroundColor = '#ffcccc'; // rouge
-                      }
-                      else if (val < 6 && val >= 5) {
-                        backgroundColor = '#fffacc'; // jaune
-                      }
-                      else backgroundColor = '#d5fdd5'; // vert
-                    } else if (k.includes('impact') && val > 0) {
+                      if (val >= thresholds.incidentRed) backgroundColor = '#ffcccc';
+                      else if (val >= thresholds.incidentYellow) backgroundColor = '#fffacc';
+                      else backgroundColor = '#d5fdd5';
+                    } else if (k.includes('impact') && val > thresholds.impact) {
                       backgroundColor = '#ffe0e0';
                     }
                   }

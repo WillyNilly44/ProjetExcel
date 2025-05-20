@@ -12,8 +12,13 @@ function App() {
   const [adminNotes, setAdminNotes] = useState([]);
   const [workbook, setWorkbook] = useState(null);
   const [sheetNames, setSheetNames] = useState([]);
+  const [thresholds, setThresholds] = useState({
+  maintenance: 5,
+  maintenanceHigh: 16,
+  incident: 30,
+  impact: 0
+});
 
-  // ✅ Chargement automatique des notes admin dès le démarrage
   useEffect(() => {
     const fetchAdminNotes = async () => {
       const { data, error } = await supabase
@@ -29,6 +34,7 @@ function App() {
 
     fetchAdminNotes();
   }, []);
+  
 
   if (adminView) {
     if (!isAdmin) {
@@ -50,6 +56,8 @@ function App() {
         }}
         adminNotes={adminNotes}
         setAdminNotes={setAdminNotes}
+        thresholds={thresholds}
+        setThresholds={setThresholds}
       />
     );
   }
@@ -79,7 +87,7 @@ function App() {
         />
         <Route
           path="/dashboard"
-          element={<DashboardPage workbook={workbook} />}
+          element={<DashboardPage workbook={workbook} thresholds={thresholds} />}
         />
       </Routes>
     </Router>
