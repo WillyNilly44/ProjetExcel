@@ -212,4 +212,58 @@ header .admin-button:hover {
   font-weight: bold;
   color: var(--text-color);
 }
+/* === Connexion Admin === */
+.admin-login-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+}
+
+.admin-login-box {
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 30px;
+  max-width: 400px;
+  width: 100%;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  text-align: center;
+}
+
+.admin-login-box h2 {
+  margin-bottom: 30px;
+}
+
+.admin-login-input {
+  padding: 10px 14px;
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.admin-login-button {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.admin-login-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.admin-login-error {
+  color: #d33;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
 
