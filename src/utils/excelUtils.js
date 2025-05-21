@@ -25,6 +25,7 @@ export function cleanEmptyValues(dataArray, sheetName) {
     const cleanedRow = {};
     Object.entries(row).forEach(([key, value], index) => {
       const renamedKey = renameMap[key] || renameMap[`__EMPTY_${index}`] || key;
+  
 
       // Correction des dates Excel (valeurs > 30000)
       if (typeof value === "number" && value > 30000 && value < 60000) {
@@ -37,6 +38,7 @@ export function cleanEmptyValues(dataArray, sheetName) {
       // Ne convertir en HH:mm que si la colonne n'est pas dans ["Est. (hrs)", "Acc. time"]
       const hourLikeColumns = ["Est. (hrs)", "Acc. time"];
       if (typeof value === "number" && value > 0 && value < 1 && !hourLikeColumns.includes(renamedKey)) {
+        console.log(value);
         const totalSeconds = Math.round(value * 24 * 60 * 60);
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
