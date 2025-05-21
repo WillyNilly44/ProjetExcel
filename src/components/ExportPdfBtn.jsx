@@ -48,10 +48,10 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
+    // === Lignes du tableau HTML
     const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr, i) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
-
-      return exportOrder.map(col => {
+      const row = exportOrder.map(col => {
         if (col === "No") return `${i + 1}`;
         if (col === "Date+Start") {
           const d = headersAfter.indexOf("Date");
@@ -63,13 +63,18 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         const idx = headersAfter.indexOf(col);
         return idx !== -1 ? cells[idx] : '';
       });
+
+      // Ajouter une clé pour le tri
+      const fullDate = row[exportOrder.indexOf("Date+Start")];
+      row.sortKey = new Date(fullDate);
+      return row;
     });
 
-    // === Ajouter les lignes admin à la fin
+    // === Lignes Admin
     const adminRows = adminNotes
       .filter(n => typeof n === 'object' && n.date)
       .map((entry, i) => {
-        return exportOrder.map(col => {
+        const row = exportOrder.map(col => {
           if (col === "No") return `A${i + 1}`;
           if (col === "Date+Start") {
             const d = entry[adminKeyMap[col]?.date] || '';
@@ -79,9 +84,21 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
           const key = adminKeyMap[col] || col;
           return entry[key] || '';
         });
+
+        const fullDate = row[exportOrder.indexOf("Date+Start")];
+        row.sortKey = new Date(fullDate);
+        return row;
       });
 
-    const finalBody = [...tableRows, ...adminRows];
+    const allRows = [...tableRows, ...adminRows].sort(
+      (a, b) => new Date(b.sortKey) - new Date(a.sortKey)
+    );
+
+
+    const finalBody = allRows.map(row => {
+      const copy = [...row];
+      return copy;
+    });
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
