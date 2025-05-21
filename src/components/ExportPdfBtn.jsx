@@ -39,39 +39,36 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return isNaN(parsed.getTime()) ? new Date(0) : parsed;
     }
 
-    function getAllDatesForWeekdayInSameMonth(rows, weekday) {
-      const dateIdx = exportOrder.indexOf("Date+Start");
-      const dates = rows
-        .map(row => row[dateIdx]?.split(" ")[0])
-        .map(d => new Date(d))
-        .filter(d => !isNaN(d));
+    function getRecurringDatesForWeekday(weekday) {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
-      if (dates.length === 0) return [];
+      const currentWeekMonday = new Date(today);
+      currentWeekMonday.setDate(today.getDate() - today.getDay() + 1); // lundi
 
-      const base = dates[0];
-      const year = base.getFullYear();
-      const month = base.getMonth();
+      const endDate = new Date(currentWeekMonday);
+      endDate.setDate(endDate.getDate() + 6); // fin de la semaine
 
-      const jsWeekday = {
-        Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
-        Thursday: 4, Friday: 5, Saturday: 6
-      }[weekday];
+      const dayMap = {
+        "Sunday": 0,
+        "Monday": 1,
+        "Tuesday": 2,
+        "Wednesday": 3,
+        "Thursday": 4,
+        "Friday": 5,
+        "Saturday": 6
+      };
 
-      if (jsWeekday === undefined) return [];
-
-      const allDates = [];
-      let current = new Date(year, month, 1);
-      while (current.getMonth() === month) {
-        if (current.getDay() === jsWeekday) {
-          allDates.push(current.toISOString().split("T")[0]);
+      const matchingDates = [];
+      for (let d = new Date(firstDay); d <= endDate; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === dayMap[weekday]) {
+          matchingDates.push(new Date(d));
         }
-        current.setDate(current.getDate() + 1);
       }
-
-      return allDates;
+      return matchingDates;
     }
 
-    // Nettoyage du tableau HTML
+    // === Nettoyage du tableau HTML ===
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
@@ -86,7 +83,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
-    // Lignes du tableau HTML (sans #)
+    // === Lignes HTML
     const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
 
@@ -109,32 +106,36 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return row;
     });
 
-    // Notes admin récurrentes : dupliquer par date de la semaine
+    // === Lignes Admin récurrentes (multi-instances selon weekday)
     const adminRows = adminNotes
       .filter(n => typeof n === 'object' && n.weekday)
       .flatMap((entry) => {
-        const dateList = getAllDatesForWeekdayInSameMonth(tableRows, entry.weekday);
-
-        return dateList.map(dateStr => {
+        const dates = getRecurringDatesForWeekday(entry.weekday);
+        return dates.map(dateObj => {
           const row = exportOrder.map(col => {
             if (col === "Date+Start") {
+              const d = dateObj.toISOString().split('T')[0];
               const h = entry.start_duration_hrs || '00:00';
-              return `${dateStr} ${h}`.trim();
+              return `${d} ${h}`.trim();
             }
             const key = adminKeyMap[col] || col;
             return entry[key] || '';
           });
 
-          row.sortKey = parseDateTime(dateStr);
+          const fullDate = row[exportOrder.indexOf("Date+Start")];
+          const dateOnly = fullDate.split(' ')[0];
+          row.sortKey = parseDateTime(dateOnly);
           row.isAdmin = true;
           return row;
         });
       });
 
+    // === Fusionner, trier par date descendante
     const allRows = [...tableRows, ...adminRows].sort(
       (a, b) => b.sortKey - a.sortKey
     );
 
+    // === Réassigner les numéros (No)
     const finalBody = allRows.map((row, idx) => {
       const newRow = [...row];
       newRow[exportOrder.indexOf("No")] = `${idx + 1}`;
@@ -143,6 +144,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
+    // === Génération PDF
     doc.setFontSize(10);
     doc.text('Export', 14, 15);
 
