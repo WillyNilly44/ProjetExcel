@@ -71,8 +71,8 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       });
 
       const fullDate = row[exportOrder.indexOf("Date+Start")];
-      row.sortKey = parseDateTime(fullDate);
-      row.isAdmin = false;
+      const dateOnly = fullDate.split(' ')[0];
+      row.sortKey = parseDateTime(dateOnly);
       return row;
     });
 
@@ -91,7 +91,8 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         });
 
         const fullDate = row[exportOrder.indexOf("Date+Start")];
-        row.sortKey = parseDateTime(fullDate);
+        const dateOnly = fullDate.split(' ')[0];
+        row.sortKey = parseDateTime(dateOnly);
         row.isAdmin = true;
         return row;
       });
