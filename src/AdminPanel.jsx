@@ -43,43 +43,29 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     };
 
     const addNote = async () => {
-        if (!form.weekday && !form.note) {
-            alert("La note et le jour doivent être remplis.");
-            return;
-        }
+  if (!form.weekday && !form.note) return;
 
-        try {
-            const response = await fetch('/.netlify/functions/addNote', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...form,
-                    type: 'AdminNote'
-                })
-            });
+  const response = await fetch('/.netlify/functions/addNote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(form)
+  });
 
-            const result = await response.json();
+  const result = await response.json();
 
-            if (!response.ok) {
-                console.error("Erreur serveur :", result.error);
-                alert("Erreur lors de l'ajout de la note.");
-                return;
-            }
+  if (response.ok) {
+    setAdminNotes(prev => [...prev, ...result.data]);
+    setForm({
+      incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
+      business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
+      end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
+    });
+  } else {
+    console.error("Erreur backend :", result.error);
+    alert("Erreur lors de l'ajout de la note");
+  }
+};
 
-            // Ajouter temporairement dans la liste affichée
-            setAdminNotes(prev => [...prev, result.note]);
-            setForm({
-                incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
-                business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
-            });
-        } catch (error) {
-            console.error("Erreur réseau :", error);
-            alert("Erreur réseau.");
-        }
-    };
 
 
     const removeNote = async (id) => {
