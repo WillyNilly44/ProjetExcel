@@ -28,7 +28,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "Ticket #": "ticket_number",
       "Assigned": "assigned",
       "Note": "note",
-      "Date+Start": { weekday: "weekday", time: "start_duration_hrs" },
+      "Date+Start": { date: "date", time: "start_duration_hrs" },
       "Acc. time": "real_time_duration_hrs",
       "District": "district"
     };
@@ -39,7 +39,39 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return isNaN(parsed.getTime()) ? new Date(0) : parsed;
     }
 
-    // === Nettoyage du tableau HTML ===
+    function getAllDatesForWeekdayInSameMonth(rows, weekday) {
+      const dateIdx = exportOrder.indexOf("Date+Start");
+      const dates = rows
+        .map(row => row[dateIdx]?.split(" ")[0])
+        .map(d => new Date(d))
+        .filter(d => !isNaN(d));
+
+      if (dates.length === 0) return [];
+
+      const base = dates[0];
+      const year = base.getFullYear();
+      const month = base.getMonth();
+
+      const jsWeekday = {
+        Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
+        Thursday: 4, Friday: 5, Saturday: 6
+      }[weekday];
+
+      if (jsWeekday === undefined) return [];
+
+      const allDates = [];
+      let current = new Date(year, month, 1);
+      while (current.getMonth() === month) {
+        if (current.getDay() === jsWeekday) {
+          allDates.push(current.toISOString().split("T")[0]);
+        }
+        current.setDate(current.getDate() + 1);
+      }
+
+      return allDates;
+    }
+
+    // Nettoyage du tableau HTML
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
@@ -54,7 +86,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
-    // === Lignes du tableau HTML
+    // Lignes du tableau HTML (sans #)
     const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
 
@@ -77,49 +109,32 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return row;
     });
 
-    // === Trouver la dernière date réelle pour un jour donné
-    function getLatestDateForWeekday(rows, weekday) {
-      const dateIdx = exportOrder.indexOf("Date+Start");
-      const dates = rows.map(row => {
-        const dtStr = row[dateIdx]?.split(" ")[0];
-        const date = new Date(dtStr);
-        return { date, str: dtStr };
-      }).filter(d => !isNaN(d.date));
-
-      const filtered = dates.filter(d =>
-        d.date.toLocaleDateString('en-US', { weekday: 'long' }) === weekday
-      );
-
-      if (filtered.length === 0) return ''; // fallback
-      return filtered.sort((a, b) => b.date - a.date)[0].str;
-    }
-
-    // === Lignes Admin
+    // Notes admin récurrentes : dupliquer par date de la semaine
     const adminRows = adminNotes
       .filter(n => typeof n === 'object' && n.weekday)
-      .map((entry) => {
-        const resolvedDate = getLatestDateForWeekday(tableRows, entry.weekday);
+      .flatMap((entry) => {
+        const dateList = getAllDatesForWeekdayInSameMonth(tableRows, entry.weekday);
 
-        const row = exportOrder.map(col => {
-          if (col === "Date+Start") {
-            const h = entry.start_duration_hrs || '00:00';
-            return `${resolvedDate} ${h}`.trim();
-          }
-          const key = adminKeyMap[col] || col;
-          return entry[key] || '';
+        return dateList.map(dateStr => {
+          const row = exportOrder.map(col => {
+            if (col === "Date+Start") {
+              const h = entry.start_duration_hrs || '00:00';
+              return `${dateStr} ${h}`.trim();
+            }
+            const key = adminKeyMap[col] || col;
+            return entry[key] || '';
+          });
+
+          row.sortKey = parseDateTime(dateStr);
+          row.isAdmin = true;
+          return row;
         });
-
-        row.sortKey = parseDateTime(resolvedDate);
-        row.isAdmin = true;
-        return row;
       });
 
-    // === Fusionner et trier par date décroissante
     const allRows = [...tableRows, ...adminRows].sort(
       (a, b) => b.sortKey - a.sortKey
     );
 
-    // === Réassigner les # (No)
     const finalBody = allRows.map((row, idx) => {
       const newRow = [...row];
       newRow[exportOrder.indexOf("No")] = `${idx + 1}`;
@@ -128,7 +143,6 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
 
-    // === Génération PDF
     doc.setFontSize(10);
     doc.text('Export', 14, 15);
 
