@@ -38,11 +38,11 @@ export function cleanEmptyValues(dataArray, sheetName) {
       // Ne convertir en HH:mm que si la colonne n'est pas dans ["Est. (hrs)", "Acc. time"]
       const hourLikeColumns = ["Est. (hrs)", "Acc. time"];
       if (typeof value === "number" && value > 0 && value < 1 && !hourLikeColumns.includes(renamedKey)) {
-        console.log(value);
         const totalSeconds = Math.round(value * 24 * 60 * 60);
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        console.log(value);
       }
 
       cleanedRow[renamedKey] = value;
