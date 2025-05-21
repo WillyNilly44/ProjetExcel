@@ -4,7 +4,7 @@ import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import DashboardPage from './DashboardPage';
 import MainPage from './MainPage';
-import { supabase } from './supabaseClient';
+import { supabase } from '../netflify/functions/supabaseClient';
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');

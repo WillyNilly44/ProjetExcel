@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from './supabaseClient';
+import { supabase } from '../netflify/functions/supabaseClient';
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds }) {
     const [form, setForm] = useState({
-  incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
-  business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-  end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
-  assigned: '', note: ''
-});
+        incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
+        business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
+        end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
+        assigned: '', note: ''
+    });
 
 
     const [localThresholds, setLocalThresholds] = useState(thresholds);
@@ -43,22 +43,44 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     };
 
     const addNote = async () => {
-        if (!form.date && !form.note) return;
+        if (!form.weekday && !form.note) {
+            alert("La note et le jour doivent être remplis.");
+            return;
+        }
 
-        const { data, error } = await supabase
-            .from('admin_notes')
-            .insert([{ ...form, type: 'AdminNote' }])
-            .select();
+        try {
+            const response = await fetch('/.netlify/functions/addNote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ...form,
+                    type: 'AdminNote'
+                })
+            });
 
-        if (!error && data) {
-            setAdminNotes(prev => [...prev, ...data]);
+            const result = await response.json();
+
+            if (!response.ok) {
+                console.error("Erreur serveur :", result.error);
+                alert("Erreur lors de l'ajout de la note.");
+                return;
+            }
+
+            // Ajouter temporairement dans la liste affichée
+            setAdminNotes(prev => [...prev, result.note]);
             setForm({
                 incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
                 business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
                 end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
             });
+        } catch (error) {
+            console.error("Erreur réseau :", error);
+            alert("Erreur réseau.");
         }
     };
+
 
     const removeNote = async (id) => {
         const { error } = await supabase.from('admin_notes').delete().eq('id', id);
