@@ -33,6 +33,12 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "District": "district"
     };
 
+    function parseDateTime(str) {
+      if (!str || typeof str !== 'string') return new Date(0);
+      const parsed = new Date(str);
+      return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+    }
+
     // === Nettoyage du tableau HTML ===
     const cloned = table.cloneNode(true);
     const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
@@ -48,11 +54,11 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
-    // === Lignes du tableau HTML
-    const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr, i) => {
+    // === Lignes du tableau HTML (sans #)
+    const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
+
       const row = exportOrder.map(col => {
-        if (col === "No") return `${i + 1}`;
         if (col === "Date+Start") {
           const d = headersAfter.indexOf("Date");
           const s = headersAfter.indexOf("Start");
@@ -64,25 +70,17 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         return idx !== -1 ? cells[idx] : '';
       });
 
-      // Ajouter une clé pour le tri
       const fullDate = row[exportOrder.indexOf("Date+Start")];
       row.sortKey = parseDateTime(fullDate);
+      row.isAdmin = false;
       return row;
     });
-    
-    function parseDateTime(str) {
-      if (!str || typeof str !== 'string') return new Date(0); // valeur minimale
-      const parsed = new Date(str);
-      return isNaN(parsed.getTime()) ? new Date(0) : parsed;
-    }
-
 
     // === Lignes Admin
     const adminRows = adminNotes
       .filter(n => typeof n === 'object' && n.date)
-      .map((entry, i) => {
+      .map((entry) => {
         const row = exportOrder.map(col => {
-          if (col === "No") return `A${i + 1}`;
           if (col === "Date+Start") {
             const d = entry[adminKeyMap[col]?.date] || '';
             const h = entry[adminKeyMap[col]?.time] || '';
@@ -93,18 +91,21 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         });
 
         const fullDate = row[exportOrder.indexOf("Date+Start")];
-        row.sortKey = new Date(fullDate);
+        row.sortKey = parseDateTime(fullDate);
+        row.isAdmin = true;
         return row;
       });
 
+    // === Fusionner et trier par date décroissante
     const allRows = [...tableRows, ...adminRows].sort(
-      (a, b) => new Date(b.sortKey) - new Date(a.sortKey)
+      (a, b) => b.sortKey - a.sortKey
     );
 
-
-    const finalBody = allRows.map(row => {
-      const copy = [...row];
-      return copy;
+    // === Réassigner les # (No)
+    const finalBody = allRows.map((row, idx) => {
+      const newRow = [...row];
+      newRow[exportOrder.indexOf("No")] = `${idx + 1}`;
+      return newRow;
     });
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
