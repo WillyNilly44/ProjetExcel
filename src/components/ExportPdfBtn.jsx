@@ -66,9 +66,16 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
       // Ajouter une clé pour le tri
       const fullDate = row[exportOrder.indexOf("Date+Start")];
-      row.sortKey = new Date(fullDate);
+      row.sortKey = parseDateTime(fullDate);
       return row;
     });
+    
+    function parseDateTime(str) {
+      if (!str || typeof str !== 'string') return new Date(0); // valeur minimale
+      const parsed = new Date(str);
+      return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+    }
+
 
     // === Lignes Admin
     const adminRows = adminNotes
