@@ -1,12 +1,15 @@
 :root {
-  --primary: #007bff;
-  --primary-hover: #0056b3;
+  --primary: #00509e;
+  /* 🔵 plus foncé pour meilleur contraste */
+  --primary-hover: #003f7f;
+  /* encore plus foncé pour hover */
   --light-bg: #f9fafb;
   --border: #ddd;
   --text-color: #333;
   --header-bg: #f0f4f8;
   --row-alt: #f9f9f9;
 }
+
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -45,6 +48,13 @@ button:hover {
   background-color: var(--primary-hover);
 }
 
+button:focus-visible {
+  outline: 3px solid #ffa500;
+  /* orange vif */
+  outline-offset: 2px;
+}
+
+
 select {
   background-color: white;
 }
@@ -65,7 +75,8 @@ table {
   table-layout: auto;
 }
 
-th, td {
+th,
+td {
   padding: 10px 14px;
   border: 1px solid #ddd;
   text-align: left;
@@ -73,7 +84,10 @@ th, td {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-td:nth-child(3),td:nth-child(9),td:nth-child(10) {
+
+td:nth-child(3),
+td:nth-child(9),
+td:nth-child(10) {
   max-width: 200px;
 }
 
@@ -108,7 +122,10 @@ tr:nth-child(even) {
 }
 
 @media (max-width: 768px) {
-  table, th, td {
+
+  table,
+  th,
+  td {
     font-size: 14px;
   }
 
@@ -119,6 +136,7 @@ tr:nth-child(even) {
     padding: 8px 12px;
   }
 }
+
 .admin-form-container {
   border: 1px solid #ccc;
   border-radius: 8px;
@@ -134,6 +152,7 @@ tr:nth-child(even) {
   gap: 12px;
   margin-bottom: 15px;
 }
+
 .form-section {
   border: 1px solid #ddd;
   border-radius: 6px;
@@ -161,6 +180,7 @@ tr:nth-child(even) {
   font-size: 0.85rem;
   color: #333;
 }
+
 /* === Barre de navigation améliorée === */
 header {
   display: flex;
@@ -190,17 +210,20 @@ header nav a:hover {
 
 header .admin-button {
   background-color: var(--primary);
-  color: white;
+  color: #fff;
   border-radius: 6px;
   padding: 8px 14px;
   border: none;
   cursor: pointer;
+  font-weight: bold;
+  font-size: 14px;
   transition: background 0.2s ease;
 }
 
 header .admin-button:hover {
   background-color: var(--primary-hover);
 }
+
 
 .page-title {
   display: flex;
@@ -212,6 +235,7 @@ header .admin-button:hover {
   font-weight: bold;
   color: var(--text-color);
 }
+
 /* === Connexion Admin === */
 .admin-login-wrapper {
   display: flex;
@@ -227,7 +251,7 @@ header .admin-button:hover {
   max-width: 400px;
   width: 100%;
   background-color: #fff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   text-align: center;
 }
 
@@ -265,6 +289,7 @@ header .admin-button:hover {
   margin-top: 15px;
   font-size: 14px;
 }
+
 .admin-panel {
   padding: 40px;
   max-width: 1200px;
@@ -326,6 +351,3 @@ header .admin-button:hover {
 .danger-button:hover {
   background-color: #c82333;
 }
-
-
-

@@ -3,7 +3,7 @@ import * as XLSX from 'xlsx';
 
 const MONTH_OPTIONS = [
   'Tous', 'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  'July', 'August', 'Septembre', 'October', 'November', 'December'
 ];
 
 export default function DashboardPage({ workbook, thresholds }) {
