@@ -11,13 +11,16 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
     const [localThresholds, setLocalThresholds] = useState(thresholds);
 
-    useEffect(() => {
-        const fetchNotes = async () => {
-            const { data, error } = await supabase.from('admin_notes').select('*');
-            if (!error && data) setAdminNotes(data);
-        };
-        fetchNotes();
-    }, [setAdminNotes]);
+    const fetchNotes = async () => {
+        const res = await fetch('/.netlify/functions/getAdminNotes');
+        const result = await res.json();
+        if (res.ok && result.data) {
+            setAdminNotes(result.data);
+        } else {
+            console.error("Erreur de lecture des notes :", result.error);
+        }
+    };
+
 
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
@@ -42,37 +45,47 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     };
 
     const addNote = async () => {
-  if (!form.weekday && !form.note) return;
+        if (!form.weekday && !form.note) return;
 
-  const response = await fetch('/.netlify/functions/addNote', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(form)
-  });
+        const response = await fetch('/.netlify/functions/addNote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(form)
+        });
 
-  const result = await response.json();
+        const result = await response.json();
 
-  if (response.ok) {
-    setAdminNotes(prev => [...prev, ...result.data]);
-    setForm({
-      incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
-      business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-      end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
-    });
-  } else {
-    console.error("Erreur backend :", result.error);
-    alert("Erreur lors de l'ajout de la note");
-  }
-};
+        if (response.ok) {
+            setAdminNotes(prev => [...prev, ...result.data]);
+            setForm({
+                incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
+                business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
+                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
+            });
+        } else {
+            console.error("Erreur backend :", result.error);
+            alert("Erreur lors de l'ajout de la note");
+        }
+    };
 
 
 
     const removeNote = async (id) => {
-        const { error } = await supabase.from('admin_notes').delete().eq('id', id);
-        if (!error) {
-            setAdminNotes(prev => prev.filter(note => note.id !== id));
-        }
-    };
+  const res = await fetch('/.netlify/functions/deleteAdminNote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  });
+
+  const result = await res.json();
+  if (res.ok) {
+    setAdminNotes(prev => prev.filter(note => note.id !== id));
+  } else {
+    console.error("Erreur suppression :", result.error);
+    alert("Échec de la suppression de la note.");
+  }
+};
+
 
     return (
         <div className="admin-panel">
