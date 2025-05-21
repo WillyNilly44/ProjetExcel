@@ -83,7 +83,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
         const row = exportOrder.map(col => {
           if (col === "Date+Start") {
             const d = entry[adminKeyMap[col]?.date] || '';
-            const h = entry[adminKeyMap[col]?.time] || '';
+            const h = entry[adminKeyMap[col]?.time] || '00:00'; // fallback à minuit
             return `${d} ${h}`.trim();
           }
           const key = adminKeyMap[col] || col;
