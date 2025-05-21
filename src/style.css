@@ -10,7 +10,6 @@
   --row-alt: #f9f9f9;
 }
 
-
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: var(--light-bg);
@@ -53,7 +52,6 @@ button:focus-visible {
   /* orange vif */
   outline-offset: 2px;
 }
-
 
 select {
   background-color: white;
@@ -98,7 +96,6 @@ th {
   top: 0;
   z-index: 1;
 }
-
 
 tr:nth-child(even) {
   background-color: var(--row-alt);
@@ -223,7 +220,6 @@ header .admin-button {
 header .admin-button:hover {
   background-color: var(--primary-hover);
 }
-
 
 .page-title {
   display: flex;

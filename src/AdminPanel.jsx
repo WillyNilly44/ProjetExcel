@@ -8,7 +8,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         assigned: '', note: ''
     });
 
-
     const [localThresholds, setLocalThresholds] = useState(thresholds);
 
     const fetchNotes = async () => {
@@ -20,7 +19,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             console.error("Erreur de lecture des notes :", result.error);
         }
     };
-
 
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
@@ -68,8 +66,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         }
     };
 
-
-
     const removeNote = async (id) => {
   const res = await fetch('/.netlify/functions/deleteAdminNote', {
     method: 'POST',
@@ -86,7 +82,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
   }
 };
 
-
     return (
         <div className="admin-panel">
             <h2>Page de Gestion Admin</h2>
@@ -98,7 +93,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                     </button>
                 </div>
             </div>
-
 
             <div className="thresholds-box">
                 <h3>🎛 Modifier les seuils du Dashboard</h3>
