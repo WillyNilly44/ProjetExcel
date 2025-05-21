@@ -168,7 +168,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             <ul className="admin-note-list">
                 {adminNotes.map((note, idx) => (
                     <li key={note.id || idx}>
-                        📌 <strong>{note.note}</strong> — {note.date} — {note.incident} — {note.district} — {note.assigned}
+                        📌 <strong>{note.note}</strong> — {note.weekday} — {note.incident} — {note.district} — {note.assigned}
                         <button className="danger-button" onClick={() => removeNote(note.id)}>Supprimer</button>
                     </li>
                 ))}

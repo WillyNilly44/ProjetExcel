@@ -28,7 +28,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       "Ticket #": "ticket_number",
       "Assigned": "assigned",
       "Note": "note",
-      "Date+Start": { date: "date", time: "start_duration_hrs" },
+      "Date+Start": { weekday: "weekday", time: "start_duration_hrs" },
       "Acc. time": "real_time_duration_hrs",
       "District": "district"
     };
@@ -54,7 +54,7 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
 
     const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
 
-    // === Lignes du tableau HTML (sans #)
+    // === Lignes du tableau HTML
     const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr) => {
       const cells = Array.from(tr.children).map(td => td.textContent.trim());
 
@@ -73,9 +73,11 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       const fullDate = row[exportOrder.indexOf("Date+Start")];
       const dateOnly = fullDate.split(' ')[0];
       row.sortKey = parseDateTime(dateOnly);
+      row.isAdmin = false;
       return row;
     });
 
+    // === Trouver la dernière date réelle pour un jour donné
     function getLatestDateForWeekday(rows, weekday) {
       const dateIdx = exportOrder.indexOf("Date+Start");
       const dates = rows.map(row => {
@@ -92,26 +94,22 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return filtered.sort((a, b) => b.date - a.date)[0].str;
     }
 
-
     // === Lignes Admin
     const adminRows = adminNotes
-      .filter(n => typeof n === 'object' && n.date)
+      .filter(n => typeof n === 'object' && n.weekday)
       .map((entry) => {
+        const resolvedDate = getLatestDateForWeekday(tableRows, entry.weekday);
+
         const row = exportOrder.map(col => {
           if (col === "Date+Start") {
-            const d = entry[adminKeyMap[col]?.date] || '';
-            const h = entry[adminKeyMap[col]?.time] || '00:00'; // fallback à minuit
-            return `${d} ${h}`.trim();
+            const h = entry.start_duration_hrs || '00:00';
+            return `${resolvedDate} ${h}`.trim();
           }
           const key = adminKeyMap[col] || col;
           return entry[key] || '';
         });
 
-        const resolvedDate = getLatestDateForWeekday(tableRows, entry.weekday);
-        row[exportOrder.indexOf("Date+Start")] = `${resolvedDate} ${entry.start_duration_hrs || ''}`.trim();
-
-        const dateOnly = fullDate.split(' ')[0];
-        row.sortKey = parseDateTime(dateOnly);
+        row.sortKey = parseDateTime(resolvedDate);
         row.isAdmin = true;
         return row;
       });
