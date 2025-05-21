@@ -3,10 +3,12 @@ import { supabase } from './supabaseClient';
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds }) {
     const [form, setForm] = useState({
-        incident: '', district: '', date: '', maint_event: '', incid_event: '',
-        business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-        end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
-    });
+  incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
+  business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
+  end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
+  assigned: '', note: ''
+});
+
 
     const [localThresholds, setLocalThresholds] = useState(thresholds);
 
@@ -51,7 +53,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         if (!error && data) {
             setAdminNotes(prev => [...prev, ...data]);
             setForm({
-                incident: '', district: '', date: '', maint_event: '', incid_event: '',
+                incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
                 business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
                 end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
             });
@@ -117,7 +119,20 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 <div className="form-section">
                     <h4>Horaire</h4>
                     <div className="form-grid">
-                        <label>Date<input type="date" value={form.date} onChange={handleChange('date')} /></label>
+                        <label>
+                            Jour de la semaine (note récurrente)
+                            <select value={form.weekday} onChange={handleChange('weekday')}>
+                                <option value="">— Sélectionner —</option>
+                                <option value="Monday">Lundi</option>
+                                <option value="Tuesday">Mardi</option>
+                                <option value="Wednesday">Mercredi</option>
+                                <option value="Thursday">Jeudi</option>
+                                <option value="Friday">Vendredi</option>
+                                <option value="Saturday">Samedi</option>
+                                <option value="Sunday">Dimanche</option>
+                            </select>
+                        </label>
+
                         <label>Début<input type="time" value={form.start_duration_hrs} onChange={handleChange('start_duration_hrs')} /></label>
                         <label>Fin<input type="time" value={form.end_duration_hrs} onChange={handleChange('end_duration_hrs')} /></label>
                     </div>

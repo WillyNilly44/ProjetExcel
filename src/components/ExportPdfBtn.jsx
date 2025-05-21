@@ -76,6 +76,23 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
       return row;
     });
 
+    function getLatestDateForWeekday(rows, weekday) {
+      const dateIdx = exportOrder.indexOf("Date+Start");
+      const dates = rows.map(row => {
+        const dtStr = row[dateIdx]?.split(" ")[0];
+        const date = new Date(dtStr);
+        return { date, str: dtStr };
+      }).filter(d => !isNaN(d.date));
+
+      const filtered = dates.filter(d =>
+        d.date.toLocaleDateString('en-US', { weekday: 'long' }) === weekday
+      );
+
+      if (filtered.length === 0) return ''; // fallback
+      return filtered.sort((a, b) => b.date - a.date)[0].str;
+    }
+
+
     // === Lignes Admin
     const adminRows = adminNotes
       .filter(n => typeof n === 'object' && n.date)
@@ -90,7 +107,9 @@ export default function ExportPdfBtn({ adminNotes = [] }) {
           return entry[key] || '';
         });
 
-        const fullDate = row[exportOrder.indexOf("Date+Start")];
+        const resolvedDate = getLatestDateForWeekday(tableRows, entry.weekday);
+        row[exportOrder.indexOf("Date+Start")] = `${resolvedDate} ${entry.start_duration_hrs || ''}`.trim();
+
         const dateOnly = fullDate.split(' ')[0];
         row.sortKey = parseDateTime(dateOnly);
         row.isAdmin = true;
