@@ -26,6 +26,7 @@ export function cleanEmptyValues(dataArray, sheetName) {
     Object.entries(row).forEach(([key, value], index) => {
       const renamedKey = renameMap[key] || renameMap[`__EMPTY_${index}`] || key;
 
+      // Correction des dates Excel (valeurs > 30000)
       if (typeof value === "number" && value > 30000 && value < 60000) {
         const parsed = XLSX.SSF.parse_date_code(value);
         if (parsed) {
@@ -33,16 +34,13 @@ export function cleanEmptyValues(dataArray, sheetName) {
         }
       }
 
-      if (typeof value === "number" && value > 0 && value < 1) {
-        const hourLikeColumns = ["Est. (hrs)", "Acc. time"]; 
-        const isHourFormatCol = hourLikeColumns.includes(renameMap[key]) || hourLikeColumns.includes(renamedKey);
-
-        if (!isHourFormatCol) {
-          const totalSeconds = Math.round(value * 24 * 60 * 60);
-          const hours = Math.floor(totalSeconds / 3600);
-          const minutes = Math.floor((totalSeconds % 3600) / 60);
-          value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
+      // Ne convertir en HH:mm que si la colonne n'est pas dans ["Est. (hrs)", "Acc. time"]
+      const hourLikeColumns = ["Est. (hrs)", "Acc. time"];
+      if (typeof value === "number" && value > 0 && value < 1 && !hourLikeColumns.includes(renamedKey)) {
+        const totalSeconds = Math.round(value * 24 * 60 * 60);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
       }
 
       cleanedRow[renamedKey] = value;
@@ -50,6 +48,7 @@ export function cleanEmptyValues(dataArray, sheetName) {
     return cleanedRow;
   });
 }
+
 
 export function removeFirstColumn(data) {
   return data.map(row => {
