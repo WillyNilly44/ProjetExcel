@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../netflify/functions/supabaseClient';
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds }) {
     const [form, setForm] = useState({

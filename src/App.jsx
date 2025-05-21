@@ -4,7 +4,6 @@ import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import DashboardPage from './DashboardPage';
 import MainPage from './MainPage';
-import { supabase } from '../netflify/functions/supabaseClient';
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
@@ -21,30 +20,23 @@ function App() {
   });
 
   useEffect(() => {
-    const fetchThresholds = async () => {
-      const { data, error } = await supabase
-        .from('dashboard_thresholds')
-        .select('*')
-        .order('updated_at', { ascending: false })
-        .limit(1);
-      if (!error && data?.length) {
-        setThresholds(data[0]);
-      }
-    };
-    fetchThresholds();
-  }, []);
+  const fetchThresholds = async () => {
+    const res = await fetch('/.netlify/functions/getThresholds');
+    const result = await res.json();
+    if (res.ok) setThresholds(result.data);
+  };
+  fetchThresholds();
+}, []);
 
-  useEffect(() => {
-    const fetchAdminNotes = async () => {
-      const { data, error } = await supabase
-        .from('admin_notes')
-        .select('*');
-      if (!error && data) {
-        setAdminNotes(data);
-      }
-    };
-    fetchAdminNotes();
-  }, []);
+useEffect(() => {
+  const fetchAdminNotes = async () => {
+    const res = await fetch('/.netlify/functions/getAdminNotes');
+    const result = await res.json();
+    if (res.ok) setAdminNotes(result.data);
+  };
+  fetchAdminNotes();
+}, []);
+
 
   if (adminView) {
     if (!isAdmin) {
