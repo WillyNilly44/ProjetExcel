@@ -30,6 +30,10 @@ export default function AdminLogin({ onLogin }) {
           Connexion
         </button>
 
+        <button onClick={() => window.location.reload()} className="admin-login-button">
+          Retourner
+        </button>
+
         {error && (
           <p className="admin-login-error">{error}</p>
         )}
