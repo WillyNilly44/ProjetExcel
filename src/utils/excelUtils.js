@@ -38,7 +38,6 @@ export function cleanEmptyValues(dataArray, sheetName) {
       // Ne convertir en HH:mm que si la colonne n'est pas dans ["Est. (hrs)", "Acc. time"]
       const hourLikeColumns = ["Duration (hrs)", "__EMPTY_5"];
       if (typeof value === "number" && value > 0 && value < 1 && !hourLikeColumns.includes(renamedKey)) {
-        console.log("Converting to HH:mm", value, renamedKey);
         const totalSeconds = Math.round(value * 24 * 60 * 60);
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
