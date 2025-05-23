@@ -5,11 +5,31 @@ import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
+import * as XLSX from 'xlsx';
 
 export default function CalendarView({ data, initialDate }) {
   const events = data.map((row, index) => {
     const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date'));
-    const startTime = row['Start'] || row['Heure'] || '08:00';
+
+    function normalizeTime(value) {
+      if (typeof value === 'number') {
+        const totalMinutes = Math.round(value * 24 * 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+    
+      if (typeof value === 'string') {
+        const cleaned = value.replace(/^(\d{1,2})h(\d{2})$/, '$1:$2');
+        const match = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+        if (match) return cleaned;
+      }
+    
+      return null;
+    }
+    
+    const startTime = normalizeTime(row['__EMPTY_2']);
+
     const duration = parseFloat(row['Acc. time']) || 1;
 
     if (!dateKey || !row[dateKey]) return null;
@@ -19,18 +39,19 @@ export default function CalendarView({ data, initialDate }) {
 
     const endDate = new Date(startDate.getTime() + duration * 60 * 60 * 1000);
 
+
     return {
       id: index,
-      title: row['Incident'] || row['Note'] || row['App Name'] || 'Événement',
+      title: row['Incident'] || row['Note'] || row['App Name'],
       start: startDate,
       end: endDate,
       allDay: false,
+      
       extendedProps: {
         note: row['Note'],
         incident: row['Incident'],
         app: row['App Name'],
-        district: row['District'],
-        duration: row['Acc. time']
+        ticket: row['Ticket #'] || ''
       }
     };
   }).filter(Boolean);
@@ -43,14 +64,16 @@ export default function CalendarView({ data, initialDate }) {
         initialDate={initialDate || undefined}
         locale={frLocale}
         events={events}
-        slotMinTime="06:00:00"
-        slotMaxTime="20:00:00"
+        slotMinTime="00:00:00"
+        slotMaxTime="24:00:00"
         height="auto"
         nowIndicator={true}
         allDaySlot={false}
         eventContent={(arg) => {
-          const { note, incident, app, district, duration } = arg.event.extendedProps;
+          const { note, app,ticket } = arg.event.extendedProps;
           const title = arg.event.title;
+          const startTime = arg.event.start;
+
 
           return (
             <Tippy
@@ -58,11 +81,10 @@ export default function CalendarView({ data, initialDate }) {
                 <div style={{ padding: '6px', maxWidth: 250 }}>
                   <strong>{title}</strong>
                   <br />
-                  {incident && <><strong>Incident :</strong> {incident}<br /></>}
                   {note && <><strong>Note :</strong> {note}<br /></>}
                   {app && <><strong>Application :</strong> {app}<br /></>}
-                  {district && <><strong>District :</strong> {district}<br /></>}
-                  {duration && <><strong>Durée :</strong> {duration}h</>}
+                  {ticket && <><strong>Ticket #:</strong> {ticket}<br /></>}
+                  {startTime && <><strong>Début :</strong> {startTime.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}<br /></>}
                 </div>
               }
               placement="top"

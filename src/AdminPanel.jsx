@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import FileUpload from './components/FileUpload';
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds }) {
     const [form, setForm] = useState({
@@ -9,16 +10,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     });
 
     const [localThresholds, setLocalThresholds] = useState(thresholds);
-
-    const fetchNotes = async () => {
-        const res = await fetch('/.netlify/functions/getAdminNotes');
-        const result = await res.json();
-        if (res.ok && result.data) {
-            setAdminNotes(result.data);
-        } else {
-            console.error("Erreur de lecture des notes :", result.error);
-        }
-    };
 
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
@@ -67,20 +58,20 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     };
 
     const removeNote = async (id) => {
-  const res = await fetch('/.netlify/functions/deleteAdminNote', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  });
+        const res = await fetch('/.netlify/functions/deleteAdminNote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
 
-  const result = await res.json();
-  if (res.ok) {
-    setAdminNotes(prev => prev.filter(note => note.id !== id));
-  } else {
-    console.error("Erreur suppression :", result.error);
-    alert("Échec de la suppression de la note.");
-  }
-};
+        const result = await res.json();
+        if (res.ok) {
+            setAdminNotes(prev => prev.filter(note => note.id !== id));
+        } else {
+            console.error("Erreur suppression :", result.error);
+            alert("Échec de la suppression de la note.");
+        }
+    };
 
     return (
         <div className="admin-panel">
@@ -92,6 +83,11 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                         🔓 Retourner
                     </button>
                 </div>
+            </div>
+
+            <div className="upload-box">
+                <h3>📤 Upload d'un fichier Excel</h3>
+                <FileUpload onDataLoaded={() => alert("File uploaded!")} />
             </div>
 
             <div className="thresholds-box">
