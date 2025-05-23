@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import FileUpload from './components/FileUpload';
+import React, { useState, useEffect } from 'react';
 import SheetSelector from './components/SheetSelector';
 import Filters from './components/Filters';
 import DataTable from './components/DataTable';
@@ -19,14 +18,37 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     const [dataSource, setDataSource] = useState('fusion');
     const [isMonthSelected, setIsMonthSelected] = useState(false);
     const [calendarStartDate, setCalendarStartDate] = useState(null);
-    
 
-    const handleWorkbookLoaded = (wb, validSheets) => {
-        setWorkbook(wb);
-        setSheetNames(validSheets);
-        setSelectedSheet('fusion');
-        loadDataFromSheets(wb, validSheets);
-    };
+    useEffect(() => {
+        const fetchLatestExcel = async () => {
+            try {
+                const res = await fetch('/.netlify/functions/getLatestExcel');
+                const { url } = await res.json();
+                const response = await fetch(url);
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                const validSheets = workbook.SheetNames.filter(name =>
+                    name.toLowerCase().includes('operational') ||
+                    name.toLowerCase().includes('application')
+                );
+
+                if (validSheets.length === 0) {
+                    alert("Aucune feuille valide trouvée.");
+                    return;
+                }
+
+                setWorkbook(workbook);
+                setSheetNames(validSheets);
+                setSelectedSheet('fusion');
+                loadDataFromSheets(workbook, validSheets);
+            } catch (err) {
+                console.error('Erreur chargement automatique depuis Supabase:', err);
+            }
+        };
+
+        fetchLatestExcel();
+    }, []);
 
     const loadDataFromSheets = (wb, sheets) => {
         const allData = sheets.flatMap((sheetName) => {
@@ -49,7 +71,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     return (
         <div className="App" style={{ padding: 20 }}>
             <h2>📁 Operational & Application Logs</h2>
-            <FileUpload onWorkbookLoaded={handleWorkbookLoaded} />
 
             {sheetNames.length > 1 && (
                 <div style={{ marginBottom: '10px' }}>
@@ -85,10 +106,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                         onMonthYearChange={setCalendarStartDate}
                     />
                     <div style={{ margin: '10px 0' }}>
-                                <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
-                                    {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
-                                </button>
-                            </div>
+                        <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
+                            {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
+                        </button>
+                    </div>
                     {viewMode === 'table' ? (
                         <>
                             <ExportPdfBtn

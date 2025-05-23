@@ -1,34 +1,57 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import * as XLSX from 'xlsx';
 
-export default function FileUpload({ onWorkbookLoaded }) {
-  const handleFile = (e) => {
+const FileUpload = ({ onDataLoaded }) => {
+  const inputRef = useRef();
+
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const data = new Uint8Array(event.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
+    const formData = new FormData();
+    formData.append('file', file);
 
-      const validSheets = workbook.SheetNames.filter(name =>
-        name.toLowerCase().includes('operational') ||
-        name.toLowerCase().includes('application')
-      );
+    try {
+      const res = await fetch('/.netlify/functions/uploadExcel', {
+        method: 'POST',
+        body: formData,
+      });
 
-      if (validSheets.length === 0) {
-        alert("Aucune feuille valide (Operational/Application Logs) trouvée.");
-        return;
-      }
+      const text = await res.text();
+      const { url } = JSON.parse(text);
 
-      onWorkbookLoaded(workbook, validSheets);
-    };
-    reader.readAsArrayBuffer(file);
+      if (!url) throw new Error('URL de téléchargement manquante');
+
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+      const sheets = workbook.SheetNames.reduce((acc, sheetName) => {
+        const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: '' });
+        acc[sheetName] = data;
+        return acc;
+      }, {});
+
+      onDataLoaded(sheets);
+    } catch (err) {
+      console.error('Erreur durant le chargement du fichier depuis Supabase:', err);
+    }
   };
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      <input type="file" accept=".xlsx, .xls" onChange={handleFile} />
+    <div style={{ marginBottom: '1rem' }}>
+      <button className="primary-button" onClick={() => inputRef.current?.click()}>
+        📤 Upload un fichier Excel
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleFileChange}
+        style={{ display: 'none' }}
+      />
     </div>
   );
-}
+};
+
+export default FileUpload;
