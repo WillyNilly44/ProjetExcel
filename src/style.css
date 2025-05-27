@@ -1,145 +1,316 @@
-/* === 🎨 Dark Theme Variables === */
+/* === 🌙 Refactored Dark Theme CSS === */
 :root {
   --primary: #4dabf7;
   --primary-hover: #339af0;
   --light-bg: #121212;
-  --border: #333;
   --text-color: #eee;
   --header-bg: #1e1e1e;
   --row-alt: #1a1a1a;
+  --border: #333;
+  --error: #ff6b6b;
+  --button-accent: #5c7cfa;
+  --button-accent-hover: #4c6ef5;
 }
 
 body {
   background-color: var(--light-bg);
   color: var(--text-color);
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
-h2 {
+h2, h3, h4 {
   color: #fff;
-}
-
-select,
-input[type="file"] {
-  background-color: #1e1e1e;
-  color: #eee;
-  border-color: #444;
+  margin-bottom: 0.5em;
 }
 
 button {
   background-color: var(--primary);
   color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 button:hover {
   background-color: var(--primary-hover);
 }
 
-.table-section {
-  background-color: #1c1c1c;
-  border-color: var(--border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+button.secondary {
+  background-color: #444;
+}
+
+button.danger-button {
+  background-color: var(--error);
+}
+
+/* ✅ Accent buttons (e.g., Export, Calendrier) */
+button.accent-button {
+  background-color: var(--button-accent);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+button.accent-button:hover {
+  background-color: var(--button-accent-hover);
+}
+
+input, select {
+  background-color: #1a1a1a;
+  border: 1px solid var(--border);
+  color: var(--text-color);
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: var(--text-color);
+}
+
+.admin-login-wrapper,
+.admin-login-box,
+.admin-form-container,
+.thresholds-box,
+.upload-box {
+  background-color: var(--header-bg);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.admin-login-error {
+  color: var(--error);
+  margin-top: 10px;
+}
+
+.admin-note-list {
+  list-style: none;
+  padding: 0;
+  color: var(--text-color);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.top-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#filters-wrapper, #filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* ✅ Group filters and buttons on the same row */
+#filters-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+/* === Tables === */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.85rem;
 }
 
 th {
   background-color: var(--header-bg);
   color: #fff;
-  border-color: #444;
+  padding: 10px;
+  border: 1px solid var(--border);
 }
 
 td {
   background-color: #181818;
   color: #ddd;
-  border-color: #333;
+  padding: 10px;
+  border: 1px solid var(--border);
 }
 
-tr:nth-child(even) {
+tr:nth-child(even) td {
   background-color: var(--row-alt);
-}
-
-/* === Ligne de tableau avec découpage visible === */
-table tr {
-  border-bottom: 1px solid #333;
-}
-table tr:last-child {
-  border-bottom: none;
-}
-
-table td, table th {
-  padding: 12px 16px;
-}
-
-.admin-form-container,
-.form-section,
-.admin-login-box,
-.thresholds-box {
-  background-color: #1e1e1e;
-  border-color: #333;
-  color: #eee;
-}
-
-.admin-login-input,
-.admin-note-field,
-input,
-select {
-  background-color: #1a1a1a;
-  border-color: #444;
-  color: #eee;
-}
-
-header nav a {
-  color: #ccc;
-}
-
-.page-title {
-  color: #fff;
 }
 
 /* === Pagination Controls === */
 #paginationControls {
   display: flex;
   gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
 }
 
 #paginationControls button {
-  background-color: var(--primary);
-  color: white;
-  border: none;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 4px;
-  cursor: pointer;
 }
 
-#paginationControls button:hover {
-  background-color: var(--primary-hover);
+.page-title {
+  color: var(--text-color);
+  font-size: 24px;
 }
 
-/* === Filtres : label au-dessus du select === */
-#filters-wrapper {
+header nav a {
+  color: #ccc;
+  text-decoration: none;
+}
+
+header nav a:hover {
+  color: #fff;
+}
+
+select[multiple] {
+  height: auto;
+}
+
+.admin-note-field {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+}
+
+/* === Menu Dropdown Fixes === */
+.menu-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.menu-dropdown-content {
+  background-color: #2b2b2b;
+  color: #eee;
+  border: 1px solid #444;
+  border-radius: 6px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+  padding: 4px 0;
+}
+
+.menu-dropdown-content a,
+.menu-dropdown-content button {
+  color: #eee;
+  padding: 10px 16px;
+  text-decoration: none;
+  background: none;
+
+}
+.menu-dropdown-content a:hover,
+.menu-dropdown-content button:hover {
+  background-color: #3b3b3b;
+}
+/* === FullCalendar Dark Theme Overrides === */
+.fc {
+  background-color: #1a1a1a;
+  color: #ddd;
+  font-size: 0.85rem;
+  border-color: #333;
+}
+
+.fc .fc-timegrid-slot {
+  background-color: #121212;
+  border-color: #333;
+}
+
+.fc .fc-scrollgrid {
+  border-color: #444;
+}
+
+.fc .fc-timegrid-axis,
+.fc .fc-col-header-cell {
+  background-color: #1e1e1e;
+  color: #aaa;
+  border-color: #333;
+}
+
+.fc .fc-event {
+  background-color: #4dabf7;
+  border: none;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.fc .fc-event:hover {
+  background-color: #339af0;
+}
+
+.fc .fc-toolbar-title {
+  color: #eee;
+}
+
+
+.admin-login-wrapper {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 20px;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
 }
 
-#filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-#filters label {
+.admin-login-box {
+  background-color: var(--header-bg);
+  padding: 32px;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-width: 400px;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  font-size: 14px;
-  color: var(--text-color);
+  align-items: center;
+  text-align: center;
 }
 
-#filters select {
-  margin-top: 4px;
-  background-color: #1a1a1a;
-  border: 1px solid #444;
-  color: #eee;
-  padding: 6px 10px;
+.admin-login-box h2 {
+  margin-bottom: 24px;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.admin-login-input {
+  width: 85%;
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: block;
+  text-align: left;
+}
+
+.button-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-login-button {
+  flex: 1;
+}
+
+.admin-login-error {
+  margin-top: 15px;
+  color: var(--error);
+  text-align: center;
 }

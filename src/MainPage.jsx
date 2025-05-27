@@ -118,7 +118,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   }, []);
 
   useEffect(() => {
-    console.log(adminNotes);
     if (workbook && sheetNames.length > 0 && adminNotes.length > 0) {
       const sheetsToLoad =
         dataSource === 'operational'
@@ -196,7 +195,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <h2 style={{ margin: 0 }}>📁 Operational & Application Logs</h2>
         <div className="top-buttons">
-          <button onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
+          <button className='accent-button' onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
             {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
           </button>
           <ExportPdfBtn

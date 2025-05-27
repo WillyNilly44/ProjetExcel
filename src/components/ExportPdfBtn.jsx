@@ -92,7 +92,7 @@ export default function ExportPdfBtn({ filteredData = [] }) {
   };
 
   return (
-    <button onClick={exportPdf} style={{ marginBottom: '15px' }}>
+    <button onClick={exportPdf} className="accent-button" style={{ marginBottom: '15px' }}>
       📄 Export
     </button>
   );

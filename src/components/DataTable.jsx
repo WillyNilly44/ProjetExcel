@@ -1,7 +1,7 @@
 import React from 'react';
 
 export default function DataTable({ data, pageSize, currentPage }) {
-  const excludedColumns = ["Maint. (#)", "Maint. (hrs)", "Incid. (#)", "Incid. (hrs.)", "Bus. Imp.", "Bus. Imp. (hrs)"];
+  const excludedColumns = ["Maint. (#)", "Maint. (hrs)", "Incid. (#)", "Incid. (hrs.)", "Bus. Imp.", "Bus. Imp. (hrs)", "Event App", "isAdmin"];
 
   const start = currentPage * pageSize;
   const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);

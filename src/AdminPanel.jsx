@@ -130,7 +130,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                     <h4>Horaire</h4>
                     <div className="form-grid">
                         <label>
-                            Jour de la semaine (note récurrente)
+                            Récurrence
                             <select value={form.weekday} onChange={handleChange('weekday')}>
                                 <option value="">— Sélectionner —</option>
                                 <option value="Monday">Lundi</option>
