@@ -4,7 +4,8 @@ export default function AdminLogin({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
     if (password === 'admin') {
       sessionStorage.setItem('admin', 'true');
       onLogin();
@@ -17,26 +18,31 @@ export default function AdminLogin({ onLogin }) {
     <div className="admin-login-wrapper">
       <div className="admin-login-box">
         <h2>🔐 Connexion Admin</h2>
+        
+        <form onSubmit={handleSubmit}>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mot de passe"
+            className="admin-login-input"
+          />
+          
+          <div className="button-group">
+            <button type="submit" className="admin-login-button">
+              Connexion
+            </button>
+            <button 
+              type="button" 
+              onClick={() => window.location.reload()} 
+              className="admin-login-button secondary"
+            >
+              Retourner
+            </button>
+          </div>
+        </form>
 
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Mot de passe"
-          className="admin-login-input"
-        />
-
-        <button onClick={handleLogin} className="admin-login-button">
-          Connexion
-        </button>
-
-        <button onClick={() => window.location.reload()} className="admin-login-button">
-          Retourner
-        </button>
-
-        {error && (
-          <p className="admin-login-error">{error}</p>
-        )}
+        {error && <p className="admin-login-error">{error}</p>}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
 import DashboardPage from './DashboardPage';
 import MainPage from './MainPage';
+import MenuDropdown from './components/MenuDropdown';
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
@@ -20,22 +21,22 @@ function App() {
   });
 
   useEffect(() => {
-  const fetchThresholds = async () => {
-    const res = await fetch('/.netlify/functions/getThresholds');
-    const result = await res.json();
-    if (res.ok) setThresholds(result.data);
-  };
-  fetchThresholds();
-}, []);
+    const fetchThresholds = async () => {
+      const res = await fetch('/.netlify/functions/getThresholds');
+      const result = await res.json();
+      if (res.ok) setThresholds(result.data);
+    };
+    fetchThresholds();
+  }, []);
 
-useEffect(() => {
-  const fetchAdminNotes = async () => {
-    const res = await fetch('/.netlify/functions/getAdminNotes');
-    const result = await res.json();
-    if (res.ok) setAdminNotes(result.data);
-  };
-  fetchAdminNotes();
-}, []);
+  useEffect(() => {
+    const fetchAdminNotes = async () => {
+      const res = await fetch('/.netlify/functions/getAdminNotes');
+      const result = await res.json();
+      if (res.ok) setAdminNotes(result.data);
+    };
+    fetchAdminNotes();
+  }, []);
 
 
   if (adminView) {
@@ -69,14 +70,8 @@ useEffect(() => {
   return (
     <Router>
       <div style={{ padding: '20px' }}>
-        <header>
-          <nav>
-            <Link to="/">🏠 Logs</Link>
-            <Link to="/dashboard">📊 Dashboard</Link>
-          </nav>
-          <button onClick={() => setAdminView(true)} className="admin-button">
-            🔒 Admin
-          </button>
+        <header style={{ padding: '10px 20px', marginBottom: '20px' }}>
+          <MenuDropdown onAdminClick={() => setAdminView(true)} />
         </header>
 
         <Suspense fallback={<p>Chargement...</p>}>

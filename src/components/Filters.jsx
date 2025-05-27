@@ -80,7 +80,8 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
   };
 
   return (
-    <div style={{ marginBottom: '20px' }}>
+    <div id="filters">
+
       <label>
         Année:
         <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>

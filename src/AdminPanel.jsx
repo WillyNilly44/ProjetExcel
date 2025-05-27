@@ -6,7 +6,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
         business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
         end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
-        assigned: '', note: ''
+        assigned: '', note: '', log_type: ''
     });
 
     const [localThresholds, setLocalThresholds] = useState(thresholds);
@@ -49,7 +49,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             setForm({
                 incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
                 business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: ''
+                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: '', log_type: ''
             });
         } else {
             console.error("Erreur backend :", result.error);
@@ -163,6 +163,14 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                         <label>Incident<input type="text" value={form.incid_event} onChange={handleChange('incid_event')} /></label>
                         <label>Impact business<input type="text" value={form.business_impact} onChange={handleChange('business_impact')} /></label>
                         <label>RCA<input type="text" value={form.rca} onChange={handleChange('rca')} /></label>
+                        <select
+                            value={form.log_type}
+                            onChange={(e) => setForm({ ...form, log_type: e.target.value })}
+                        >
+                            <option value="application">Application</option>
+                            <option value="operational">Operational</option>
+                        </select>
+
                     </div>
                 </div>
 
