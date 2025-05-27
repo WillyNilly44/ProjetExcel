@@ -34,11 +34,11 @@ function generateRecurringEntries(adminNotes, minDate, maxDate) {
         Incident: note.incident || '',
         District: note.district || '',
         Date: dateObj.toISOString().split('T')[0],
-        "Event": note.maintenance_event || '',
+        Event: note.maint_event || '',
         __EMPTY_1: note.incident_event || '',
         "Business impact ?": note.business_impact || '',
         RCA: note.rca || '',
-        "Duration (hrs)": note.estimated_duration_hrs || '',
+        "Duration (hrs)": note.est_duration_hrs || '',
         __EMPTY_2: note.start_duration_hrs || '',
         __EMPTY_3: note.end_duration_hrs || '',
         __EMPTY_4: note.accumulated_business_impact || '',
@@ -46,14 +46,13 @@ function generateRecurringEntries(adminNotes, minDate, maxDate) {
         "Ticket #": note.ticket_number || '',
         Assigned: note.assigned || '',
         Note: note.note || '',
-        isAdmin: true
-      });      
+      });
     }
   }
   return entries;
 }
 
-export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNames }) {
+export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNames, exportColumns }) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState('');
@@ -65,6 +64,8 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [dataSource, setDataSource] = useState('fusion');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
+
+
 
   useEffect(() => {
     const fetchAdminNotes = async () => {
@@ -138,11 +139,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       return rawData;
     });
 
-    const datesOnly = allData.map(row =>
-      new Date(Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)))
-    ).filter(d => !isNaN(d));
-    const minDate = new Date(Math.min(...datesOnly));
-    const maxDate = new Date(Math.max(...datesOnly));
+    const minDate = calendarStartDate || new Date();
+    const maxDate = new Date(minDate);
+    maxDate.setMonth(maxDate.getMonth() + 2);
+
 
     const enrichedAllData = allData.map(row => {
       const dateStr = Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
@@ -153,8 +153,13 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     });
 
     const filteredAdminNotes = adminNotes.filter(note => {
-  return !note.target_sheet || dataSource === 'fusion' || note.target_sheet === dataSource;
-});
+      return (
+        dataSource === 'fusion' ||
+        !note.log_type ||
+        note.log_type === dataSource
+      );
+    });
+
 
     const recurring = generateRecurringEntries(filteredAdminNotes, minDate, maxDate);
     const mergedData = [...enrichedAllData, ...recurring];
@@ -167,14 +172,12 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         normalizedRow[k] = row[k] || '';
       });
       return normalizedRow;
+    }).sort((a, b) => {
+      const dateA = new Date(a.Date || '');
+      const dateB = new Date(b.Date || '');
+      return dateB - dateA;
     });
 
-
-    mergedData.sort((a, b) => {
-  const dateA = new Date(a.Date || '');
-  const dateB = new Date(b.Date || '');
-  return dateB - dateA;
-});
 
     setData(normalizedMerged);
     setFilteredData(normalizedMerged);
@@ -203,12 +206,13 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             currentPage={currentPage}
             pageSize={isMonthSelected ? -1 : pageSize}
             adminNotes={adminNotes}
+            selectedColumns={exportColumns}
           />
         </div>
       </div>
 
       {sheetNames.length > 1 && (
-      <div id="filters-wrapper">
+        <div id="filters-wrapper">
           <label>
             Feuilles à afficher :
             <select

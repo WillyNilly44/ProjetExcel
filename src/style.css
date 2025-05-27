@@ -314,3 +314,38 @@ select[multiple] {
   color: var(--error);
   text-align: center;
 }
+.export-columns-box {
+  background-color: var(--header-bg);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.export-columns-box h4 {
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: var(--text-color);
+}
+
+.export-columns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.export-columns-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1a1a1a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: var(--text-color);
+  border: 1px solid var(--border);
+  transition: background-color 0.2s;
+}
+
+.export-columns-grid label:hover {
+  background-color: #2a2a2a;
+}

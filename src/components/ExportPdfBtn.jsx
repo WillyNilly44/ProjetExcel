@@ -1,69 +1,39 @@
-// ✅ ExportPdfBtn.jsx nettoyé
 import React from 'react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-export default function ExportPdfBtn({ filteredData = [] }) {
+export default function ExportPdfBtn({ filteredData = [], selectedColumns = [] }) {
   const exportPdf = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
-    const table = document.querySelector('table');
-    if (!table) {
-      alert("Aucun tableau trouvé à l'écran.");
-      return;
-    }
 
     const columnRenames = {
       "Assigned": "Resource",
       "Note": "Summary",
       "Date+Start": "Scheduled date & time",
+      "Duration (hrs)": "Estimated duration",
+      "Start": "Start time",
+      "End": "End time",
       "Acc. time": "Duration (hrs)",
       "District": "Affected site",
-      "No": "#",
+      "No": "#"
     };
 
-    const excludedColumns = ["Incident", "Event", "Incid.", "Impact?", "RCA", "", "End", "Est. (hrs)"];
-    const exportOrder = ["No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District"];
+    // Si l'utilisateur n'a rien sélectionné, exporter tout
+    const fallbackOrder = Object.keys(filteredData[0] || {});
+    const exportOrder = selectedColumns.length > 0 ? selectedColumns : fallbackOrder;
 
-    function parseDateTime(str) {
-      if (!str || typeof str !== 'string') return new Date(0);
-      const parsed = new Date(str);
-      return isNaN(parsed.getTime()) ? new Date(0) : parsed;
-    }
-
-    const cloned = table.cloneNode(true);
-    const headers = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
-    const indexesToRemove = headers.map((name, idx) => (excludedColumns.includes(name) ? idx : -1)).filter(idx => idx !== -1);
-    [...indexesToRemove].sort((a, b) => b - a).forEach(idx => {
-      cloned.querySelectorAll('thead tr').forEach(tr => tr.children[idx]?.remove());
-      cloned.querySelectorAll('tbody tr').forEach(tr => tr.children[idx]?.remove());
-    });
-    const headersAfter = Array.from(cloned.querySelectorAll('thead th')).map(th => th.textContent.trim());
-
-    const tableRows = Array.from(cloned.querySelectorAll('tbody tr')).map((tr) => {
-      const cells = Array.from(tr.children).map(td => td.textContent.trim());
-      const row = exportOrder.map(col => {
+    
+    const body = filteredData.map((row, idx) => {
+      console.log(row);
+      return exportOrder.map(col => {
         if (col === "Date+Start") {
-          const d = headersAfter.indexOf("Date");
-          const s = headersAfter.indexOf("Start");
-          const date = d !== -1 ? cells[d] : '';
-          const start = s !== -1 ? cells[s] : '';
+          const date = row["Date"] || "";
+          const start = row["__EMPTY_2"] || "";
           return `${date} ${start}`.trim();
         }
-        const idx = headersAfter.indexOf(col);
-        return idx !== -1 ? cells[idx] : '';
+        if (col === "No") return `${idx + 1}`;
+        return row[col] ?? "";
       });
-      const fullDate = row[exportOrder.indexOf("Date+Start")];
-      const dateOnly = fullDate.split(' ')[0];
-      row.sortKey = parseDateTime(dateOnly);
-      row.isAdmin = false;
-      return row;
-    });
-
-    const allRows = tableRows.sort((a, b) => a.sortKey - b.sortKey);
-    const finalBody = allRows.map((row, idx) => {
-      const newRow = [...row];
-      newRow[exportOrder.indexOf("No")] = `${idx + 1}`;
-      return newRow;
     });
 
     const translatedHeaders = exportOrder.map(col => columnRenames[col] || col);
@@ -72,7 +42,7 @@ export default function ExportPdfBtn({ filteredData = [] }) {
     doc.text('Export', 14, 15);
     doc.autoTable({
       head: [translatedHeaders],
-      body: finalBody,
+      body,
       startY: 20,
       styles: {
         fontSize: 8,

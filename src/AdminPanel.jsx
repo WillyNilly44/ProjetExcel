@@ -1,13 +1,60 @@
+
 import React, { useEffect, useState } from 'react';
 import FileUpload from './components/FileUpload';
 
-export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds }) {
+export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns }) {
     const [form, setForm] = useState({
         incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
         business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
         end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
         assigned: '', note: '', log_type: ''
     });
+
+    const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
+    const allPossibleColumns = [
+        "No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District",
+        "Incident", "Event", "RCA", "Business impact ?", "Start", "End", "Status"
+    ];
+
+    const toggleColumn = (col) => {
+        const updated = exportColumnsLocal.includes(col)
+            ? exportColumnsLocal.filter(c => c !== col)
+            : [...exportColumnsLocal, col];
+        setExportColumnsLocal(updated);
+        setExportColumns(updated);
+    };
+
+
+    useEffect(() => {
+        const saveExportColumns = async () => {
+            await fetch('/.netlify/functions/saveExportColumns', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ columns: exportColumnsLocal })
+            });
+        };
+
+        if (exportColumnsLocal.length > 0) {
+            saveExportColumns();
+        }
+    }, [exportColumnsLocal]);
+
+
+    useEffect(() => {
+        const fetchExportColumns = async () => {
+            const res = await fetch('/.netlify/functions/getExportColumns');
+            const result = await res.json();
+            if (res.ok && Array.isArray(result.columns)) {
+                setExportColumns(result.columns);       
+                setExportColumnsLocal(result.columns);   
+            }
+
+        };
+        fetchExportColumns();
+    }, []);
+
 
     const [localThresholds, setLocalThresholds] = useState(thresholds);
 
@@ -77,17 +124,29 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         <div className="admin-panel">
             <h2>Page de Gestion Admin</h2>
 
-            <div className="admin-panel">
-                <div style={{ textAlign: 'right', marginBottom: 20 }}>
-                    <button className="danger-button" onClick={onLogout}>
-                        🔓 Retourner
-                    </button>
-                </div>
+            <div style={{ textAlign: 'right', marginBottom: 20 }}>
+                <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
             </div>
 
             <div className="upload-box">
                 <h3>📤 Upload d'un fichier Excel</h3>
                 <FileUpload onDataLoaded={() => alert("File uploaded!")} />
+            </div>
+
+            <div className="export-columns-box">
+                <h4>Colonnes à exporter :</h4>
+                <div className="export-columns-grid">
+                    {allPossibleColumns.map(col => (
+                        <label key={col}>
+                            <input
+                                type="checkbox"
+                                checked={exportColumnsLocal.includes(col)}
+                                onChange={() => toggleColumn(col)}
+                            />
+                            {col}
+                        </label>
+                    ))}
+                </div>
             </div>
 
             <div className="thresholds-box">
@@ -170,7 +229,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                             <option value="application">Application</option>
                             <option value="operational">Operational</option>
                         </select>
-
                     </div>
                 </div>
 

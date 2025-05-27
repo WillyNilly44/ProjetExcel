@@ -12,6 +12,7 @@ function App() {
   const [adminNotes, setAdminNotes] = useState([]);
   const [workbook, setWorkbook] = useState(null);
   const [sheetNames, setSheetNames] = useState([]);
+  const [exportColumns, setExportColumns] = useState([]);
   const [thresholds, setThresholds] = useState({
     maintenance_yellow: 15,
     maintenance_red: 25,
@@ -38,6 +39,18 @@ function App() {
     fetchAdminNotes();
   }, []);
 
+  useEffect(() => {
+    const fetchExportColumns = async () => {
+      const res = await fetch('/.netlify/functions/getExportColumns');
+      const result = await res.json();
+      if (res.ok && Array.isArray(result.columns)) {
+        setExportColumns(result.columns);
+      }
+    };
+    fetchExportColumns();
+  }, []);
+
+
 
   if (adminView) {
     if (!isAdmin) {
@@ -62,6 +75,7 @@ function App() {
           setAdminNotes={setAdminNotes}
           thresholds={thresholds}
           setThresholds={setThresholds}
+          setExportColumns={setExportColumns}
         />
       </Suspense>
     );
@@ -85,6 +99,7 @@ function App() {
                   sheetNames={sheetNames}
                   setSheetNames={setSheetNames}
                   adminNotes={adminNotes}
+                  exportColumns={exportColumns}
                 />
               }
             />
