@@ -194,6 +194,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     }).sort((a, b) => {
       const dateA = new Date(a.Date || '');
       const dateB = new Date(b.Date || '');
+      
       return dateA - dateB;
     });
 

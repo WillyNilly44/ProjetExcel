@@ -121,7 +121,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 <button className="primary-button" onClick={() => setShowUploadModal(true)}>📤 Upload fichier Excel</button>
                 <button className="primary-button" onClick={() => setShowExportModal(true)}>🧩 Colonnes à exporter</button>
                 <button className="primary-button" onClick={() => setShowThresholdsModal(true)}>🎛 Modifier les seuils</button>
-                <button className="primary-button" onClick={() => setShowFormModal(true)}>➕ Ajouter une entrée admin</button>
+                <button className="primary-button" onClick={() => setShowFormModal(true)}>➕ Ajouter récurrence</button>
             </div>
 
             <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} title="📤 Upload Excel">
@@ -160,7 +160,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 <button className="primary-button" onClick={updateThresholds}>💾 Enregistrer</button>
             </Modal>
 
-            <Modal isOpen={showFormModal} onClose={() => setShowFormModal(false)} title="➕ Ajouter une entrée admin">
+            <Modal isOpen={showFormModal} onClose={() => setShowFormModal(false)} title="➕ Ajouter récurrence">
                 <div className="form-section">
                     <h4>Identification</h4>
                     <div className="form-grid">

@@ -12,8 +12,11 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
 
   useEffect(() => {
     const dates = originalData.map(extractDateInfo).filter(d => d.date);
-    const uniqueYears = [...new Set(dates.map(d => d.date.getFullYear()))];
+    const uniqueYears = [...new Set(dates.map(d => d.date.getFullYear()))]
+      .filter(Boolean)
+      .sort((a, b) => b - a);
     setYears(uniqueYears);
+
   }, [originalData]);
 
   useEffect(() => {
