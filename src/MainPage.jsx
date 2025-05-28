@@ -52,6 +52,20 @@ function generateRecurringEntries(adminNotes, minDate, maxDate) {
   return entries;
 }
 
+function renameField(key) {
+  const mapping = {
+    "__EMPTY_1": "Incident (event)",
+    "__EMPTY_2": "Start (hrs)",
+    "__EMPTY_3": "End (hrs)",
+    "__EMPTY_4": "Acc. Business Impact",
+    "__EMPTY_5": "Real time (hrs)",
+    "Business impact ?": "Impact?",
+    "Duration (hrs)": "Est. Duration (hrs)",
+  };
+  return mapping[key] || key;
+}
+
+
 export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNames, exportColumns }) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState([]);
@@ -64,6 +78,8 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [dataSource, setDataSource] = useState('fusion');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+
 
 
 
@@ -139,9 +155,13 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       return rawData;
     });
 
-    const minDate = calendarStartDate || new Date();
+    const minDate = new Date(calendarStartDate || new Date());
+    minDate.setMonth(minDate.getMonth() - 1); // 🔁 Inclure le mois précédent
+
     const maxDate = new Date(minDate);
-    maxDate.setMonth(maxDate.getMonth() + 2);
+    maxDate.setMonth(maxDate.getMonth() + 1); // 🔁 Inclure le mois courant + suivant
+
+
 
 
     const enrichedAllData = allData.map(row => {
@@ -245,6 +265,45 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
           />
         </div>
       )}
+      {selectedEntry && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: '#222',
+            color: 'white',
+            padding: 20,
+            borderRadius: 8,
+            maxWidth: '90%',
+            maxHeight: '80%',
+            overflowY: 'auto'
+          }}>
+            <h3>Détails de l'entrée</h3>
+            <table style={{ width: '100%' }}>
+              <tbody>
+                {Object.entries(selectedEntry).map(([key, value]) => (
+                  <tr key={key}>
+                    <td style={{ fontWeight: 'bold', padding: '4px 8px', verticalAlign: 'top' }}>{renameField(key)}</td>
+                    <td style={{ padding: '4px 8px' }}>{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign: 'right', marginTop: 20 }}>
+              <button onClick={() => setSelectedEntry(null)} style={{ padding: '6px 12px', cursor: 'pointer' }}>
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {sheetNames.length > 0 && (
         viewMode === 'table' ? (
@@ -254,6 +313,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               pageSize={isMonthSelected ? -1 : pageSize}
               currentPage={currentPage}
               sheetname={selectedSheet}
+              onRowClick={(row) => setSelectedEntry(row)}
             />
             {!isMonthSelected && (
               <PaginationControls
