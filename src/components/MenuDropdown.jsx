@@ -21,7 +21,7 @@ export default function MenuDropdown({ onAdminClick }) {
       {open && (
         <div className="menu-dropdown-content">
           <a href="/">🏠 Logs</a>
-          <a href="/dashboardPage">📊 Dashboard</a>
+          <a href="/DashboardPage">📊 Dashboard</a>
           <button onClick={onAdminClick}>🔒 Admin</button>
         </div>
       )}
