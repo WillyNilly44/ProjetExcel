@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import FileUpload from './components/FileUpload';
+import Modal from './components/Modal';
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns }) {
     const [form, setForm] = useState({
@@ -24,14 +24,11 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         setExportColumns(updated);
     };
 
-
     useEffect(() => {
         const saveExportColumns = async () => {
             await fetch('/.netlify/functions/saveExportColumns', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ columns: exportColumnsLocal })
             });
         };
@@ -41,32 +38,30 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         }
     }, [exportColumnsLocal]);
 
-
     useEffect(() => {
         const fetchExportColumns = async () => {
             const res = await fetch('/.netlify/functions/getExportColumns');
             const result = await res.json();
             if (res.ok && Array.isArray(result.columns)) {
-                setExportColumns(result.columns);       
-                setExportColumnsLocal(result.columns);   
+                setExportColumns(result.columns);
+                setExportColumnsLocal(result.columns);
             }
-
         };
         fetchExportColumns();
     }, []);
 
-
     const [localThresholds, setLocalThresholds] = useState(thresholds);
+    const [showFormModal, setShowFormModal] = useState(false);
+    const [showThresholdsModal, setShowThresholdsModal] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
 
     const handleChange = (field) => (e) => {
         setForm({ ...form, [field]: e.target.value });
     };
 
     const handleThresholdChange = (field) => (e) => {
-        setLocalThresholds(prev => ({
-            ...prev,
-            [field]: Number(e.target.value)
-        }));
+        setLocalThresholds(prev => ({ ...prev, [field]: Number(e.target.value) }));
     };
 
     const updateThresholds = async () => {
@@ -82,7 +77,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
     const addNote = async () => {
         if (!form.weekday && !form.note) return;
-
         const response = await fetch('/.netlify/functions/addNote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -90,13 +84,13 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         });
 
         const result = await response.json();
-
         if (response.ok) {
             setAdminNotes(prev => [...prev, ...result.data]);
             setForm({
                 incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
                 business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '', assigned: '', note: '', log_type: ''
+                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
+                assigned: '', note: '', log_type: ''
             });
         } else {
             console.error("Erreur backend :", result.error);
@@ -122,19 +116,19 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
     return (
         <div className="admin-panel">
-            <h2>Page de Gestion Admin</h2>
-
-            <div style={{ textAlign: 'right', marginBottom: 20 }}>
-                <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
+            <h2>Admin Page</h2>
+            <div className="top-buttons">
+                <button className="primary-button" onClick={() => setShowUploadModal(true)}>📤 Upload fichier Excel</button>
+                <button className="primary-button" onClick={() => setShowExportModal(true)}>🧩 Colonnes à exporter</button>
+                <button className="primary-button" onClick={() => setShowThresholdsModal(true)}>🎛 Modifier les seuils</button>
+                <button className="primary-button" onClick={() => setShowFormModal(true)}>➕ Ajouter une entrée admin</button>
             </div>
 
-            <div className="upload-box">
-                <h3>📤 Upload d'un fichier Excel</h3>
+            <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} title="📤 Upload Excel">
                 <FileUpload onDataLoaded={() => alert("File uploaded!")} />
-            </div>
+            </Modal>
 
-            <div className="export-columns-box">
-                <h4>Colonnes à exporter :</h4>
+            <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="🧩 Colonnes à exporter">
                 <div className="export-columns-grid">
                     {allPossibleColumns.map(col => (
                         <label key={col}>
@@ -147,18 +141,12 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                         </label>
                     ))}
                 </div>
-            </div>
+            </Modal>
 
-            <div className="thresholds-box">
-                <h3>🎛 Modifier les seuils du Dashboard</h3>
+            <Modal isOpen={showThresholdsModal} onClose={() => setShowThresholdsModal(false)} title="🎛 Modifier les seuils">
                 <div className="form-grid">
-                    {[
-                        ['maintenance_yellow', 'Maintenance (jaune)'],
-                        ['maintenance_red', 'Maintenance (rouge)'],
-                        ['incident_yellow', 'Incident (jaune)'],
-                        ['incident_red', 'Incident (rouge)'],
-                        ['impact', 'Impact (seuil)']
-                    ].map(([key, label]) => (
+                    {[['maintenance_yellow', 'Maintenance (jaune)'], ['maintenance_red', 'Maintenance (rouge)'],
+                    ['incident_yellow', 'Incident (jaune)'], ['incident_red', 'Incident (rouge)'], ['impact', 'Impact (seuil)']].map(([key, label]) => (
                         <label key={key}>
                             {label}
                             <input
@@ -169,12 +157,10 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                         </label>
                     ))}
                 </div>
-                <button className="primary-button" onClick={updateThresholds}>💾 Enregistrer les seuils</button>
-            </div>
+                <button className="primary-button" onClick={updateThresholds}>💾 Enregistrer</button>
+            </Modal>
 
-            <div className="admin-form-container">
-                <h3>➕ Ajouter une entrée admin</h3>
-
+            <Modal isOpen={showFormModal} onClose={() => setShowFormModal(false)} title="➕ Ajouter une entrée admin">
                 <div className="form-section">
                     <h4>Identification</h4>
                     <div className="form-grid">
@@ -188,8 +174,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 <div className="form-section">
                     <h4>Horaire</h4>
                     <div className="form-grid">
-                        <label>
-                            Récurrence
+                        <label>Récurrence
                             <select value={form.weekday} onChange={handleChange('weekday')}>
                                 <option value="">— Sélectionner —</option>
                                 <option value="Monday">Lundi</option>
@@ -201,7 +186,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                                 <option value="Sunday">Dimanche</option>
                             </select>
                         </label>
-
                         <label>Début<input type="time" value={form.start_duration_hrs} onChange={handleChange('start_duration_hrs')} /></label>
                         <label>Fin<input type="time" value={form.end_duration_hrs} onChange={handleChange('end_duration_hrs')} /></label>
                     </div>
@@ -222,10 +206,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                         <label>Incident<input type="text" value={form.incid_event} onChange={handleChange('incid_event')} /></label>
                         <label>Impact business<input type="text" value={form.business_impact} onChange={handleChange('business_impact')} /></label>
                         <label>RCA<input type="text" value={form.rca} onChange={handleChange('rca')} /></label>
-                        <select
-                            value={form.log_type}
-                            onChange={(e) => setForm({ ...form, log_type: e.target.value })}
-                        >
+                        <select value={form.log_type} onChange={(e) => setForm({ ...form, log_type: e.target.value })}>
                             <option value="application">Application</option>
                             <option value="operational">Operational</option>
                         </select>
@@ -237,22 +218,34 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                     <input type="text" value={form.note} onChange={handleChange('note')} className="admin-note-field" />
                 </div>
 
-                <button className="primary-button" onClick={addNote}>➕ Ajouter l'entrée</button>
-            </div>
+                <button className="primary-button" onClick={addNote}>➕ Ajouter</button>
+            </Modal>
+
 
             <h3>Entrées Admin</h3>
-            <ul className="admin-note-list">
+            <div className="admin-note-list">
                 {adminNotes.map((note, idx) => (
-                    <li key={note.id || idx}>
-                        📌 <strong>{note.note}</strong> — {note.weekday} — {note.incident} — {note.district} — {note.assigned}
-                        <button className="danger-button" onClick={() => removeNote(note.id)}>Supprimer</button>
-                    </li>
+                    <div
+                        key={note.id || idx}
+                        className="admin-note-item"
+                    >
+                        <div>
+                            <div className="admin-note-title">{note.note}</div>
+                            <div className="admin-note-meta">
+                                📅 {note.weekday} — 🏷 {note.incident} — 🏢 {note.district} — 👤 {note.assigned}
+                            </div>
+                        </div>
+                        <button
+                            className="danger-button"
+                            onClick={() => removeNote(note.id)}
+                        >Supprimer</button>
+                    </div>
                 ))}
-            </ul>
+            </div>
 
-            <button className="danger-button" onClick={onLogout}>
-                🔓 Retourner
-            </button>
+            <div className="logout-wrapper">
+                <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
+            </div>
         </div>
     );
 }

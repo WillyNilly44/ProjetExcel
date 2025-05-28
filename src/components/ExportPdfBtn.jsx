@@ -24,7 +24,6 @@ export default function ExportPdfBtn({ filteredData = [], selectedColumns = [] }
 
     
     const body = filteredData.map((row, idx) => {
-      console.log(row);
       return exportOrder.map(col => {
         if (col === "Date+Start") {
           const date = row["Date"] || "";

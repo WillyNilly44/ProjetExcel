@@ -30,8 +30,6 @@ exports.handler = async (event) => {
       };
     }
 
-    console.log("Envoi à Supabase :", columns);
-
     const { data, error } = await supabase
       .from('export_config')
       .upsert([{ id: 'singleton', columns, updated_at: new Date().toISOString() }]);

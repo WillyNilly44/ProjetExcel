@@ -349,3 +349,48 @@ select[multiple] {
 .export-columns-grid label:hover {
   background-color: #2a2a2a;
 }
+.top-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.admin-note-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.admin-note-item {
+  background-color: #2a2a2a;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-note-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.admin-note-meta {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.logout-wrapper {
+  text-align: right;
+  margin-top: 20px;
+}
+.admin-panel {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+
