@@ -184,7 +184,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     const recurring = generateRecurringEntries(filteredAdminNotes, minDate, maxDate);
     const mergedData = [...enrichedAllData, ...recurring];
 
-    // 🔧 Normaliser toutes les lignes pour forcer l'affichage des colonnes
     const allKeys = new Set(mergedData.flatMap(row => Object.keys(row)));
     const normalizedMerged = mergedData.map(row => {
       const normalizedRow = {};
@@ -195,7 +194,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     }).sort((a, b) => {
       const dateA = new Date(a.Date || '');
       const dateB = new Date(b.Date || '');
-      return dateB - dateA;
+      return dateA - dateB;
     });
 
 
