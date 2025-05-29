@@ -88,10 +88,12 @@ export default function CalendarView({ data, initialDate }) {
                 </div>
               }
               placement="top"
+              zIndex={9999}
               arrow={true}
               theme="light-border"
               delay={[100, 0]}
               interactive={true}
+              appendTo={document.body} 
             >
               <div>{title}</div>
             </Tippy>
