@@ -80,7 +80,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
-
+console.log(exportColumns);
 
 
   useEffect(() => {
@@ -156,10 +156,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     });
 
     const minDate = new Date(calendarStartDate || new Date());
-    minDate.setMonth(minDate.getMonth() - 1); // 🔁 Inclure le mois précédent
+    minDate.setMonth(minDate.getMonth() - 1); 
 
     const maxDate = new Date(minDate);
-    maxDate.setMonth(maxDate.getMonth() + 1); // 🔁 Inclure le mois courant + suivant
+    maxDate.setMonth(maxDate.getMonth() + 1); 
 
 
 
@@ -194,7 +194,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     }).sort((a, b) => {
       const dateA = new Date(a.Date || '');
       const dateB = new Date(b.Date || '');
-      
+
       return dateA - dateB;
     });
 
@@ -314,7 +314,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               currentPage={currentPage}
               sheetname={selectedSheet}
               onRowClick={(row) => setSelectedEntry(row)}
+              visibleColumns={exportColumns}
             />
+
+
             {!isMonthSelected && (
               <PaginationControls
                 currentPage={currentPage}
