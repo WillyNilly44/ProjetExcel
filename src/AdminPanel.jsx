@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import FileUpload from './components/FileUpload';
 import Modal from './components/Modal';
 
-export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns }) {
+export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns, allColumns }) {
     const [form, setForm] = useState({
         incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
         business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
@@ -11,10 +11,8 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     });
 
     const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
-    const allPossibleColumns = [
-        "No", "Ticket #", "Assigned", "Note", "Date+Start", "Acc. time", "District",
-        "Incident", "Event", "RCA", "Business impact ?", "Start", "End", "Status"
-    ];
+    const allPossibleColumns = allColumns || [];
+
 
     const toggleColumn = (col) => {
         const updated = exportColumnsLocal.includes(col)
@@ -119,7 +117,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             <h2>Admin Page</h2>
             <div className="top-buttons">
                 <button className="primary-button" onClick={() => setShowUploadModal(true)}>📤 Upload fichier Excel</button>
-                <button className="primary-button" onClick={() => setShowExportModal(true)}>🧩 Colonnes à exporter</button>
+                <button className="primary-button" onClick={() => setShowExportModal(true)}>🧩 Affichage des Colonnes</button>
                 <button className="primary-button" onClick={() => setShowThresholdsModal(true)}>🎛 Modifier les seuils</button>
                 <button className="primary-button" onClick={() => setShowFormModal(true)}>➕ Ajouter récurrence</button>
             </div>
@@ -130,16 +128,17 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
             <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="🧩 Colonnes à exporter">
                 <div className="export-columns-grid">
-                    {allPossibleColumns.map(col => (
-                        <label key={col}>
+                    {allPossibleColumns.map(({ key, label }) => (
+                        <label key={key}>
                             <input
                                 type="checkbox"
-                                checked={exportColumnsLocal.includes(col)}
-                                onChange={() => toggleColumn(col)}
+                                checked={exportColumnsLocal.includes(key)}
+                                onChange={() => toggleColumn(key)}
                             />
-                            {col}
+                            {label}
                         </label>
                     ))}
+
                 </div>
             </Modal>
 
@@ -219,7 +218,10 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 </div>
 
                 <button className="primary-button" onClick={addNote}>➕ Ajouter</button>
-            </Modal>
+            </Modal> 
+            <div className="logout-wrapper">
+                <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
+            </div>
 
 
             <h3>Entrées Admin</h3>
@@ -243,9 +245,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 ))}
             </div>
 
-            <div className="logout-wrapper">
-                <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
-            </div>
+            
         </div>
     );
 }

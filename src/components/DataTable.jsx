@@ -1,7 +1,7 @@
 import React from 'react';
 import { FixedSizeList as List } from 'react-window';
 
-export default function DataTable({ data, pageSize, currentPage, onRowClick }) {
+export default function DataTable({ data, pageSize, currentPage, onRowClick, visibleColumns }) {
   const excludedColumns = ["Maint. (#)", "Maint. (hrs)", "Incid. (#)", "Incid. (hrs.)", "Bus. Imp.", "Bus. Imp. (hrs)", "Event App", "isAdmin"];
   const start = currentPage * pageSize;
   const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
@@ -9,7 +9,11 @@ export default function DataTable({ data, pageSize, currentPage, onRowClick }) {
 
   if (pageData.length === 0) return <p style={{ color: 'red' }}>Aucune donnée disponible.</p>;
 
-  const headers = Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
+  const headers = (Array.isArray(visibleColumns) && visibleColumns.length > 0)
+    ? visibleColumns
+    : Object.keys(pageData[0]).filter(h => !excludedColumns.includes(h));
+
+
   const displayHeaders = headers.map(h => {
     switch (h) {
       case "Business impact ?": return "Impact?";

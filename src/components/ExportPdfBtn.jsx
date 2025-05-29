@@ -7,16 +7,21 @@ export default function ExportPdfBtn({ filteredData = [], selectedColumns = [] }
     const doc = new jsPDF({ orientation: 'landscape' });
 
     const columnRenames = {
-      "Assigned": "Resource",
-      "Note": "Summary",
-      "Date+Start": "Scheduled date & time",
-      "Duration (hrs)": "Estimated duration",
-      "Start": "Start time",
-      "End": "End time",
-      "Acc. time": "Duration (hrs)",
-      "District": "Affected site",
-      "No": "#"
-    };
+  "Incident": "Incident",
+  "District": "Affected site",
+  "Date": "Date",
+  "Duration (hrs)": "Estimated duration",
+  "__EMPTY_2": "Start",
+  "__EMPTY_3": "End",
+  "__EMPTY_4": "Acc. Bus. Imp.",
+  "__EMPTY_5": "Acc. time",
+  "Business impact ?": "Impact ?",
+  "RCA": "RCA",
+  "Ticket #": "Ticket #",
+  "Assigned": "Resource",
+  "Note": "Summary",
+  "Status": "Status"
+};
 
     // Si l'utilisateur n'a rien sélectionné, exporter tout
     const fallbackOrder = Object.keys(filteredData[0] || {});
