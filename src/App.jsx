@@ -95,7 +95,6 @@ function App() {
 
   if (adminView) {
     if (!isAdmin) {
-      console.log(exportColumns);
       return (
         <AdminLogin
           onLogin={() => {

@@ -78,9 +78,9 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [dataSource, setDataSource] = useState('fusion');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
+  const [lastFilteredDate, setLastFilteredDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
-console.log(exportColumns);
 
 
   useEffect(() => {

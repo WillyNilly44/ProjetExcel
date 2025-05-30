@@ -16,7 +16,6 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
       .filter(Boolean)
       .sort((a, b) => b - a);
     setYears(uniqueYears);
-
   }, [originalData]);
 
   useEffect(() => {
@@ -57,6 +56,7 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
       setWeeks([]);
       return;
     }
+
     const dates = originalData.map(extractDateInfo).filter(d =>
       d.date &&
       d.date.getFullYear() === Number(selectedYear) &&
@@ -64,17 +64,39 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
     );
     const uniqueWeeks = [...new Set(dates.map(d => d.weekRange))];
     setWeeks(uniqueWeeks);
+
     if (onMonthFilterChange) {
       onMonthFilterChange(!!selectedMonth);
     }
+
     if (onMonthYearChange) {
       const y = Number(selectedYear);
       const m = Number(selectedMonth);
       if (!isNaN(y) && !isNaN(m)) {
-        onMonthYearChange(new Date(y, m, 1));
+        onMonthYearChange(new Date(y, m, 1)); // ✅ va au 1er jour du mois
       }
     }
   }, [selectedMonth]);
+
+  useEffect(() => {
+    if (selectedYear && !selectedMonth && onMonthYearChange) {
+      const y = Number(selectedYear);
+      if (!isNaN(y)) {
+        onMonthYearChange(new Date(y, 0, 1)); // ✅ va au 1er janvier
+      }
+    }
+  }, [selectedYear]);
+
+  // ✅ Va au début de la semaine sélectionnée
+  useEffect(() => {
+    if (selectedWeek && onMonthYearChange) {
+      const [startStr] = selectedWeek.split('|');
+      const start = new Date(startStr);
+      if (!isNaN(start)) {
+        onMonthYearChange(start);
+      }
+    }
+  }, [selectedWeek]);
 
   const resetFilters = () => {
     setSelectedYear('');
@@ -84,7 +106,6 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
 
   return (
     <div id="filters">
-
       <label>
         Année:
         <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
@@ -99,11 +120,8 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
           <option value="">-- Tous --</option>
           {months.map(m => (
             <option key={m} value={m}>
-              {new Date(0, m)
-                .toLocaleString('fr', { month: 'long' })
-                .replace(/^./, c => c.toUpperCase())}
+              {new Date(0, m).toLocaleString('fr', { month: 'long' }).replace(/^./, c => c.toUpperCase())}
             </option>
-
           ))}
         </select>
       </label>
