@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const MONTH_OPTIONS = [
-  'Tous', 'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'Septembre', 'October', 'November', 'December'
+  'Tous', 'Jan', 'Feb', 'March', 'April', 'May', 'June',
+  'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'
 ];
 
 export default function DashboardPage({ workbook, thresholds }) {
@@ -54,7 +54,9 @@ export default function DashboardPage({ workbook, thresholds }) {
       .slice(weeklyStartIndex + 2)
       .filter(row => row.some(cell => cell !== ''));
 
-    const formattedWeekly = dataRows.map(row => {
+
+
+    const formattedWeekly = dataRows.map((row, idx) => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => {
         obj[h] = row[i];
@@ -93,19 +95,11 @@ export default function DashboardPage({ workbook, thresholds }) {
 
       <h3>Statistiques globales (par année)</h3>
       {summaryData.length > 0 ? (
-        <table style={{ borderCollapse: 'collapse', width: '65%', marginBottom: 10, fontSize: '0.85rem' }}>
+        <table className="dashboard-summary-table">
           <thead>
             <tr>
               {Object.keys(summaryData[0]).map((col, idx) => (
-                <th key={idx} style={{
-                  border: '1px solid #ccc',
-                  background: '#f0f4f8',
-                  padding: 6,
-                  width: '50px',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {col}
-                </th>
+                <th key={idx}>{col}</th>
               ))}
             </tr>
           </thead>
@@ -113,14 +107,7 @@ export default function DashboardPage({ workbook, thresholds }) {
             {summaryData.map((row, rIdx) => (
               <tr key={rIdx}>
                 {Object.values(row).map((val, cIdx) => (
-                  <td key={cIdx} style={{
-                    border: '1px solid #eee',
-                    padding: 6,
-                    whiteSpace: 'nowrap',
-                    textAlign: 'center'
-                  }}>
-                    {val}
-                  </td>
+                  <td key={cIdx}>{val}</td>
                 ))}
               </tr>
             ))}
@@ -140,26 +127,16 @@ export default function DashboardPage({ workbook, thresholds }) {
       </div>
 
       {filteredData.length > 0 ? (
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <table className="dashboard-weekly-table">
           <thead>
             <tr>
               {weeklyHeaders.map((col, idx) => (
-                <th key={idx} style={{ border: '1px solid #ccc', background: '#f0f4f8', padding: 8 }}>
-                  {col}
-                </th>
+                <th key={idx}>{col}</th>
               ))}
             </tr>
             <tr>
               {averageLine.map((val, idx) => (
-                <td key={idx} style={{
-                  border: '1px solid #ddd',
-                  background: '#fafafa',
-                  fontStyle: 'italic',
-                  color: '#888',
-                  padding: 6
-                }}>
-                  {val}
-                </td>
+                <td key={idx} style={{ fontStyle: 'italic', color: '#aaa' }}>{val}</td>
               ))}
             </tr>
           </thead>
@@ -173,22 +150,20 @@ export default function DashboardPage({ workbook, thresholds }) {
                   if (typeof val === 'number') {
                     const k = key.toLowerCase();
                     if (k.includes('maintenance')) {
-                      if (val >= thresholds.maintenance_red) backgroundColor = '#ffcccc';
-                      else if (val >= thresholds.maintenance_yellow) backgroundColor = '#fffacc';
-                      else backgroundColor = '#d5fdd5';
+                      if (val >= thresholds.maintenance_red) backgroundColor = '#662222';
+                      else if (val >= thresholds.maintenance_yellow) backgroundColor = '#665522';
+                      else backgroundColor = '#224422';
                     } else if (k.includes('incident')) {
-                      if (val >= thresholds.incident_red) backgroundColor = '#ffcccc';
-                      else if (val >= thresholds.incident_yellow) backgroundColor = '#fffacc';
-                      else backgroundColor = '#d5fdd5';
+                      if (val >= thresholds.incident_red) backgroundColor = '#662222';
+                      else if (val >= thresholds.incident_yellow) backgroundColor = '#665522';
+                      else backgroundColor = '#224422';
                     } else if (k.includes('impact') && val > thresholds.impact) {
-                      backgroundColor = '#ffe0e0';
+                      backgroundColor = '#663333';
                     }
                   }
 
                   return (
-                    <td key={cIdx} style={{ border: '1px solid #eee', padding: 8, backgroundColor }}>
-                      {val}
-                    </td>
+                    <td key={cIdx} style={{ backgroundColor }}>{val}</td>
                   );
                 })}
               </tr>

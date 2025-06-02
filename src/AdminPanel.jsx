@@ -63,15 +63,27 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     };
 
     const updateThresholds = async () => {
-        const { error } = await supabase.from('dashboard_thresholds').insert([{ ...localThresholds }]);
-        if (!error) {
-            setThresholds(localThresholds);
-            alert("Seuils enregistrés dans Supabase !");
-        } else {
-            console.error("Erreur Supabase :", error.message);
-            alert("Échec de l'enregistrement.");
+        try {
+            const res = await fetch('/.netlify/functions/updateThresholds', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(localThresholds)
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+                setThresholds(localThresholds);
+                alert("Seuils enregistrés !");
+            } else {
+                console.error("Erreur backend :", result);
+                alert("Erreur : " + result.error);
+            }
+        } catch (e) {
+            console.error("Erreur réseau :", e);
+            alert("Erreur de communication avec le serveur.");
         }
     };
+
 
     const addNote = async () => {
         if (!form.weekday && !form.note) return;
@@ -218,7 +230,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 </div>
 
                 <button className="primary-button" onClick={addNote}>➕ Ajouter</button>
-            </Modal> 
+            </Modal>
             <div className="logout-wrapper">
                 <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
             </div>
@@ -245,7 +257,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 ))}
             </div>
 
-            
+
         </div>
     );
 }

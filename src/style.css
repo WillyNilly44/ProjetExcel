@@ -393,4 +393,30 @@ select[multiple] {
   margin: 0 auto;
 }
 
+.dashboard-summary-table,
+.dashboard-weekly-table {
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.dashboard-summary-table th,
+.dashboard-weekly-table th {
+  background-color: var(--header-bg);
+  color: #fff;
+  padding: 10px;
+  border: 1px solid var(--border);
+}
+
+.dashboard-summary-table td,
+.dashboard-weekly-table td {
+  background-color: #181818;
+  color: #ddd;
+  padding: 10px;
+  border: 1px solid var(--border);
+}
+
+.dashboard-summary-table tr:nth-child(even) td,
+.dashboard-weekly-table tr:nth-child(even) td {
+  background-color: var(--row-alt);
+}
 
