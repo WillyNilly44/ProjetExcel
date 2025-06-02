@@ -156,10 +156,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     });
 
     const minDate = new Date(calendarStartDate || new Date());
-    minDate.setMonth(minDate.getMonth() - 1); 
+    minDate.setMonth(minDate.getMonth() - 1);
 
     const maxDate = new Date(minDate);
-    maxDate.setMonth(maxDate.getMonth() + 1); 
+    maxDate.setMonth(maxDate.getMonth() + 1);
 
 
 
@@ -190,13 +190,23 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       allKeys.forEach(k => {
         normalizedRow[k] = row[k] || '';
       });
+
+      if (normalizedRow.Date) {
+        const d = new Date(normalizedRow.Date);
+        if (!isNaN(d)) {
+          normalizedRow.Date = d.toISOString().split('T')[0]; // YYYY-MM-DD
+        }
+      }
       return normalizedRow;
     }).sort((a, b) => {
-      const dateA = new Date(a.Date || '');
-      const dateB = new Date(b.Date || '');
+      const dateA = new Date(a.Date);
+      const dateB = new Date(b.Date);
 
+      if (isNaN(dateA)) return 1;
+      if (isNaN(dateB)) return -1;
       return dateA - dateB;
     });
+
 
 
     setData(normalizedMerged);
