@@ -17,14 +17,12 @@ export default function Filters({
     return originalData.map(extractDateInfo).filter(d => d.date);
   }, [originalData]);
 
-  // 📅 Années disponibles
   const years = useMemo(() => {
     return [...new Set(enrichedDates.map(d => d.date.getFullYear()))]
       .filter(Boolean)
       .sort((a, b) => b - a);
   }, [enrichedDates]);
 
-  // 📅 Mois disponibles pour l’année sélectionnée
   const months = useMemo(() => {
     if (!selectedYear) return [];
     return [...new Set(
@@ -34,7 +32,6 @@ export default function Filters({
     )];
   }, [selectedYear, enrichedDates]);
 
-  // 📅 Semaines disponibles pour le mois sélectionné
   const weeks = useMemo(() => {
     if (!selectedMonth || !selectedYear) return [];
     return [...new Set(
@@ -47,7 +44,6 @@ export default function Filters({
     )];
   }, [selectedYear, selectedMonth, enrichedDates]);
 
-  // 🔍 Données filtrées selon sélection
   const filtered = useMemo(() => {
     const result = originalData.filter(row => {
       const { date } = extractDateInfo(row);
@@ -69,65 +65,18 @@ export default function Filters({
     return result;
   }, [originalData, selectedYear, selectedMonth, selectedWeek]);
 
-  // 🎯 Appliquer les données filtrées
   useEffect(() => {
     setFilteredData(filtered);
     setCurrentPage(0);
   }, [filtered]);
 
-  // 🗓 Vue calendrier synchronisée
+  // 🧠 Synchronisation calendrier + affichage
   useEffect(() => {
-    if (!selectedYear) {
-      setMonths([]);
-      setWeeks([]);
-      return;
-    }
-    const dates = originalData.map(extractDateInfo).filter(d => d.date && d.date.getFullYear() === Number(selectedYear));
-    const uniqueMonths = [...new Set(dates.map(d => d.date.getMonth()))];
-    setSelectedMonth('');
-    setSelectedWeek('');
-    setMonths(uniqueMonths);
-  }, [selectedYear]);
+    if (onMonthFilterChange) onMonthFilterChange(!!selectedMonth);
 
-  useEffect(() => {
-    if (!selectedMonth) {
-      setWeeks([]);
-      return;
-    }
+    let baseDate = null;
 
-    const dates = originalData.map(extractDateInfo).filter(d =>
-      d.date &&
-      d.date.getFullYear() === Number(selectedYear) &&
-      d.date.getMonth() === Number(selectedMonth)
-    );
-    const uniqueWeeks = [...new Set(dates.map(d => d.weekRange))];
-    setWeeks(uniqueWeeks);
-
-    if (onMonthFilterChange) {
-      onMonthFilterChange(!!selectedMonth);
-    }
-
-    if (onMonthYearChange) {
-      const y = Number(selectedYear);
-      const m = Number(selectedMonth);
-      if (!isNaN(y) && !isNaN(m)) {
-        onMonthYearChange(new Date(y, m, 1));
-      }
-    }
-    setSelectedWeek('');
-  }, [selectedMonth]);
-
-  useEffect(() => {
-    if (selectedYear && !selectedMonth && onMonthYearChange) {
-      const y = Number(selectedYear);
-      if (!isNaN(y)) {
-        onMonthYearChange(new Date(y, 0, 1));
-      }
-    }
-  }, [selectedYear]);
-
-  useEffect(() => {
-    if (selectedWeek && onMonthYearChange) {
+    if (selectedWeek) {
       const [startStr] = selectedWeek.split('|');
       baseDate = new Date(startStr);
     } else if (selectedYear && selectedMonth !== '') {
@@ -145,15 +94,15 @@ export default function Filters({
     setSelectedWeek('');
   };
 
-  console.log(selectedWeek);
-  console.log(selectedMonth);
-  console.log(selectedYear);
-
   return (
     <div id="filters">
       <label>
         Année:
-        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
+        <select value={selectedYear} onChange={e => {
+          setSelectedYear(e.target.value);
+          setSelectedMonth('');
+          setSelectedWeek('');
+        }}>
           <option value="">-- Toutes --</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
@@ -163,7 +112,10 @@ export default function Filters({
         Mois:
         <select
           value={selectedMonth}
-          onChange={e => setSelectedMonth(e.target.value)}
+          onChange={e => {
+            setSelectedMonth(e.target.value);
+            setSelectedWeek('');
+          }}
           disabled={!selectedYear}
         >
           <option value="">-- Tous --</option>
