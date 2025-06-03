@@ -63,6 +63,26 @@ function renameField(key) {
   };
   return mapping[key] || key;
 }
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return window.btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = window.atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 
 
 export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNames, exportColumns }) {
@@ -79,8 +99,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [lastFilteredDate, setLastFilteredDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
-
-
 
 
   useEffect(() => {
@@ -103,36 +121,51 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   }, []);
 
   useEffect(() => {
-    const fetchLatestExcel = async () => {
+  const fetchLatestExcel = async () => {
+    const cacheKey = 'excel-buffer-cache';
+    const cached = sessionStorage.getItem(cacheKey);
+
+    let arrayBuffer;
+
+    if (cached) {
+      arrayBuffer = base64ToArrayBuffer(cached);
+    } else {
       try {
         const res = await fetch('/.netlify/functions/getLatestExcel');
         const { url } = await res.json();
         const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        arrayBuffer = await response.arrayBuffer();
 
-        const validSheets = workbook.SheetNames.filter(name =>
-          name.toLowerCase().includes('operational') ||
-          name.toLowerCase().includes('application')
-        );
-
-        if (validSheets.length === 0) {
-          alert("Aucune feuille valide trouvée.");
-          return;
-        }
-
-        setWorkbook(workbook);
-        setSheetNames(validSheets);
-        setIsLoading(false);
-        setSelectedSheet('fusion');
-        loadDataFromSheets(workbook, validSheets);
+        const base64 = arrayBufferToBase64(arrayBuffer);
+        sessionStorage.setItem(cacheKey, base64);
+        console.log("📥 Excel téléchargé et mis en cache");
       } catch (err) {
         console.error('Erreur chargement automatique depuis Supabase:', err);
+        return;
       }
-    };
+    }
 
-    fetchLatestExcel();
-  }, []);
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+    const validSheets = workbook.SheetNames.filter(name =>
+      name.toLowerCase().includes('operational') ||
+      name.toLowerCase().includes('application')
+    );
+
+    if (validSheets.length === 0) {
+      alert("Aucune feuille valide trouvée.");
+      return;
+    }
+
+    setWorkbook(workbook);
+    setSheetNames(validSheets);
+    setIsLoading(false);
+    setSelectedSheet('fusion');
+    loadDataFromSheets(workbook, validSheets);
+  };
+
+  fetchLatestExcel();
+}, []);
 
   useEffect(() => {
     if (workbook && sheetNames.length > 0 && adminNotes.length > 0) {
