@@ -1,13 +1,12 @@
-// ✅ MainPage.jsx avec chargement de adminNotes depuis Supabase
-import React, { useState, useEffect } from 'react';
-import SheetSelector from './components/SheetSelector';
-import Filters from './components/Filters';
-import DataTable from './components/DataTable';
+import React, { useState, useEffect, Suspense } from 'react';
 import CalendarView from './components/CalendarView';
 import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
 import { cleanEmptyValues, removeFirstColumn } from './utils/excelUtils';
 import * as XLSX from 'xlsx';
+
+const DataTable = React.lazy(() => import('./components/DataTable'));
+const Filters = React.lazy(() => import('./components/Filters'));
 
 function getRecurringDatesForWeekdayInRange(weekday, startDate, endDate) {
   const dayMap = {
@@ -80,6 +79,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [lastFilteredDate, setLastFilteredDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
+
 
 
 
@@ -318,14 +318,16 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       {sheetNames.length > 0 && (
         viewMode === 'table' ? (
           <>
-            <DataTable
-              data={filteredData}
-              pageSize={isMonthSelected ? -1 : pageSize}
-              currentPage={currentPage}
-              sheetname={selectedSheet}
-              onRowClick={(row) => setSelectedEntry(row)}
-              visibleColumns={exportColumns}
-            />
+            <Suspense fallback={<p>Chargement...</p>}>
+              <DataTable
+                data={filteredData}
+                pageSize={isMonthSelected ? -1 : pageSize}
+                currentPage={currentPage}
+                sheetname={selectedSheet}
+                onRowClick={(row) => setSelectedEntry(row)}
+                visibleColumns={exportColumns}
+              />
+            </Suspense>
 
 
             {!isMonthSelected && (
