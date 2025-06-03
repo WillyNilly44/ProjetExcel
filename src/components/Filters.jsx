@@ -1,25 +1,55 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { extractDateInfo } from '../utils/dateUtils';
 
-export default function Filters({ originalData, setFilteredData, setCurrentPage, onMonthFilterChange, onMonthYearChange }) {
-  const [years, setYears] = useState([]);
-  const [months, setMonths] = useState([]);
-  const [weeks, setWeeks] = useState([]);
-
+export default function Filters({
+  originalData,
+  setFilteredData,
+  setCurrentPage,
+  onMonthFilterChange,
+  onMonthYearChange,
+}) {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedWeek, setSelectedWeek] = useState('');
 
-  useEffect(() => {
-    const dates = originalData.map(extractDateInfo).filter(d => d.date);
-    const uniqueYears = [...new Set(dates.map(d => d.date.getFullYear()))]
-      .filter(Boolean)
-      .sort((a, b) => b - a);
-    setYears(uniqueYears);
+  // 🔁 Dates enrichies (mémorisées)
+  const enrichedDates = useMemo(() => {
+    return originalData.map(extractDateInfo).filter(d => d.date);
   }, [originalData]);
 
-  useEffect(() => {
-    const filtered = originalData.filter(row => {
+  // 📅 Années disponibles
+  const years = useMemo(() => {
+    return [...new Set(enrichedDates.map(d => d.date.getFullYear()))]
+      .filter(Boolean)
+      .sort((a, b) => b - a);
+  }, [enrichedDates]);
+
+  // 📅 Mois disponibles pour l’année sélectionnée
+  const months = useMemo(() => {
+    if (!selectedYear) return [];
+    return [...new Set(
+      enrichedDates
+        .filter(d => d.date.getFullYear() === Number(selectedYear))
+        .map(d => d.date.getMonth())
+    )];
+  }, [selectedYear, enrichedDates]);
+
+  // 📅 Semaines disponibles pour le mois sélectionné
+  const weeks = useMemo(() => {
+    if (!selectedMonth || !selectedYear) return [];
+    return [...new Set(
+      enrichedDates
+        .filter(d =>
+          d.date.getFullYear() === Number(selectedYear) &&
+          d.date.getMonth() === Number(selectedMonth)
+        )
+        .map(d => d.weekRange)
+    )];
+  }, [selectedYear, selectedMonth, enrichedDates]);
+
+  // 🔍 Données filtrées selon sélection
+  const filtered = useMemo(() => {
+    const result = originalData.filter(row => {
       const { date } = extractDateInfo(row);
       if (!date) return false;
 
@@ -36,67 +66,31 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
       return true;
     });
 
+    return result;
+  }, [originalData, selectedYear, selectedMonth, selectedWeek]);
+
+  // 🎯 Appliquer les données filtrées
+  useEffect(() => {
     setFilteredData(filtered);
     setCurrentPage(0);
-  }, [selectedYear, selectedMonth, selectedWeek, originalData]);
+  }, [filtered]);
 
+  // 🗓 Vue calendrier synchronisée
   useEffect(() => {
-    if (!selectedYear) {
-      setMonths([]);
-      setWeeks([]);
-      return;
-    }
-    const dates = originalData.map(extractDateInfo).filter(d => d.date && d.date.getFullYear() === Number(selectedYear));
-    const uniqueMonths = [...new Set(dates.map(d => d.date.getMonth()))];
-    setMonths(uniqueMonths);
-  }, [selectedYear]);
+    if (onMonthFilterChange) onMonthFilterChange(!!selectedMonth);
 
-  useEffect(() => {
-    if (!selectedMonth) {
-      setWeeks([]);
-      return;
-    }
-
-    const dates = originalData.map(extractDateInfo).filter(d =>
-      d.date &&
-      d.date.getFullYear() === Number(selectedYear) &&
-      d.date.getMonth() === Number(selectedMonth)
-    );
-    const uniqueWeeks = [...new Set(dates.map(d => d.weekRange))];
-    setWeeks(uniqueWeeks);
-
-    if (onMonthFilterChange) {
-      onMonthFilterChange(!!selectedMonth);
-    }
-
-    if (onMonthYearChange) {
-      const y = Number(selectedYear);
-      const m = Number(selectedMonth);
-      if (!isNaN(y) && !isNaN(m)) {
-        onMonthYearChange(new Date(y, m, 1)); // ✅ va au 1er jour du mois
-      }
-    }
-  }, [selectedMonth]);
-
-  useEffect(() => {
-    if (selectedYear && !selectedMonth && onMonthYearChange) {
-      const y = Number(selectedYear);
-      if (!isNaN(y)) {
-        onMonthYearChange(new Date(y, 0, 1)); // ✅ va au 1er janvier
-      }
-    }
-  }, [selectedYear]);
-
-  // ✅ Va au début de la semaine sélectionnée
-  useEffect(() => {
-    if (selectedWeek && onMonthYearChange) {
+    let baseDate = null;
+    if (selectedWeek) {
       const [startStr] = selectedWeek.split('|');
-      const start = new Date(startStr);
-      if (!isNaN(start)) {
-        onMonthYearChange(start);
-      }
+      baseDate = new Date(startStr);
+    } else if (selectedYear && selectedMonth !== '') {
+      baseDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
+    } else if (selectedYear) {
+      baseDate = new Date(Number(selectedYear), 0, 1);
     }
-  }, [selectedWeek]);
+
+    if (baseDate && onMonthYearChange) onMonthYearChange(baseDate);
+  }, [selectedYear, selectedMonth, selectedWeek]);
 
   const resetFilters = () => {
     setSelectedYear('');
@@ -116,7 +110,11 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
 
       <label>
         Mois:
-        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} disabled={!selectedYear}>
+        <select
+          value={selectedMonth}
+          onChange={e => setSelectedMonth(e.target.value)}
+          disabled={!selectedYear}
+        >
           <option value="">-- Tous --</option>
           {months.map(m => (
             <option key={m} value={m}>
@@ -128,11 +126,19 @@ export default function Filters({ originalData, setFilteredData, setCurrentPage,
 
       <label>
         Semaine:
-        <select value={selectedWeek} onChange={e => setSelectedWeek(e.target.value)} disabled={!selectedMonth}>
+        <select
+          value={selectedWeek}
+          onChange={e => setSelectedWeek(e.target.value)}
+          disabled={!selectedMonth}
+        >
           <option value="">-- Toutes --</option>
           {weeks.map(w => {
             const [start, end] = w.split('|');
-            return <option key={w} value={w}>Semaine du {new Date(start).toLocaleDateString()} au {new Date(end).toLocaleDateString()}</option>;
+            return (
+              <option key={w} value={w}>
+                Semaine du {new Date(start).toLocaleDateString()} au {new Date(end).toLocaleDateString()}
+              </option>
+            );
           })}
         </select>
       </label>

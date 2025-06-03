@@ -1,12 +1,13 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AdminLogin from './AdminLogin';
-import AdminPanel from './AdminPanel';
-import DashboardPage from './DashboardPage';
-import MainPage from './MainPage';
 import MenuDropdown from './components/MenuDropdown';
 import * as XLSX from 'xlsx';
 
+// 🧩 Lazy loading des pages lourdes
+const AdminPanel = React.lazy(() => import('./AdminPanel'));
+const DashboardPage = React.lazy(() => import('./DashboardPage'));
+const MainPage = React.lazy(() => import('./MainPage'));
 
 function App() {
   const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem('admin') === 'true');
@@ -24,44 +25,41 @@ function App() {
     impact: 0
   });
 
+  // 🧠 Initialisation des colonnes
   useEffect(() => {
-  if (!workbook || sheetNames.length === 0) return;
+    if (!workbook || sheetNames.length === 0) return;
 
-  const sheet = workbook.Sheets[sheetNames[0]];
-  const rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
+    const sheet = workbook.Sheets[sheetNames[0]];
+    const rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
 
-  if (rawData.length > 0) {
-    const rawColumns = Object.keys(rawData[0]);
-    const columns = [...rawColumns];
+    if (rawData.length > 0) {
+      const rawColumns = Object.keys(rawData[0]);
+      const columnMap = {
+        "Incident": "Incident",
+        "District": "District",
+        "Date": "Date",
+        "Event": "Event",
+        "__EMPTY_1": "Incid.",
+        "Business impact ?": "Impact ?",
+        "RCA": "RCA",
+        "Duration (hrs)": "Durée estimée",
+        "__EMPTY_2": "Start",
+        "__EMPTY_3": "End",
+        "__EMPTY_5": "Acc. time",
+        "__EMPTY_4": "Acc. Bus. Imp.",
+        "Assigned": "Responsable",
+        "Note": "Note",
+        "Ticket #": "Ticket",
+        "Status": "Status",
+      };
 
-    // 🧼 Filtrer et renommer ici
-    const columnMap = {
-      "Incident": "Incident",
-      "District": "District",
-      "Date": "Date",
-      "Event": "Event",
-      "__EMPTY_1": "Incid.",
-      "Business impact ?": "Impact ?",
-      "RCA": "RCA",
-      "Duration (hrs)": "Durée estimée",
-      "__EMPTY_2": "Start",
-      "__EMPTY_3": "End",
-      "__EMPTY_5": "Acc. time",
-      "__EMPTY_4": "Acc. Bus. Imp.",
-      "Assigned": "Responsable",
-      "Note": "Note",
-      "Ticket #": "Ticket",
-      "Status": "Status",
-    };
+      const filtered = rawColumns.filter(col => columnMap[col]);
+      const renamed = filtered.map(col => ({ key: col, label: columnMap[col] }));
+      setAllColumns(renamed);
+    }
+  }, [workbook, sheetNames]);
 
-    const filtered = columns.filter(col => columnMap[col]);
-    const renamed = filtered.map(col => ({ key: col, label: columnMap[col] }));
-
-    setAllColumns(renamed);
-  }
-}, [workbook, sheetNames]);
-
-
+  // 🔢 Chargement des données
   useEffect(() => {
     const fetchThresholds = async () => {
       const res = await fetch('/.netlify/functions/getThresholds');
@@ -91,8 +89,7 @@ function App() {
     fetchExportColumns();
   }, []);
 
-
-
+  // 🔐 Interface Admin (vue isolée)
   if (adminView) {
     if (!isAdmin) {
       return (
@@ -104,8 +101,9 @@ function App() {
         />
       );
     }
+
     return (
-      <Suspense fallback={<p>Interface loading...</p>}>
+      <Suspense fallback={<p>Chargement de l'interface admin...</p>}>
         <AdminPanel
           onLogout={() => {
             sessionStorage.removeItem('admin');
@@ -117,12 +115,13 @@ function App() {
           thresholds={thresholds}
           setThresholds={setThresholds}
           setExportColumns={setExportColumns}
-           allColumns={allColumns}
+          allColumns={allColumns}
         />
       </Suspense>
     );
   }
 
+  // 🌐 Application principale avec routes
   return (
     <Router>
       <div style={{ padding: '20px' }}>
@@ -130,7 +129,7 @@ function App() {
           <MenuDropdown onAdminClick={() => setAdminView(true)} />
         </header>
 
-        <Suspense fallback={<p>Chargement...</p>}>
+        <Suspense fallback={<p>Chargement de la page...</p>}>
           <Routes>
             <Route
               path="/"
@@ -147,7 +146,12 @@ function App() {
             />
             <Route
               path="/dashboard"
-              element={<DashboardPage workbook={workbook} thresholds={thresholds} />}
+              element={
+                <DashboardPage
+                  workbook={workbook}
+                  thresholds={thresholds}
+                />
+              }
             />
           </Routes>
         </Suspense>
