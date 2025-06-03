@@ -1,160 +1,238 @@
 import React, { useEffect, useState } from 'react';
 import FileUpload from './components/FileUpload';
 import Modal from './components/Modal';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableItem({ id, label, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    padding: '8px 12px',
+    backgroundColor: '#333',
+    borderRadius: '8px',
+    color: 'white',
+    margin: '4px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    cursor: 'grab'
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <span {...listeners} style={{ cursor: 'grab' }}>{label}</span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation(); // empêcher le drag de se déclencher
+          onRemove(id);
+        }}
+        style={{
+          marginLeft: 8,
+          background: 'transparent',
+          color: 'white',
+          border: 'none',
+          cursor: 'pointer'
+        }}
+      >
+        ❌
+      </button>
+    </div>
+  );
+}
+
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns, allColumns }) {
-    const [form, setForm] = useState({
+  const [form, setForm] = useState({
+    incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
+    business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
+    end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
+    assigned: '', note: '', log_type: ''
+  });
+
+  
+  const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
+  const allPossibleColumns = allColumns || [];
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const addColumn = (key) => {
+    if (!exportColumnsLocal.includes(key)) {
+      const updated = [...exportColumnsLocal, key];
+      setExportColumnsLocal(updated);
+      setExportColumns(updated);
+    }
+  };
+
+  const removeColumn = (key) => {
+    const updated = exportColumnsLocal.filter(k => k !== key);
+    setExportColumnsLocal(updated);
+    setExportColumns(updated);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = exportColumnsLocal.indexOf(active.id);
+      const newIndex = exportColumnsLocal.indexOf(over.id);
+      const newOrder = arrayMove(exportColumnsLocal, oldIndex, newIndex);
+      setExportColumnsLocal(newOrder);
+      setExportColumns(newOrder);
+    }
+  };
+
+  useEffect(() => {
+    const saveExportColumns = async () => {
+      await fetch('/.netlify/functions/saveExportColumns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columns: exportColumnsLocal })
+      });
+    };
+    if (exportColumnsLocal.length > 0) {
+      saveExportColumns();
+    }
+  }, [exportColumnsLocal]);
+
+  useEffect(() => {
+    const fetchExportColumns = async () => {
+      const res = await fetch('/.netlify/functions/getExportColumns');
+      const result = await res.json();
+      if (res.ok && Array.isArray(result.columns)) {
+        setExportColumns(result.columns);
+        setExportColumnsLocal(result.columns);
+      }
+    };
+    fetchExportColumns();
+  }, []);
+
+  const [localThresholds, setLocalThresholds] = useState(thresholds);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [showThresholdsModal, setShowThresholdsModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  const handleChange = (field) => (e) => {
+    setForm({ ...form, [field]: e.target.value });
+  };
+
+  const handleThresholdChange = (field) => (e) => {
+    setLocalThresholds(prev => ({ ...prev, [field]: Number(e.target.value) }));
+  };
+
+  const updateThresholds = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/updateThresholds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(localThresholds)
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setThresholds(localThresholds);
+        alert("Seuils enregistrés !");
+      } else {
+        console.error("Erreur backend :", result);
+        alert("Erreur : " + result.error);
+      }
+    } catch (e) {
+      console.error("Erreur réseau :", e);
+      alert("Erreur de communication avec le serveur.");
+    }
+  };
+
+  const addNote = async () => {
+    if (!form.weekday && !form.note) return;
+    const response = await fetch('/.netlify/functions/addNote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form)
+    });
+    const result = await response.json();
+    if (response.ok) {
+      setAdminNotes(prev => [...prev, ...result.data]);
+      setForm({
         incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
         business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
         end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
         assigned: '', note: '', log_type: ''
+      });
+    } else {
+      console.error("Erreur backend :", result.error);
+      alert("Erreur lors de l'ajout de la note");
+    }
+  };
+
+  const removeNote = async (id) => {
+    const res = await fetch('/.netlify/functions/deleteAdminNote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
     });
+    const result = await res.json();
+    if (res.ok) {
+      setAdminNotes(prev => prev.filter(note => note.id !== id));
+    } else {
+      console.error("Erreur suppression :", result.error);
+      alert("Échec de la suppression de la note.");
+    }
+  };
 
-    const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
-    const allPossibleColumns = allColumns || [];
+  return (
+    <div className="admin-panel">
+      <h2>Admin Page</h2>
+      <div className="top-buttons">
+        <button className="primary-button" onClick={() => setShowUploadModal(true)}>📤 Upload fichier Excel</button>
+        <button className="primary-button" onClick={() => setShowExportModal(true)}>🧩 Affichage des Colonnes</button>
+        <button className="primary-button" onClick={() => setShowThresholdsModal(true)}>🎛 Modifier les seuils</button>
+        <button className="primary-button" onClick={() => setShowFormModal(true)}>➕ Ajouter récurrence</button>
+      </div>
 
+      <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} title="📤 Upload Excel">
+        <FileUpload onDataLoaded={() => alert("File uploaded!")} />
+      </Modal>
 
-    const toggleColumn = (col) => {
-        const updated = exportColumnsLocal.includes(col)
-            ? exportColumnsLocal.filter(c => c !== col)
-            : [...exportColumnsLocal, col];
-        setExportColumnsLocal(updated);
-        setExportColumns(updated);
-    };
-
-    useEffect(() => {
-        const saveExportColumns = async () => {
-            await fetch('/.netlify/functions/saveExportColumns', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ columns: exportColumnsLocal })
-            });
-        };
-
-        if (exportColumnsLocal.length > 0) {
-            saveExportColumns();
-        }
-    }, [exportColumnsLocal]);
-
-    useEffect(() => {
-        const fetchExportColumns = async () => {
-            const res = await fetch('/.netlify/functions/getExportColumns');
-            const result = await res.json();
-            if (res.ok && Array.isArray(result.columns)) {
-                setExportColumns(result.columns);
-                setExportColumnsLocal(result.columns);
-            }
-        };
-        fetchExportColumns();
-    }, []);
-
-    const [localThresholds, setLocalThresholds] = useState(thresholds);
-    const [showFormModal, setShowFormModal] = useState(false);
-    const [showThresholdsModal, setShowThresholdsModal] = useState(false);
-    const [showUploadModal, setShowUploadModal] = useState(false);
-    const [showExportModal, setShowExportModal] = useState(false);
-
-    const handleChange = (field) => (e) => {
-        setForm({ ...form, [field]: e.target.value });
-    };
-
-    const handleThresholdChange = (field) => (e) => {
-        setLocalThresholds(prev => ({ ...prev, [field]: Number(e.target.value) }));
-    };
-
-    const updateThresholds = async () => {
-        try {
-            const res = await fetch('/.netlify/functions/updateThresholds', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(localThresholds)
-            });
-
-            const result = await res.json();
-            if (res.ok) {
-                setThresholds(localThresholds);
-                alert("Seuils enregistrés !");
-            } else {
-                console.error("Erreur backend :", result);
-                alert("Erreur : " + result.error);
-            }
-        } catch (e) {
-            console.error("Erreur réseau :", e);
-            alert("Erreur de communication avec le serveur.");
-        }
-    };
-
-
-    const addNote = async () => {
-        if (!form.weekday && !form.note) return;
-        const response = await fetch('/.netlify/functions/addNote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(form)
-        });
-
-        const result = await response.json();
-        if (response.ok) {
-            setAdminNotes(prev => [...prev, ...result.data]);
-            setForm({
-                incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
-                business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
-                end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
-                assigned: '', note: '', log_type: ''
-            });
-        } else {
-            console.error("Erreur backend :", result.error);
-            alert("Erreur lors de l'ajout de la note");
-        }
-    };
-
-    const removeNote = async (id) => {
-        const res = await fetch('/.netlify/functions/deleteAdminNote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id })
-        });
-
-        const result = await res.json();
-        if (res.ok) {
-            setAdminNotes(prev => prev.filter(note => note.id !== id));
-        } else {
-            console.error("Erreur suppression :", result.error);
-            alert("Échec de la suppression de la note.");
-        }
-    };
-
-    return (
-        <div className="admin-panel">
-            <h2>Admin Page</h2>
-            <div className="top-buttons">
-                <button className="primary-button" onClick={() => setShowUploadModal(true)}>📤 Upload fichier Excel</button>
-                <button className="primary-button" onClick={() => setShowExportModal(true)}>🧩 Affichage des Colonnes</button>
-                <button className="primary-button" onClick={() => setShowThresholdsModal(true)}>🎛 Modifier les seuils</button>
-                <button className="primary-button" onClick={() => setShowFormModal(true)}>➕ Ajouter récurrence</button>
+      <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="🧩 Colonnes à exporter">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={exportColumnsLocal} strategy={horizontalListSortingStrategy}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              {exportColumnsLocal.map(key => {
+                const col = allPossibleColumns.find(c => c.key === key);
+                return (
+                  <SortableItem key={key} id={key} label={col?.label || key} onRemove={removeColumn} />
+                );
+              })}
             </div>
+          </SortableContext>
+        </DndContext>
 
-            <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} title="📤 Upload Excel">
-                <FileUpload onDataLoaded={() => alert("File uploaded!")} />
-            </Modal>
+        <h4>Colonnes disponibles :</h4>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {allPossibleColumns.filter(c => !exportColumnsLocal.includes(c.key)).map(col => (
+            <button
+              key={col.key}
+              onClick={() => addColumn(col.key)}
+              style={{ margin: 4, padding: '6px 10px', backgroundColor: '#ddd', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              ➕ {col.label}
+            </button>
+          ))}
+        </div>
+      </Modal>
 
-            <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="🧩 Colonnes à exporter">
-                <div className="export-columns-grid">
-                    {allPossibleColumns.map(({ key, label }) => (
-                        <label key={key}>
-                            <input
-                                type="checkbox"
-                                checked={exportColumnsLocal.includes(key)}
-                                onChange={() => toggleColumn(key)}
-                            />
-                            {label}
-                        </label>
-                    ))}
-
-                </div>
-            </Modal>
-
-            <Modal isOpen={showThresholdsModal} onClose={() => setShowThresholdsModal(false)} title="🎛 Modifier les seuils">
+       <Modal isOpen={showThresholdsModal} onClose={() => setShowThresholdsModal(false)} title="🎛 Modifier les seuils">
                 <div className="form-grid">
                     {[['maintenance_yellow', 'Maintenance (jaune)'], ['maintenance_red', 'Maintenance (rouge)'],
                     ['incident_yellow', 'Incident (jaune)'], ['incident_red', 'Incident (rouge)'], ['impact', 'Impact (seuil)']].map(([key, label]) => (
@@ -257,7 +335,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
                 ))}
             </div>
 
-
-        </div>
-    );
+    </div>
+  );
 }
