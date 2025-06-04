@@ -131,6 +131,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       arrayBuffer = base64ToArrayBuffer(cached);
     } else {
       try {
+        sessionStorage.removeItem('excel-buffer-cache');
         const res = await fetch('/.netlify/functions/getLatestExcel');
         const { url } = await res.json();
         const response = await fetch(url);
@@ -194,9 +195,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     const maxDate = new Date(minDate);
     maxDate.setMonth(maxDate.getMonth() + 1);
 
-
-
-
     const enrichedAllData = allData.map(row => {
       const dateStr = Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
       return {
@@ -212,7 +210,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         note.log_type === dataSource
       );
     });
-
 
     const recurring = generateRecurringEntries(filteredAdminNotes, minDate, maxDate);
     const mergedData = [...enrichedAllData, ...recurring];
@@ -239,9 +236,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       if (isNaN(dateB)) return -1;
       return dateA - dateB;
     });
-
-
-
     setData(normalizedMerged);
     setFilteredData(normalizedMerged);
     setCurrentPage(0);
