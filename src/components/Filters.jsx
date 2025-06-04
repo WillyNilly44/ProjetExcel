@@ -12,7 +12,6 @@ export default function Filters({
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedWeek, setSelectedWeek] = useState('');
 
-  // 🔁 Dates enrichies (mémorisées)
   const enrichedDates = useMemo(() => {
     return originalData.map(extractDateInfo).filter(d => d.date);
   }, [originalData]);
@@ -70,7 +69,6 @@ export default function Filters({
     setCurrentPage(0);
   }, [filtered]);
 
-  // 🧠 Synchronisation calendrier + affichage
   useEffect(() => {
     if (onMonthFilterChange) onMonthFilterChange(!!selectedMonth);
 

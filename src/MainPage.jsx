@@ -227,7 +227,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       if (normalizedRow.Date) {
         const d = new Date(normalizedRow.Date);
         if (!isNaN(d)) {
-          normalizedRow.Date = d.toISOString().split('T')[0]; // YYYY-MM-DD
+          normalizedRow.Date = d.toISOString().split('T')[0];
         }
       }
       return normalizedRow;

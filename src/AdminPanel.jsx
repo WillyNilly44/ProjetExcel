@@ -37,7 +37,7 @@ function SortableItem({ id, label, onRemove }) {
       <span {...listeners} style={{ cursor: 'grab' }}>{label}</span>
       <button
         onClick={(e) => {
-          e.stopPropagation(); // empêcher le drag de se déclencher
+          e.stopPropagation();
           onRemove(id);
         }}
         style={{

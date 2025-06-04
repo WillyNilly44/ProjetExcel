@@ -4,7 +4,6 @@ import AdminLogin from './AdminLogin';
 import MenuDropdown from './components/MenuDropdown';
 import * as XLSX from 'xlsx';
 
-// 🧩 Lazy loading des pages lourdes
 const AdminPanel = React.lazy(() => import('./AdminPanel'));
 const DashboardPage = React.lazy(() => import('./DashboardPage'));
 const MainPage = React.lazy(() => import('./MainPage'));
@@ -25,7 +24,6 @@ function App() {
     impact: 0
   });
 
-  // 🧠 Initialisation des colonnes
   useEffect(() => {
     if (!workbook || sheetNames.length === 0) return;
 
@@ -59,7 +57,6 @@ function App() {
     }
   }, [workbook, sheetNames]);
 
-  // 🔢 Chargement des données
   useEffect(() => {
     const fetchThresholds = async () => {
       const res = await fetch('/.netlify/functions/getThresholds');
@@ -89,7 +86,6 @@ function App() {
     fetchExportColumns();
   }, []);
 
-  // 🔐 Interface Admin (vue isolée)
   if (adminView) {
     if (!isAdmin) {
       return (
@@ -121,7 +117,6 @@ function App() {
     );
   }
 
-  // 🌐 Application principale avec routes
   return (
     <Router>
       <div style={{ padding: '20px' }}>

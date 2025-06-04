@@ -27,7 +27,6 @@ export function cleanEmptyValues(dataArray, sheetName) {
       const renamedKey = renameMap[key] || renameMap[`__EMPTY_${index}`] || key;
   
 
-      // Correction des dates Excel (valeurs > 30000)
       if (typeof value === "number" && value > 30000 && value < 60000) {
         const parsed = XLSX.SSF.parse_date_code(value);
         if (parsed) {
@@ -35,7 +34,6 @@ export function cleanEmptyValues(dataArray, sheetName) {
         }
       }
 
-      // Ne convertir en HH:mm que si la colonne n'est pas dans ["Est. (hrs)", "Acc. time"]
       const hourLikeColumns = ["Duration (hrs)", "__EMPTY_5"];
       if (typeof value === "number" && value > 0 && value < 1 && !hourLikeColumns.includes(renamedKey)) {
         const totalSeconds = Math.round(value * 24 * 60 * 60);

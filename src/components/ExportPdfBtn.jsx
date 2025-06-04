@@ -23,7 +23,6 @@ export default function ExportPdfBtn({ filteredData = [], selectedColumns = [] }
   "Status": "Status"
 };
 
-    // Si l'utilisateur n'a rien sélectionné, exporter tout
     const fallbackOrder = Object.keys(filteredData[0] || {});
     const exportOrder = selectedColumns.length > 0 ? selectedColumns : fallbackOrder;
 

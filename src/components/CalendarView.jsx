@@ -64,7 +64,7 @@ export default function CalendarView({ data, initialDate }) {
         calendarApi.gotoDate(new Date(initialDate));
       }
     }
-  }, [initialDate, events]); // 👈 dépend aussi de events
+  }, [initialDate, events]);
 
   return (
     <div style={{ marginTop: '20px' }}>
