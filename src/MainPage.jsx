@@ -97,7 +97,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [dataSource, setDataSource] = useState('fusion');
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
-  const [lastFilteredDate, setLastFilteredDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
 
@@ -121,52 +120,51 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   }, []);
 
   useEffect(() => {
-  const fetchLatestExcel = async () => {
-    const cacheKey = 'excel-buffer-cache';
-    const cached = sessionStorage.getItem(cacheKey);
+    const fetchLatestExcel = async () => {
+      const cacheKey = 'excel-buffer-cache';
+      const cached = sessionStorage.getItem(cacheKey);
 
-    let arrayBuffer;
+      let arrayBuffer;
 
-    if (cached) {
-      arrayBuffer = base64ToArrayBuffer(cached);
-    } else {
-      try {
-        sessionStorage.removeItem('excel-buffer-cache');
-        const res = await fetch('/.netlify/functions/getLatestExcel');
-        const { url } = await res.json();
-        const response = await fetch(url);
-        arrayBuffer = await response.arrayBuffer();
+      if (cached) {
+        arrayBuffer = base64ToArrayBuffer(cached);
+      } else {
+        try {
+          sessionStorage.removeItem('excel-buffer-cache');
+          const res = await fetch('/.netlify/functions/getLatestExcel');
+          const { url } = await res.json();
+          const response = await fetch(url);
+          arrayBuffer = await response.arrayBuffer();
 
-        const base64 = arrayBufferToBase64(arrayBuffer);
-        sessionStorage.setItem(cacheKey, base64);
-        console.log("📥 Excel téléchargé et mis en cache");
-      } catch (err) {
-        console.error('Erreur chargement automatique depuis Supabase:', err);
+          const base64 = arrayBufferToBase64(arrayBuffer);
+          sessionStorage.setItem(cacheKey, base64);
+        } catch (err) {
+          console.error('Erreur chargement automatique depuis Supabase:', err);
+          return;
+        }
+      }
+
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+      const validSheets = workbook.SheetNames.filter(name =>
+        name.toLowerCase().includes('operational') ||
+        name.toLowerCase().includes('application')
+      );
+
+      if (validSheets.length === 0) {
+        alert("Aucune feuille valide trouvée.");
         return;
       }
-    }
 
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      setWorkbook(workbook);
+      setSheetNames(validSheets);
+      setIsLoading(false);
+      setSelectedSheet('fusion');
+      loadDataFromSheets(workbook, validSheets);
+    };
 
-    const validSheets = workbook.SheetNames.filter(name =>
-      name.toLowerCase().includes('operational') ||
-      name.toLowerCase().includes('application')
-    );
-
-    if (validSheets.length === 0) {
-      alert("Aucune feuille valide trouvée.");
-      return;
-    }
-
-    setWorkbook(workbook);
-    setSheetNames(validSheets);
-    setIsLoading(false);
-    setSelectedSheet('fusion');
-    loadDataFromSheets(workbook, validSheets);
-  };
-
-  fetchLatestExcel();
-}, []);
+    fetchLatestExcel();
+  }, []);
 
   useEffect(() => {
     if (workbook && sheetNames.length > 0 && adminNotes.length > 0) {
@@ -189,11 +187,21 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       return rawData;
     });
 
-    const minDate = new Date(calendarStartDate || new Date());
-    minDate.setMonth(minDate.getMonth() - 1);
+    let minDate, maxDate;
 
-    const maxDate = new Date(minDate);
-    maxDate.setMonth(maxDate.getMonth() + 1);
+    if (calendarStartDate) {
+      minDate = new Date(calendarStartDate);
+      minDate.setDate(1);
+      maxDate = new Date(minDate);
+      maxDate.setMonth(minDate.getMonth() + 1);
+      maxDate.setDate(0); 
+    } else {
+      minDate = new Date();
+      minDate.setMonth(minDate.getMonth() - 1);
+      maxDate = new Date();
+      maxDate.setMonth(maxDate.getMonth() + 1);
+    }
+
 
     const enrichedAllData = allData.map(row => {
       const dateStr = Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
@@ -203,13 +211,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       };
     });
 
-    const filteredAdminNotes = adminNotes.filter(note => {
-      return (
-        dataSource === 'fusion' ||
-        !note.log_type ||
-        note.log_type === dataSource
-      );
-    });
+    const filteredAdminNotes = adminNotes.filter(note =>
+      !note.weekday || note.log_type === dataSource || dataSource === 'fusion'
+    );
+
 
     const recurring = generateRecurringEntries(filteredAdminNotes, minDate, maxDate);
     const mergedData = [...enrichedAllData, ...recurring];
@@ -277,15 +282,8 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               onChange={(e) => {
                 const value = e.target.value;
                 setDataSource(value);
-                const sheetsToLoad =
-                  value === 'operational'
-                    ? [sheetNames.find(s => s.toLowerCase().includes('operational'))]
-                    : value === 'application'
-                      ? [sheetNames.find(s => s.toLowerCase().includes('application'))]
-                      : sheetNames.filter(s => !s.toLowerCase().includes('dashboard'));
-                setSelectedSheet(sheetsToLoad);
-                loadDataFromSheets(workbook, sheetsToLoad);
-              }}
+              }
+              }
               style={{ marginLeft: '0.5rem' }}
             >
               <option value="fusion">Fusionnées</option>

@@ -18,7 +18,6 @@ exports.handler = async () => {
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from('secure-excel')
       .createSignedUrl(latestFile.name, 60 * 60);
-      console.log("📄 Fichier récupéré:", latestFile.name);
 
     if (signedUrlError) {
       return {
