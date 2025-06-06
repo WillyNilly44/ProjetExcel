@@ -17,7 +17,17 @@ export default function MenuDropdown({ onAdminClick }) {
 
   return (
     <div className="menu-dropdown" ref={menuRef}>
-      <button onClick={() => setOpen(!open)}>📋 Menu</button>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          fontSize: '18px',
+          padding: '12px 20px',
+          minWidth: '120px',
+          height: '48px'
+        }}
+      >
+        📋 Menu
+      </button>
       {open && (
         <div className="menu-dropdown-content">
           <Link to="/">🏠 Logs</Link>
