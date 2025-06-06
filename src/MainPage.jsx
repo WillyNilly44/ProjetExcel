@@ -63,6 +63,7 @@ function renameField(key) {
   };
   return mapping[key] || key;
 }
+
 function arrayBufferToBase64(buffer) {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -83,8 +84,6 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-
-
 export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNames, exportColumns }) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState([]);
@@ -98,7 +97,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
-
 
   useEffect(() => {
     const fetchAdminNotes = async () => {
@@ -194,14 +192,13 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       minDate.setDate(1);
       maxDate = new Date(minDate);
       maxDate.setMonth(minDate.getMonth() + 1);
-      maxDate.setDate(0); 
+      maxDate.setDate(0);
     } else {
       minDate = new Date();
       minDate.setMonth(minDate.getMonth() - 1);
       maxDate = new Date();
       maxDate.setMonth(maxDate.getMonth() + 1);
     }
-
 
     const enrichedAllData = allData.map(row => {
       const dateStr = Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
@@ -214,7 +211,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     const filteredAdminNotes = adminNotes.filter(note =>
       !note.weekday || note.log_type === dataSource || dataSource === 'fusion'
     );
-
 
     const recurring = generateRecurringEntries(filteredAdminNotes, minDate, maxDate);
     const mergedData = [...enrichedAllData, ...recurring];
@@ -241,6 +237,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       if (isNaN(dateB)) return -1;
       return dateA - dateB;
     });
+    
     setData(normalizedMerged);
     setFilteredData(normalizedMerged);
     setCurrentPage(0);
@@ -259,47 +256,95 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     <div className="App" style={{ padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <h2 style={{ margin: 0 }}>📁 Operational & Application Logs</h2>
-        <div className="top-buttons">
-          <button className='accent-button' onClick={() => setViewMode(viewMode === 'table' ? 'calendar' : 'table')}>
-            {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
-          </button>
-          <ExportPdfBtn
-            filteredData={filteredData}
-            currentPage={currentPage}
-            pageSize={isMonthSelected ? -1 : pageSize}
-            adminNotes={adminNotes}
-            selectedColumns={exportColumns}
-          />
-        </div>
       </div>
 
       {sheetNames.length > 1 && (
-        <div id="filters-wrapper">
-          <label>
-            Feuilles à afficher :
+        <div
+          id="filters-wrapper"
+          style={{
+            display: 'flex',
+            flexWrap: 'nowrap',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
+            gap: '1rem',
+            marginBottom: '1rem',
+            padding: '0.5rem 0',
+            overflowX: 'auto',
+            width: '100%'
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <label htmlFor="dataSourceSelect" style={{ whiteSpace: 'nowrap', fontSize: '14px' }}>
+              Feuilles à afficher :
+            </label>
             <select
+              id="dataSourceSelect"
               value={dataSource}
-              onChange={(e) => {
-                const value = e.target.value;
-                setDataSource(value);
-              }
-              }
-              style={{ marginLeft: '0.5rem' }}
+              onChange={(e) => setDataSource(e.target.value)}
+              style={{ height: '32px', minWidth: '120px', fontSize: '14px' }}
             >
               <option value="fusion">Fusionnées</option>
               <option value="operational">Operational Logs</option>
               <option value="application">Application Logs</option>
             </select>
-          </label>
-          <Filters
-            originalData={data}
-            setFilteredData={setFilteredData}
-            setCurrentPage={setCurrentPage}
-            onMonthFilterChange={setIsMonthSelected}
-            onMonthYearChange={setCalendarStartDate}
-          />
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <Filters
+              originalData={data}
+              setFilteredData={setFilteredData}
+              setCurrentPage={setCurrentPage}
+              onMonthFilterChange={setIsMonthSelected}
+              onMonthYearChange={setCalendarStartDate}
+            />
+          </div>
+
+          <button
+              className="accent-button"
+              style={{
+                height: '32px',
+                whiteSpace: 'nowrap',
+                fontSize: '14px',
+                padding: '0 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                lineHeight: '1',
+                boxSizing: 'border-box'
+              }}
+              onClick={() =>
+                setViewMode(viewMode === 'table' ? 'calendar' : 'table')
+              }
+            >
+              {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
+            </button>
+          
+            <div style={{ height: '32px', display: 'flex', alignItems: 'center' }}>
+              <ExportPdfBtn
+                filteredData={filteredData}
+                currentPage={currentPage}
+                pageSize={isMonthSelected ? -1 : pageSize}
+                adminNotes={adminNotes}
+                selectedColumns={exportColumns}
+                style={{
+                  height: '32px !important',
+                  fontSize: '14px',
+                  padding: '0 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: 'none',
+                  lineHeight: '1',
+                  boxSizing: 'border-box',
+                  margin: '0'
+                }}
+              />
+            </div>
+        
         </div>
       )}
+
       {selectedEntry && (
         <div style={{
           position: 'fixed',
@@ -339,35 +384,41 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         </div>
       )}
 
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        width: '100%' 
+      }}>
+        {sheetNames.length > 0 && (
+          <div style={{ width: '100%', maxWidth: '1200px' }}>
+            {viewMode === 'table' ? (
+              <>
+                <Suspense fallback={<p>Chargement...</p>}>
+                  <DataTable
+                    data={filteredData}
+                    pageSize={isMonthSelected ? -1 : pageSize}
+                    currentPage={currentPage}
+                    sheetname={selectedSheet}
+                    onRowClick={(row) => setSelectedEntry(row)}
+                    visibleColumns={exportColumns}
+                  />
+                </Suspense>
 
-      {sheetNames.length > 0 && (
-        viewMode === 'table' ? (
-          <>
-            <Suspense fallback={<p>Chargement...</p>}>
-              <DataTable
-                data={filteredData}
-                pageSize={isMonthSelected ? -1 : pageSize}
-                currentPage={currentPage}
-                sheetname={selectedSheet}
-                onRowClick={(row) => setSelectedEntry(row)}
-                visibleColumns={exportColumns}
-              />
-            </Suspense>
-
-
-            {!isMonthSelected && (
-              <PaginationControls
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                totalItems={filteredData.length}
-                pageSize={pageSize}
-              />
+                {!isMonthSelected && (
+                  <PaginationControls
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    totalItems={filteredData.length}
+                    pageSize={pageSize}
+                  />
+                )}
+              </>
+            ) : (
+              <CalendarView data={filteredData} initialDate={calendarStartDate} />
             )}
-          </>
-        ) : (
-          <CalendarView data={filteredData} initialDate={calendarStartDate} />
-        )
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
