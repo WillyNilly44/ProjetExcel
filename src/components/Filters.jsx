@@ -68,23 +68,31 @@ export default function Filters({
     setFilteredData(filtered);
     setCurrentPage(0);
   }, [filtered]);
-
-  useEffect(() => {
-    if (onMonthFilterChange) onMonthFilterChange(!!selectedMonth);
-
-    let baseDate = null;
-
+useEffect(() => {
+  // Set isMonthSelected based on whether we have a week or just a month
+  if (onMonthFilterChange) {
     if (selectedWeek) {
-      const [startStr] = selectedWeek.split('|');
-      baseDate = new Date(startStr);
-    } else if (selectedYear && selectedMonth !== '') {
-      baseDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
-    } else if (selectedYear) {
-      baseDate = new Date(Number(selectedYear), 0, 1);
+      onMonthFilterChange(false); // Week is selected, so isMonthSelected = false
+    } else if (selectedMonth !== '' || selectedYear) {
+      onMonthFilterChange(true); // Month or Year is selected (no week), so isMonthSelected = true
+    } else {
+      onMonthFilterChange(false); // Nothing selected, default to false
     }
+  }
 
-    if (baseDate && onMonthYearChange) onMonthYearChange(baseDate);
-  }, [selectedYear, selectedMonth, selectedWeek]);
+  let baseDate = null;
+
+  if (selectedWeek) {
+    const [startStr] = selectedWeek.split('|');
+    baseDate = new Date(startStr);
+  } else if (selectedYear && selectedMonth !== '') {
+    baseDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
+  } else if (selectedYear) {
+    baseDate = new Date(Number(selectedYear), 0, 1); // January 1st of selected year
+  }
+
+  if (baseDate && onMonthYearChange) onMonthYearChange(baseDate);
+}, [selectedYear, selectedMonth, selectedWeek, onMonthFilterChange, onMonthYearChange]); // Added missing dependencies
 
   const resetFilters = () => {
     setSelectedYear('');

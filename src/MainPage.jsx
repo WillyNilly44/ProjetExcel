@@ -192,14 +192,17 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       return rawData;
     });
 
+    console.log('=== loadDataFromSheets DEBUG ===');
+    console.log('calendarStartDate:', calendarStartDate);
+    console.log('isMonthSelected:', isMonthSelected);
+
     let minDate, maxDate;
 
     if (calendarStartDate) {
+       console.log('Inside calendarStartDate block');
       if (isMonthSelected) {
-        // Month selection: start of month to next Sunday from today
+        console.log('Taking MONTH path');
         const today = new Date();
-
-        // Start of selected month
         minDate = new Date(calendarStartDate);
         minDate.setDate(1);
         minDate.setHours(0, 0, 0, 0);
@@ -219,8 +222,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         }
         maxDate.setHours(23, 59, 59, 999);
       } else {
-        // Week selection - ensure Monday to Sunday
-        console.log('Original calendarStartDate:', calendarStartDate);
+        console.log('Taking WEEK path');
 
         const startDate = new Date(calendarStartDate);
         console.log('Parsed start date:', startDate, 'Day of week:', startDate.getDay());
@@ -243,7 +245,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
           'End:', maxDate.toISOString().split('T')[0]);
       }
     } else {
-      // Default: last 30 days
+      console.log('Taking DEFAULT path (no calendarStartDate)');
       const today = new Date();
       maxDate = new Date(today);
       maxDate.setHours(23, 59, 59, 999);
@@ -252,6 +254,8 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       minDate.setDate(minDate.getDate() - 30);
       minDate.setHours(0, 0, 0, 0);
     }
+     console.log('Final date range:', minDate, 'to', maxDate);
+  console.log('=== END DEBUG ===');
 
     const enrichedAllData = allData.map(row => {
       const dateStr = Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
@@ -288,7 +292,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
 
       if (isNaN(dateA)) return 1;
       if (isNaN(dateB)) return -1;
-      return dateA - dateB;
+      return dateB - dateA;
     });
 
     setData(normalizedMerged);
