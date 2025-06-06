@@ -14,11 +14,17 @@ function getRecurringDatesForWeekdayInRange(weekday, startDate, endDate) {
     "Thursday": 4, "Friday": 5, "Saturday": 6
   };
   const result = [];
-  const d = new Date(startDate);
-  d.setHours(0, 0, 0, 0);
-  while (d <= endDate) {
-    if (d.getDay() === dayMap[weekday]) result.push(new Date(d));
-    d.setDate(d.getDate() + 1);
+  const current = new Date(startDate);
+  current.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  while (current <= end) {
+    if (current.getDay() === dayMap[weekday]) {
+      result.push(new Date(current));
+    }
+    current.setDate(current.getDate() + 1);
   }
   return result;
 }
@@ -45,6 +51,7 @@ function generateRecurringEntries(adminNotes, minDate, maxDate) {
         "Ticket #": note.ticket_number || '',
         Assigned: note.assigned || '',
         Note: note.note || '',
+        __isAdminNote: true
       });
     }
   }
@@ -174,7 +181,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             : sheetNames.filter(s => !s.toLowerCase().includes('dashboard'));
       loadDataFromSheets(workbook, sheetsToLoad);
     }
-  }, [adminNotes, workbook, sheetNames, dataSource]);
+  }, [adminNotes, workbook, sheetNames, dataSource, calendarStartDate, isMonthSelected]);
 
   const loadDataFromSheets = (wb, sheets) => {
     const allData = sheets.flatMap((sheetName) => {
@@ -188,16 +195,62 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     let minDate, maxDate;
 
     if (calendarStartDate) {
-      minDate = new Date(calendarStartDate);
-      minDate.setDate(1);
-      maxDate = new Date(minDate);
-      maxDate.setMonth(minDate.getMonth() + 1);
-      maxDate.setDate(0);
+      if (isMonthSelected) {
+        // Month selection: start of month to next Sunday from today
+        const today = new Date();
+
+        // Start of selected month
+        minDate = new Date(calendarStartDate);
+        minDate.setDate(1);
+        minDate.setHours(0, 0, 0, 0);
+
+        // Find next Sunday from today
+        maxDate = new Date(today);
+        const daysUntilSunday = (7 - today.getDay()) % 7; // Days until next Sunday
+        if (daysUntilSunday === 0 && today.getDay() !== 0) {
+          // If today is not Sunday, go to next Sunday
+          maxDate.setDate(today.getDate() + 7);
+        } else if (today.getDay() === 0) {
+          // If today is Sunday, use today
+          maxDate = new Date(today);
+        } else {
+          // Go to next Sunday
+          maxDate.setDate(today.getDate() + daysUntilSunday);
+        }
+        maxDate.setHours(23, 59, 59, 999);
+      } else {
+        // Week selection - ensure Monday to Sunday
+        console.log('Original calendarStartDate:', calendarStartDate);
+
+        const startDate = new Date(calendarStartDate);
+        console.log('Parsed start date:', startDate, 'Day of week:', startDate.getDay());
+
+        // Find the Monday of this week
+        const dayOfWeek = startDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const daysToMonday = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1); // If Sunday, go back 6 days, otherwise go back to Monday
+
+        minDate = new Date(startDate);
+        minDate.setDate(startDate.getDate() + daysToMonday);
+        minDate.setHours(0, 0, 0, 0);
+
+        // Sunday is 6 days after Monday
+        maxDate = new Date(minDate);
+        maxDate.setDate(minDate.getDate() + 6);
+        maxDate.setHours(23, 59, 59, 999);
+
+        console.log('Adjusted to Monday-Sunday:',
+          'Start:', minDate.toISOString().split('T')[0],
+          'End:', maxDate.toISOString().split('T')[0]);
+      }
     } else {
-      minDate = new Date();
-      minDate.setMonth(minDate.getMonth() - 1);
-      maxDate = new Date();
-      maxDate.setMonth(maxDate.getMonth() + 1);
+      // Default: last 30 days
+      const today = new Date();
+      maxDate = new Date(today);
+      maxDate.setHours(23, 59, 59, 999);
+
+      minDate = new Date(today);
+      minDate.setDate(minDate.getDate() - 30);
+      minDate.setHours(0, 0, 0, 0);
     }
 
     const enrichedAllData = allData.map(row => {
@@ -237,12 +290,11 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       if (isNaN(dateB)) return -1;
       return dateA - dateB;
     });
-    
+
     setData(normalizedMerged);
     setFilteredData(normalizedMerged);
     setCurrentPage(0);
   };
-
   if (isLoading) {
     return (
       <div style={{ textAlign: 'center', paddingTop: '50px' }}>
@@ -300,10 +352,35 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
           </div>
 
           <button
-              className="accent-button"
+            className="accent-button"
+            style={{
+              height: '32px',
+              whiteSpace: 'nowrap',
+              fontSize: '14px',
+              padding: '0 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'none',
+              lineHeight: '1',
+              boxSizing: 'border-box'
+            }}
+            onClick={() =>
+              setViewMode(viewMode === 'table' ? 'calendar' : 'table')
+            }
+          >
+            {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
+          </button>
+
+          <div style={{ height: '32px', display: 'flex', alignItems: 'center' }}>
+            <ExportPdfBtn
+              filteredData={filteredData}
+              currentPage={currentPage}
+              pageSize={isMonthSelected ? -1 : pageSize}
+              adminNotes={adminNotes}
+              selectedColumns={exportColumns}
               style={{
-                height: '32px',
-                whiteSpace: 'nowrap',
+                height: '32px !important',
                 fontSize: '14px',
                 padding: '0 12px',
                 display: 'flex',
@@ -311,37 +388,12 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                 justifyContent: 'center',
                 border: 'none',
                 lineHeight: '1',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                margin: '0'
               }}
-              onClick={() =>
-                setViewMode(viewMode === 'table' ? 'calendar' : 'table')
-              }
-            >
-              {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
-            </button>
-          
-            <div style={{ height: '32px', display: 'flex', alignItems: 'center' }}>
-              <ExportPdfBtn
-                filteredData={filteredData}
-                currentPage={currentPage}
-                pageSize={isMonthSelected ? -1 : pageSize}
-                adminNotes={adminNotes}
-                selectedColumns={exportColumns}
-                style={{
-                  height: '32px !important',
-                  fontSize: '14px',
-                  padding: '0 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  lineHeight: '1',
-                  boxSizing: 'border-box',
-                  margin: '0'
-                }}
-              />
-            </div>
-        
+            />
+          </div>
+
         </div>
       )}
 
@@ -384,10 +436,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         </div>
       )}
 
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        width: '100%' 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        width: '100%'
       }}>
         {sheetNames.length > 0 && (
           <div style={{ width: '100%', maxWidth: '1200px' }}>

@@ -48,38 +48,48 @@ export default function DataTable({ data, pageSize, currentPage, onRowClick, vis
 
 
   const Row = ({ index, style }) => {
-    const row = pageData[index];
-    const isEven = index % 2 === 0;
-    return (
-      <div
-        style={{
-          ...style,
-          display: 'grid',
-          gridTemplateColumns: headers.map((_, i) =>
-            `${columnWidths[displayHeaders[i]] || 180}px`
-          ).join(' '),
-          backgroundColor: isEven ? '#1a1a1a' : '#121212',
-        }}
-      >
-        {headers.map((h, i) => (
-          <div
-            key={i}
-            onClick={() => onRowClick(row)}
-            style={{
-              padding: '8px',
-              borderBottom: '1px solid #333',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}
-            title={row[h]}
-          >
-            {row[h]}
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const row = pageData[index];
+  const isEven = index % 2 === 0;
+  const isAdminNote = row.__isAdminNote; // Check if this is an admin note
+  
+  // Choose background color based on admin note status
+  let backgroundColor;
+  if (isAdminNote) {
+    backgroundColor = '#2a4a6b'; // Blue tint for admin notes
+  } else {
+    backgroundColor = isEven ? '#1a1a1a' : '#121212'; // Normal alternating colors
+  }
+  
+  return (
+    <div
+      style={{
+        ...style,
+        display: 'grid',
+        gridTemplateColumns: headers.map((_, i) =>
+          `${columnWidths[displayHeaders[i]] || 180}px`
+        ).join(' '),
+        backgroundColor: backgroundColor, // Use the dynamic background color
+      }}
+    >
+      {headers.map((h, i) => (
+        <div
+          key={i}
+          onClick={() => onRowClick(row)}
+          style={{
+            padding: '8px',
+            borderBottom: '1px solid #333',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}
+          title={row[h]}
+        >
+          {row[h]}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 
   return (
