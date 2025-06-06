@@ -292,7 +292,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
 
       if (isNaN(dateA)) return 1;
       if (isNaN(dateB)) return -1;
-      return dateB - dateA;
+      return dateA - dateB;
     });
 
     setData(normalizedMerged);
