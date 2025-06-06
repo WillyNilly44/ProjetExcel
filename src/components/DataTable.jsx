@@ -50,14 +50,14 @@ export default function DataTable({ data, pageSize, currentPage, onRowClick, vis
   const Row = ({ index, style }) => {
   const row = pageData[index];
   const isEven = index % 2 === 0;
-  const isAdminNote = row.__isAdminNote; // Check if this is an admin note
+  const isAdminNote = row.__isAdminNote; 
   
-  // Choose background color based on admin note status
+  
   let backgroundColor;
   if (isAdminNote) {
-    backgroundColor = '#2a4a6b'; // Blue tint for admin notes
+    backgroundColor = '#2a4a6b'; 
   } else {
-    backgroundColor = isEven ? '#1a1a1a' : '#121212'; // Normal alternating colors
+    backgroundColor = isEven ? '#1a1a1a' : '#121212'; 
   }
   
   return (
@@ -68,7 +68,7 @@ export default function DataTable({ data, pageSize, currentPage, onRowClick, vis
         gridTemplateColumns: headers.map((_, i) =>
           `${columnWidths[displayHeaders[i]] || 180}px`
         ).join(' '),
-        backgroundColor: backgroundColor, // Use the dynamic background color
+        backgroundColor: backgroundColor, 
       }}
     >
       {headers.map((h, i) => (

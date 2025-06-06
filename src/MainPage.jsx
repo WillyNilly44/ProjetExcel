@@ -181,7 +181,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             : sheetNames.filter(s => !s.toLowerCase().includes('dashboard'));
       loadDataFromSheets(workbook, sheetsToLoad);
     }
-  }, [adminNotes, workbook, sheetNames, dataSource, calendarStartDate, isMonthSelected]);
+  }, [adminNotes, workbook, sheetNames, dataSource]); 
 
   const loadDataFromSheets = (wb, sheets) => {
     const allData = sheets.flatMap((sheetName) => {
@@ -192,71 +192,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       return rawData;
     });
 
-    console.log('=== loadDataFromSheets DEBUG ===');
-    console.log('calendarStartDate:', calendarStartDate);
-    console.log('isMonthSelected:', isMonthSelected);
-
-    let minDate, maxDate;
-
-    if (calendarStartDate) {
-       console.log('Inside calendarStartDate block');
-      if (isMonthSelected) {
-        console.log('Taking MONTH path');
-        const today = new Date();
-        minDate = new Date(calendarStartDate);
-        minDate.setDate(1);
-        minDate.setHours(0, 0, 0, 0);
-
-        // Find next Sunday from today
-        maxDate = new Date(today);
-        const daysUntilSunday = (7 - today.getDay()) % 7; // Days until next Sunday
-        if (daysUntilSunday === 0 && today.getDay() !== 0) {
-          // If today is not Sunday, go to next Sunday
-          maxDate.setDate(today.getDate() + 7);
-        } else if (today.getDay() === 0) {
-          // If today is Sunday, use today
-          maxDate = new Date(today);
-        } else {
-          // Go to next Sunday
-          maxDate.setDate(today.getDate() + daysUntilSunday);
-        }
-        maxDate.setHours(23, 59, 59, 999);
-      } else {
-        console.log('Taking WEEK path');
-
-        const startDate = new Date(calendarStartDate);
-        console.log('Parsed start date:', startDate, 'Day of week:', startDate.getDay());
-
-        // Find the Monday of this week
-        const dayOfWeek = startDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        const daysToMonday = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1); // If Sunday, go back 6 days, otherwise go back to Monday
-
-        minDate = new Date(startDate);
-        minDate.setDate(startDate.getDate() + daysToMonday);
-        minDate.setHours(0, 0, 0, 0);
-
-        // Sunday is 6 days after Monday
-        maxDate = new Date(minDate);
-        maxDate.setDate(minDate.getDate() + 6);
-        maxDate.setHours(23, 59, 59, 999);
-
-        console.log('Adjusted to Monday-Sunday:',
-          'Start:', minDate.toISOString().split('T')[0],
-          'End:', maxDate.toISOString().split('T')[0]);
-      }
-    } else {
-      console.log('Taking DEFAULT path (no calendarStartDate)');
-      const today = new Date();
-      maxDate = new Date(today);
-      maxDate.setHours(23, 59, 59, 999);
-
-      minDate = new Date(today);
-      minDate.setDate(minDate.getDate() - 30);
-      minDate.setHours(0, 0, 0, 0);
-    }
-     console.log('Final date range:', minDate, 'to', maxDate);
-  console.log('=== END DEBUG ===');
-
     const enrichedAllData = allData.map(row => {
       const dateStr = Object.values(row).find(v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
       return {
@@ -265,11 +200,15 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       };
     });
 
+    const today = new Date();
+    const threeMonthsAgo = new Date(today);
+    threeMonthsAgo.setMonth(today.getMonth() - 3);
+
     const filteredAdminNotes = adminNotes.filter(note =>
       !note.weekday || note.log_type === dataSource || dataSource === 'fusion'
     );
 
-    const recurring = generateRecurringEntries(filteredAdminNotes, minDate, maxDate);
+    const recurring = generateRecurringEntries(filteredAdminNotes, threeMonthsAgo, today);
     const mergedData = [...enrichedAllData, ...recurring];
 
     const allKeys = new Set(mergedData.flatMap(row => Object.keys(row)));
@@ -299,6 +238,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     setFilteredData(normalizedMerged);
     setCurrentPage(0);
   };
+
   if (isLoading) {
     return (
       <div style={{ textAlign: 'center', paddingTop: '50px' }}>
@@ -452,7 +392,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                 <Suspense fallback={<p>Chargement...</p>}>
                   <DataTable
                     data={filteredData}
-                    pageSize={isMonthSelected ? -1 : pageSize}
+                    pageSize={-1} 
                     currentPage={currentPage}
                     sheetname={selectedSheet}
                     onRowClick={(row) => setSelectedEntry(row)}
@@ -460,7 +400,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                   />
                 </Suspense>
 
-                {!isMonthSelected && (
+                {filteredData.length === data.length && (
                   <PaginationControls
                     currentPage={currentPage}
                     setCurrentPage={setCurrentPage}
@@ -470,7 +410,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                 )}
               </>
             ) : (
-              <CalendarView data={filteredData} initialDate={calendarStartDate} />
+              <CalendarView
+                data={filteredData}
+                initialDate={calendarStartDate}
+              />
             )}
           </div>
         )}

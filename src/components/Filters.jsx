@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { extractDateInfo } from '../utils/dateUtils';
 
 export default function Filters({
@@ -8,151 +8,195 @@ export default function Filters({
   onMonthFilterChange,
   onMonthYearChange,
 }) {
-  const [selectedYear, setSelectedYear] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState('');
 
-  const enrichedDates = useMemo(() => {
-    return originalData.map(extractDateInfo).filter(d => d.date);
+  const getCurrentWeekDefaults = () => {
+    const today = new Date();
+    const currentYear = today.getFullYear().toString();
+    const currentMonth = today.getMonth().toString();
+
+    const { weekRange } = extractDateInfo({ Date: today.toISOString().split('T')[0] });
+    
+    return {
+      year: currentYear,
+      month: currentMonth,
+      week: weekRange
+    };
+  };
+
+  const defaults = getCurrentWeekDefaults();
+  const [selectedYear, setSelectedYear] = useState(defaults.year);
+  const [selectedMonth, setSelectedMonth] = useState(defaults.month);
+  const [selectedWeek, setSelectedWeek] = useState(defaults.week);
+  
+  const monthNames = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+  const allDates = useMemo(() => {
+    return originalData
+      .map(row => {
+        const { date } = extractDateInfo(row);
+        if (!date) return null;
+
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      })
+      .filter(date => date !== null); 
   }, [originalData]);
 
-  const years = useMemo(() => {
-    return [...new Set(enrichedDates.map(d => d.date.getFullYear()))]
-      .filter(Boolean)
-      .sort((a, b) => b - a);
-  }, [enrichedDates]);
 
-  const months = useMemo(() => {
+  const availableYears = useMemo(() => {
+    const years = [...new Set(allDates.map(date => date.getFullYear()))];
+    return years.sort((a, b) => b - a); 
+  }, [allDates]);
+
+
+  const availableMonths = useMemo(() => {
     if (!selectedYear) return [];
-    return [...new Set(
-      enrichedDates
-        .filter(d => d.date.getFullYear() === Number(selectedYear))
-        .map(d => d.date.getMonth())
+    
+    const months = [...new Set(
+      allDates
+        .filter(date => date.getFullYear() === Number(selectedYear))
+        .map(date => date.getMonth())
     )];
-  }, [selectedYear, enrichedDates]);
+    
+    return months.sort((a, b) => a - b);
+  }, [allDates, selectedYear]);
 
-  const weeks = useMemo(() => {
-    if (!selectedMonth || !selectedYear) return [];
-    return [...new Set(
-      enrichedDates
-        .filter(d =>
-          d.date.getFullYear() === Number(selectedYear) &&
-          d.date.getMonth() === Number(selectedMonth)
-        )
-        .map(d => d.weekRange)
+  const availableWeeks = useMemo(() => {
+    if (!selectedYear || selectedMonth === '') return [];
+    
+    const weekRanges = [...new Set(
+      originalData
+        .map(row => {
+          const { date, weekRange } = extractDateInfo(row);
+          if (!date || !weekRange) return null;
+          
+          if (date.getFullYear() === Number(selectedYear) && 
+              date.getMonth() === Number(selectedMonth)) {
+            return weekRange;
+          }
+          return null;
+        })
+        .filter(range => range !== null)
     )];
-  }, [selectedYear, selectedMonth, enrichedDates]);
+    
+    return weekRanges.sort();
+  }, [originalData, selectedYear, selectedMonth]);
 
-  const filtered = useMemo(() => {
-    const result = originalData.filter(row => {
-      const { date } = extractDateInfo(row);
+  const filteredData = useMemo(() => {
+    if (!selectedYear) {
+      return originalData;
+    }
+
+    return originalData.filter(row => {
+      const { date, weekRange } = extractDateInfo(row);
       if (!date) return false;
+      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-      if (selectedYear && date.getFullYear() !== Number(selectedYear)) return false;
-      if (selectedMonth && date.getMonth() !== Number(selectedMonth)) return false;
+      if (localDate.getFullYear() !== Number(selectedYear)) return false;
 
-      if (selectedWeek) {
-        const [startStr, endStr] = selectedWeek.split('|');
-        const start = new Date(startStr);
-        const end = new Date(endStr);
-        if (date < start || date > end) return false;
-      }
+      if (selectedMonth !== '' && localDate.getMonth() !== Number(selectedMonth)) return false;
+
+      if (selectedWeek && weekRange !== selectedWeek) return false;
 
       return true;
     });
-
-    return result;
   }, [originalData, selectedYear, selectedMonth, selectedWeek]);
 
   useEffect(() => {
-    setFilteredData(filtered);
+    if (selectedYear !== defaults.year) {
+      setSelectedMonth('');
+      setSelectedWeek('');
+    }
+  }, [selectedYear, defaults.year]);
+  useEffect(() => {
+    if (selectedMonth !== defaults.month) {
+      setSelectedWeek('');
+    }
+  }, [selectedMonth, defaults.month]);
+
+  useEffect(() => {
+    setFilteredData(filteredData);
     setCurrentPage(0);
-  }, [filtered]);
+  }, [filteredData, setFilteredData, setCurrentPage]);
+
+
 useEffect(() => {
-  // Set isMonthSelected based on whether we have a week or just a month
-  if (onMonthFilterChange) {
+  if (onMonthFilterChange && onMonthYearChange) {
     if (selectedWeek) {
-      onMonthFilterChange(false); // Week is selected, so isMonthSelected = false
-    } else if (selectedMonth !== '' || selectedYear) {
-      onMonthFilterChange(true); // Month or Year is selected (no week), so isMonthSelected = true
+      onMonthFilterChange(false);
+      const [startStr] = selectedWeek.split('|');
+      onMonthYearChange(new Date(startStr));
+    } else if (selectedYear && selectedMonth !== '') {
+      onMonthFilterChange(true);
+      const monthDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
+      onMonthYearChange(monthDate);
+    } else if (selectedYear) {
+      onMonthFilterChange(true);
+      const yearDate = new Date(Number(selectedYear), 0, 1);
+      onMonthYearChange(yearDate);
     } else {
-      onMonthFilterChange(false); // Nothing selected, default to false
+      onMonthFilterChange(false);
+      onMonthYearChange(new Date());
     }
   }
-
-  let baseDate = null;
-
-  if (selectedWeek) {
-    const [startStr] = selectedWeek.split('|');
-    baseDate = new Date(startStr);
-  } else if (selectedYear && selectedMonth !== '') {
-    baseDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
-  } else if (selectedYear) {
-    baseDate = new Date(Number(selectedYear), 0, 1); // January 1st of selected year
-  }
-
-  if (baseDate && onMonthYearChange) onMonthYearChange(baseDate);
-}, [selectedYear, selectedMonth, selectedWeek, onMonthFilterChange, onMonthYearChange]); // Added missing dependencies
-
-  const resetFilters = () => {
-    setSelectedYear('');
-    setSelectedMonth('');
-    setSelectedWeek('');
+}, [selectedYear, selectedMonth, selectedWeek, onMonthFilterChange, onMonthYearChange]);
+  const formatWeekRange = (weekRange) => {
+    const [start, end] = weekRange.split('|');
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    
+    return `Semaine du ${startDate.getDate()}/${startDate.getMonth() + 1} au ${endDate.getDate()}/${endDate.getMonth() + 1}`;
   };
 
   return (
-    <div id="filters">
+    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
       <label>
         Année:
-        <select value={selectedYear} onChange={e => {
-          setSelectedYear(e.target.value);
-          setSelectedMonth('');
-          setSelectedWeek('');
-        }}>
-          <option value="">-- Toutes --</option>
-          {years.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </label>
-
-      <label>
-        Mois:
-        <select
-          value={selectedMonth}
-          onChange={e => {
-            setSelectedMonth(e.target.value);
-            setSelectedWeek('');
-          }}
-          disabled={!selectedYear}
+        <select 
+          value={selectedYear} 
+          onChange={(e) => setSelectedYear(e.target.value)}
         >
-          <option value="">-- Tous --</option>
-          {months.map(m => (
-            <option key={m} value={m}>
-              {new Date(0, m).toLocaleString('fr', { month: 'long' }).replace(/^./, c => c.toUpperCase())}
-            </option>
+          <option value="">-- Toutes --</option>
+          {availableYears.map(year => (
+            <option key={year} value={year}>{year}</option>
           ))}
         </select>
       </label>
 
-      <label>
-        Semaine:
-        <select
-          value={selectedWeek}
-          onChange={e => setSelectedWeek(e.target.value)}
-          disabled={!selectedMonth}
-        >
-          <option value="">-- Toutes --</option>
-          {weeks.map(w => {
-            const [start, end] = w.split('|');
-            return (
-              <option key={w} value={w}>
-                Semaine du {new Date(start).toLocaleDateString()} au {new Date(end).toLocaleDateString()}
+      {selectedYear && (
+        <label>
+          Mois:
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+          >
+            <option value="">-- Tous les mois --</option>
+            {availableMonths.map(monthIndex => (
+              <option key={monthIndex} value={monthIndex}>
+                {monthNames[monthIndex]}
               </option>
-            );
-          })}
-        </select>
-      </label>
+            ))}
+          </select>
+        </label>
+      )}
 
-      <button onClick={resetFilters} style={{ marginLeft: '15px' }}>Réinitialiser les filtres</button>
+      {selectedYear && selectedMonth !== '' && (
+        <label>
+          Semaine:
+          <select 
+            value={selectedWeek} 
+            onChange={(e) => setSelectedWeek(e.target.value)}
+          >
+            <option value="">-- Toutes les semaines --</option>
+            {availableWeeks.map(weekRange => (
+              <option key={weekRange} value={weekRange}>
+                {formatWeekRange(weekRange)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </div>
   );
 }

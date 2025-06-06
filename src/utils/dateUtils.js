@@ -1,7 +1,17 @@
 export function extractDateInfo(row) {
   const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('date'));
   if (!dateKey || !row[dateKey]) return { date: null };
-  const date = new Date(row[dateKey]);
+  
+  const dateStr = row[dateKey];
+  let date;
+  
+  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+    date = new Date(year, month - 1, day); 
+  } else {
+    date = new Date(dateStr);
+  }
+  
   if (isNaN(date.getTime())) return { date: null };
 
   const monday = new Date(date);

@@ -57,14 +57,36 @@ export default function CalendarView({ data, initialDate }) {
     }).filter(Boolean);
   }, [data]);
 
+  
   useEffect(() => {
-    if (calendarRef.current && initialDate) {
+    if (calendarRef.current) {
       const calendarApi = calendarRef.current.getApi();
-      if (calendarApi) {
-        calendarApi.gotoDate(new Date(initialDate));
+      if (calendarApi && initialDate) {
+        const targetDate = new Date(initialDate);
+        
+        calendarApi.gotoDate(targetDate);
+        
+        console.log('Calendar navigated to:', targetDate.toISOString().split('T')[0]);
       }
     }
-  }, [initialDate, events]);
+  }, [initialDate]);
+
+
+  useEffect(() => {
+    if (calendarRef.current && events.length > 0) {
+      const calendarApi = calendarRef.current.getApi();
+      if (calendarApi) {
+
+        if (initialDate) {
+          const targetDate = new Date(initialDate);
+          calendarApi.gotoDate(targetDate);
+        } else {
+          const firstEventDate = events[0].start;
+          calendarApi.gotoDate(firstEventDate);
+        }
+      }
+    }
+  }, [events, initialDate]);
 
   return (
     <div style={{ marginTop: '20px' }}>
