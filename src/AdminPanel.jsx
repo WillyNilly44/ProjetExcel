@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Constants moved outside to prevent recreation
+
 const INITIAL_FORM_STATE = {
   incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
   business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
@@ -43,7 +43,7 @@ const THRESHOLD_FIELDS = [
   ['impact', 'Impact (seuil)']
 ];
 
-// Memoized SortableItem component
+
 const SortableItem = React.memo(({ id, label, onRemove }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
@@ -88,8 +88,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
   const [localThresholds, setLocalThresholds] = useState(thresholds);
-  
-  // Modal states grouped together
+
   const [modals, setModals] = useState({
     form: false,
     thresholds: false,
@@ -99,19 +98,15 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   const allPossibleColumns = useMemo(() => allColumns || [], [allColumns]);
   const sensors = useSensors(useSensor(PointerSensor));
-
-  // Memoized available columns for export modal
   const availableColumns = useMemo(() => 
     allPossibleColumns.filter(c => !exportColumnsLocal.includes(c.key)),
     [allPossibleColumns, exportColumnsLocal]
   );
 
-  // Modal handlers
   const toggleModal = useCallback((modalName) => {
     setModals(prev => ({ ...prev, [modalName]: !prev[modalName] }));
   }, []);
 
-  // Export columns handlers
   const addColumn = useCallback((key) => {
     if (!exportColumnsLocal.includes(key)) {
       const updated = [...exportColumnsLocal, key];
@@ -137,7 +132,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     }
   }, [exportColumnsLocal, setExportColumns]);
 
-  // Form handlers
   const handleChange = useCallback((field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }));
   }, []);
@@ -146,7 +140,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     setLocalThresholds(prev => ({ ...prev, [field]: Number(e.target.value) }));
   }, []);
 
-  // API calls with error handling
   const saveExportColumns = useCallback(async (columns) => {
     try {
       await fetch('/.netlify/functions/saveExportColumns', {
@@ -226,7 +219,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     }
   }, [setAdminNotes]);
 
-  // Effects
   useEffect(() => {
     if (exportColumnsLocal.length > 0) {
       saveExportColumns(exportColumnsLocal);
@@ -249,7 +241,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     fetchExportColumns();
   }, [setExportColumns]);
 
-  // Render helper for form inputs
   const renderFormInput = useCallback((label, field, type = 'text', options = null) => (
     <label key={field}>
       {label}

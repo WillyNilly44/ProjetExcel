@@ -9,46 +9,66 @@ export default function Filters({
   onMonthYearChange,
 }) {
 
+  function getMondayOfWeek(date) {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    
+    return monday;
+  }
+
+  function getSundayOfWeek(date) {
+    const monday = getMondayOfWeek(date);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return sunday;
+  }
+
+  function getWeekId(date) {
+    const monday = getMondayOfWeek(date);
+    return monday.toISOString().split('T')[0];
+  }
   const getCurrentWeekDefaults = () => {
     const today = new Date();
     const currentYear = today.getFullYear().toString();
     const currentMonth = today.getMonth().toString();
-
-    const { weekRange } = extractDateInfo({ Date: today.toISOString().split('T')[0] });
+    const currentWeekId = getWeekId(today);
     
     return {
       year: currentYear,
       month: currentMonth,
-      week: weekRange
+      week: currentWeekId
     };
   };
 
   const defaults = getCurrentWeekDefaults();
-  const [selectedYear, setSelectedYear] = useState(defaults.year);
-  const [selectedMonth, setSelectedMonth] = useState(defaults.month);
-  const [selectedWeek, setSelectedWeek] = useState(defaults.week);
+  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState('');
   
   const monthNames = [
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ];
+
   const allDates = useMemo(() => {
     return originalData
       .map(row => {
         const { date } = extractDateInfo(row);
         if (!date) return null;
-
         return new Date(date.getFullYear(), date.getMonth(), date.getDate());
       })
       .filter(date => date !== null); 
   }, [originalData]);
 
-
   const availableYears = useMemo(() => {
     const years = [...new Set(allDates.map(date => date.getFullYear()))];
     return years.sort((a, b) => b - a); 
   }, [allDates]);
-
 
   const availableMonths = useMemo(() => {
     if (!selectedYear) return [];
@@ -65,39 +85,76 @@ export default function Filters({
   const availableWeeks = useMemo(() => {
     if (!selectedYear || selectedMonth === '') return [];
     
-    const weekRanges = [...new Set(
-      originalData
-        .map(row => {
-          const { date, weekRange } = extractDateInfo(row);
-          if (!date || !weekRange) return null;
-          
-          if (date.getFullYear() === Number(selectedYear) && 
-              date.getMonth() === Number(selectedMonth)) {
-            return weekRange;
-          }
-          return null;
-        })
-        .filter(range => range !== null)
-    )];
+    const monthDates = allDates.filter(date => 
+      date.getFullYear() === Number(selectedYear) && 
+      date.getMonth() === Number(selectedMonth)
+    );
+    const weekMap = new Map();
     
-    return weekRanges.sort();
-  }, [originalData, selectedYear, selectedMonth]);
+    monthDates.forEach(date => {
+      const weekId = getWeekId(date);
+      if (!weekMap.has(weekId)) {
+        const monday = getMondayOfWeek(date);
+        const sunday = getSundayOfWeek(date);
+        weekMap.set(weekId, {
+          id: weekId,
+          monday: monday,
+          sunday: sunday
+        });
+      }
+    });
+    
+    return Array.from(weekMap.values()).sort((a, b) => a.monday - b.monday);
+  }, [allDates, selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    if (originalData.length > 0 && !selectedYear) {
+      const hasCurrentYear = availableYears.includes(Number(defaults.year));
+      
+      if (hasCurrentYear) {
+        setSelectedYear(defaults.year);
+        setTimeout(() => {
+          const currentMonthHasData = allDates.some(date => 
+            date.getFullYear() === Number(defaults.year) && 
+            date.getMonth() === Number(defaults.month)
+          );
+          
+          if (currentMonthHasData) {
+            setSelectedMonth(defaults.month);
+            setTimeout(() => {
+              const currentWeekHasData = allDates.some(date => 
+                date.getFullYear() === Number(defaults.year) && 
+                date.getMonth() === Number(defaults.month) &&
+                getWeekId(date) === defaults.week
+              );
+              
+              if (currentWeekHasData) {
+                setSelectedWeek(defaults.week);
+              }
+            }, 0);
+          }
+        }, 0);
+      }
+    }
+  }, [originalData, availableYears, allDates, defaults.year, defaults.month, defaults.week, selectedYear]);
 
   const filteredData = useMemo(() => {
-    if (!selectedYear) {
-      return originalData;
-    }
+    if (!selectedYear) return originalData;
 
     return originalData.filter(row => {
-      const { date, weekRange } = extractDateInfo(row);
+      const { date } = extractDateInfo(row);
       if (!date) return false;
+      
       const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
       if (localDate.getFullYear() !== Number(selectedYear)) return false;
 
       if (selectedMonth !== '' && localDate.getMonth() !== Number(selectedMonth)) return false;
 
-      if (selectedWeek && weekRange !== selectedWeek) return false;
+      if (selectedWeek) {
+        const rowWeekId = getWeekId(localDate);
+        if (rowWeekId !== selectedWeek) return false;
+      }
 
       return true;
     });
@@ -109,6 +166,7 @@ export default function Filters({
       setSelectedWeek('');
     }
   }, [selectedYear, defaults.year]);
+
   useEffect(() => {
     if (selectedMonth !== defaults.month) {
       setSelectedWeek('');
@@ -120,33 +178,34 @@ export default function Filters({
     setCurrentPage(0);
   }, [filteredData, setFilteredData, setCurrentPage]);
 
-
-useEffect(() => {
-  if (onMonthFilterChange && onMonthYearChange) {
-    if (selectedWeek) {
-      onMonthFilterChange(false);
-      const [startStr] = selectedWeek.split('|');
-      onMonthYearChange(new Date(startStr));
-    } else if (selectedYear && selectedMonth !== '') {
-      onMonthFilterChange(true);
-      const monthDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
-      onMonthYearChange(monthDate);
-    } else if (selectedYear) {
-      onMonthFilterChange(true);
-      const yearDate = new Date(Number(selectedYear), 0, 1);
-      onMonthYearChange(yearDate);
-    } else {
-      onMonthFilterChange(false);
-      onMonthYearChange(new Date());
+  useEffect(() => {
+    if (onMonthFilterChange && onMonthYearChange) {
+      if (selectedWeek) {
+        onMonthFilterChange(false);
+        const monday = new Date(selectedWeek + 'T00:00:00');
+        onMonthYearChange(monday);
+      } else if (selectedYear && selectedMonth !== '') {
+        onMonthFilterChange(true);
+        const monthDate = new Date(Number(selectedYear), Number(selectedMonth), 1);
+        onMonthYearChange(monthDate);
+      } else if (selectedYear) {
+        onMonthFilterChange(true);
+        const yearDate = new Date(Number(selectedYear), 0, 1);
+        onMonthYearChange(yearDate);
+      } else {
+        onMonthFilterChange(false);
+        onMonthYearChange(new Date());
+      }
     }
-  }
-}, [selectedYear, selectedMonth, selectedWeek, onMonthFilterChange, onMonthYearChange]);
-  const formatWeekRange = (weekRange) => {
-    const [start, end] = weekRange.split('|');
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+  }, [selectedYear, selectedMonth, selectedWeek, onMonthFilterChange, onMonthYearChange]);
+
+  const formatWeekRange = (week) => {
+    const startDay = week.monday.getDate();
+    const startMonth = week.monday.getMonth() + 1;
+    const endDay = week.sunday.getDate();
+    const endMonth = week.sunday.getMonth() + 1;
     
-    return `Semaine du ${startDate.getDate()}/${startDate.getMonth() + 1} au ${endDate.getDate()}/${endDate.getMonth() + 1}`;
+    return `Semaine du ${startDay}/${startMonth} au ${endDay}/${endMonth}`;
   };
 
   return (
@@ -181,7 +240,7 @@ useEffect(() => {
         </label>
       )}
 
-      {selectedYear && selectedMonth !== '' && (
+      {selectedYear && selectedMonth !== '' && availableWeeks.length > 0 && (
         <label>
           Semaine:
           <select 
@@ -189,13 +248,23 @@ useEffect(() => {
             onChange={(e) => setSelectedWeek(e.target.value)}
           >
             <option value="">-- Toutes les semaines --</option>
-            {availableWeeks.map(weekRange => (
-              <option key={weekRange} value={weekRange}>
-                {formatWeekRange(weekRange)}
+            {availableWeeks.map(week => (
+              <option key={week.id} value={week.id}>
+                {formatWeekRange(week)}
               </option>
             ))}
           </select>
         </label>
+      )}
+      {selectedWeek && (
+        <div style={{ 
+          marginLeft: '10px', 
+          fontSize: '12px', 
+          color: '#666',
+          fontStyle: 'italic'
+        }}>
+          📅 {formatWeekRange(availableWeeks.find(w => w.id === selectedWeek))}
+        </div>
       )}
     </div>
   );

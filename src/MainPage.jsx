@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import CalendarView from './components/CalendarView';
 import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
@@ -7,12 +7,21 @@ import * as XLSX from 'xlsx';
 
 const DataTable = React.lazy(() => import('./components/DataTable'));
 const Filters = React.lazy(() => import('./components/Filters'));
-
+const CACHE_KEY = 'excel-buffer-cache';
+const DAY_MAP = {
+  "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3,
+  "Thursday": 4, "Friday": 5, "Saturday": 6
+};
+const FIELD_MAPPINGS = {
+  "__EMPTY_1": "Incident (event)",
+  "__EMPTY_2": "Start (hrs)",
+  "__EMPTY_3": "End (hrs)",
+  "__EMPTY_4": "Acc. Business Impact",
+  "__EMPTY_5": "Real time (hrs)",
+  "Business impact ?": "Impact?",
+  "Duration (hrs)": "Est. Duration (hrs)",
+};
 function getRecurringDatesForWeekdayInRange(weekday, startDate, endDate) {
-  const dayMap = {
-    "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3,
-    "Thursday": 4, "Friday": 5, "Saturday": 6
-  };
   const result = [];
   const current = new Date(startDate);
   current.setHours(0, 0, 0, 0);
@@ -21,7 +30,7 @@ function getRecurringDatesForWeekdayInRange(weekday, startDate, endDate) {
   end.setHours(23, 59, 59, 999);
 
   while (current <= end) {
-    if (current.getDay() === dayMap[weekday]) {
+    if (current.getDay() === DAY_MAP[weekday]) {
       result.push(new Date(current));
     }
     current.setDate(current.getDate() + 1);
@@ -59,16 +68,7 @@ function generateRecurringEntries(adminNotes, minDate, maxDate) {
 }
 
 function renameField(key) {
-  const mapping = {
-    "__EMPTY_1": "Incident (event)",
-    "__EMPTY_2": "Start (hrs)",
-    "__EMPTY_3": "End (hrs)",
-    "__EMPTY_4": "Acc. Business Impact",
-    "__EMPTY_5": "Real time (hrs)",
-    "Business impact ?": "Impact?",
-    "Duration (hrs)": "Est. Duration (hrs)",
-  };
-  return mapping[key] || key;
+  return FIELD_MAPPINGS[key] || key;
 }
 
 function arrayBufferToBase64(buffer) {
@@ -104,86 +104,21 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
-
-  useEffect(() => {
-    const fetchAdminNotes = async () => {
-      try {
-        const res = await fetch('/.netlify/functions/getAdminNotes');
-        const text = await res.text();
-        try {
-          const json = JSON.parse(text);
-          setAdminNotes(json.data || []);
-          setIsLoading(false);
-        } catch (err) {
-          console.error("Contenu invalide depuis getAdminNotes:", text);
-        }
-      } catch (err) {
-        console.error('Erreur chargement adminNotes :', err);
-      }
-    };
-    fetchAdminNotes();
-  }, []);
-
-  useEffect(() => {
-    const fetchLatestExcel = async () => {
-      const cacheKey = 'excel-buffer-cache';
-      const cached = sessionStorage.getItem(cacheKey);
-
-      let arrayBuffer;
-
-      if (cached) {
-        arrayBuffer = base64ToArrayBuffer(cached);
-      } else {
-        try {
-          sessionStorage.removeItem('excel-buffer-cache');
-          const res = await fetch('/.netlify/functions/getLatestExcel');
-          const { url } = await res.json();
-          const response = await fetch(url);
-          arrayBuffer = await response.arrayBuffer();
-
-          const base64 = arrayBufferToBase64(arrayBuffer);
-          sessionStorage.setItem(cacheKey, base64);
-        } catch (err) {
-          console.error('Erreur chargement automatique depuis Supabase:', err);
-          return;
-        }
-      }
-
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-      const validSheets = workbook.SheetNames.filter(name =>
-        name.toLowerCase().includes('operational') ||
-        name.toLowerCase().includes('application')
-      );
-
-      if (validSheets.length === 0) {
-        alert("Aucune feuille valide trouvée.");
-        return;
-      }
-
-      setWorkbook(workbook);
-      setSheetNames(validSheets);
-      setIsLoading(false);
-      setSelectedSheet('fusion');
-      loadDataFromSheets(workbook, validSheets);
-    };
-
-    fetchLatestExcel();
-  }, []);
-
-  useEffect(() => {
-    if (workbook && sheetNames.length > 0 && adminNotes.length > 0) {
-      const sheetsToLoad =
-        dataSource === 'operational'
-          ? [sheetNames.find(s => s.toLowerCase().includes('operational'))]
-          : dataSource === 'application'
-            ? [sheetNames.find(s => s.toLowerCase().includes('application'))]
-            : sheetNames.filter(s => !s.toLowerCase().includes('dashboard'));
-      loadDataFromSheets(workbook, sheetsToLoad);
+  const sheetsToLoad = useMemo(() => {
+    if (!sheetNames.length) return [];
+    
+    if (dataSource === 'operational') {
+      return [sheetNames.find(s => s.toLowerCase().includes('operational'))].filter(Boolean);
     }
-  }, [adminNotes, workbook, sheetNames, dataSource]); 
+    if (dataSource === 'application') {
+      return [sheetNames.find(s => s.toLowerCase().includes('application'))].filter(Boolean);
+    }
+    return sheetNames.filter(s => !s.toLowerCase().includes('dashboard'));
+  }, [dataSource, sheetNames]);
 
-  const loadDataFromSheets = (wb, sheets) => {
+  const loadDataFromSheets = useCallback((wb, sheets) => {
+    if (!sheets.length || !adminNotes.length) return;
+
     const allData = sheets.flatMap((sheetName) => {
       const sheet = wb.Sheets[sheetName];
       let rawData = XLSX.utils.sheet_to_json(sheet, { range: 5, defval: '' });
@@ -237,7 +172,93 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     setData(normalizedMerged);
     setFilteredData(normalizedMerged);
     setCurrentPage(0);
-  };
+  }, [adminNotes, dataSource]);
+
+  const fetchAdminNotes = useCallback(async () => {
+    try {
+      const res = await fetch('/.netlify/functions/getAdminNotes');
+      const text = await res.text();
+      try {
+        const json = JSON.parse(text);
+        setAdminNotes(json.data || []);
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Contenu invalide depuis getAdminNotes:", text);
+      }
+    } catch (err) {
+      console.error('Erreur chargement adminNotes :', err);
+    }
+  }, []);
+
+  const fetchLatestExcel = useCallback(async () => {
+    const cached = sessionStorage.getItem(CACHE_KEY);
+    let arrayBuffer;
+
+    if (cached) {
+      arrayBuffer = base64ToArrayBuffer(cached);
+    } else {
+      try {
+        sessionStorage.removeItem(CACHE_KEY);
+        const res = await fetch('/.netlify/functions/getLatestExcel');
+        const { url } = await res.json();
+        const response = await fetch(url);
+        arrayBuffer = await response.arrayBuffer();
+
+        const base64 = arrayBufferToBase64(arrayBuffer);
+        sessionStorage.setItem(CACHE_KEY, base64);
+      } catch (err) {
+        console.error('Erreur chargement automatique depuis Supabase:', err);
+        return;
+      }
+    }
+
+    const wb = XLSX.read(arrayBuffer, { type: 'array' });
+    const validSheets = wb.SheetNames.filter(name =>
+      name.toLowerCase().includes('operational') ||
+      name.toLowerCase().includes('application')
+    );
+
+    if (validSheets.length === 0) {
+      alert("Aucune feuille valide trouvée.");
+      return;
+    }
+
+    setWorkbook(wb);
+    setSheetNames(validSheets);
+    setIsLoading(false);
+    setSelectedSheet('fusion');
+    loadDataFromSheets(wb, validSheets);
+  }, [loadDataFromSheets]);
+
+  const handleDataSourceChange = useCallback((e) => {
+    setDataSource(e.target.value);
+  }, []);
+
+  const handleViewModeToggle = useCallback(() => {
+    setViewMode(prev => prev === 'table' ? 'calendar' : 'table');
+  }, []);
+
+  const handleRowClick = useCallback((row) => {
+    setSelectedEntry(row);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setSelectedEntry(null);
+  }, []);
+
+  useEffect(() => {
+    fetchAdminNotes();
+  }, [fetchAdminNotes]);
+
+  useEffect(() => {
+    fetchLatestExcel();
+  }, [fetchLatestExcel]);
+
+  useEffect(() => {
+    if (workbook && sheetsToLoad.length > 0 && adminNotes.length > 0) {
+      loadDataFromSheets(workbook, sheetsToLoad);
+    }
+  }, [workbook, sheetsToLoad, adminNotes, loadDataFromSheets]);
 
   if (isLoading) {
     return (
@@ -276,7 +297,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             <select
               id="dataSourceSelect"
               value={dataSource}
-              onChange={(e) => setDataSource(e.target.value)}
+              onChange={handleDataSourceChange}
               style={{ height: '32px', minWidth: '120px', fontSize: '14px' }}
             >
               <option value="fusion">Fusionnées</option>
@@ -309,9 +330,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               lineHeight: '1',
               boxSizing: 'border-box'
             }}
-            onClick={() =>
-              setViewMode(viewMode === 'table' ? 'calendar' : 'table')
-            }
+            onClick={handleViewModeToggle}
           >
             {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
           </button>
@@ -337,7 +356,6 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               }}
             />
           </div>
-
         </div>
       )}
 
@@ -365,14 +383,16 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               <tbody>
                 {Object.entries(selectedEntry).map(([key, value]) => (
                   <tr key={key}>
-                    <td style={{ fontWeight: 'bold', padding: '4px 8px', verticalAlign: 'top' }}>{renameField(key)}</td>
+                    <td style={{ fontWeight: 'bold', padding: '4px 8px', verticalAlign: 'top' }}>
+                      {renameField(key)}
+                    </td>
                     <td style={{ padding: '4px 8px' }}>{value}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div style={{ textAlign: 'right', marginTop: 20 }}>
-              <button onClick={() => setSelectedEntry(null)} style={{ padding: '6px 12px', cursor: 'pointer' }}>
+              <button onClick={handleCloseModal} style={{ padding: '6px 12px', cursor: 'pointer' }}>
                 Fermer
               </button>
             </div>
@@ -392,10 +412,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
                 <Suspense fallback={<p>Chargement...</p>}>
                   <DataTable
                     data={filteredData}
-                    pageSize={-1} 
+                    pageSize={-1}
                     currentPage={currentPage}
                     sheetname={selectedSheet}
-                    onRowClick={(row) => setSelectedEntry(row)}
+                    onRowClick={handleRowClick}
                     visibleColumns={exportColumns}
                   />
                 </Suspense>
