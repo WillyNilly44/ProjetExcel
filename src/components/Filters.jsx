@@ -256,16 +256,7 @@ export default function Filters({
           </select>
         </label>
       )}
-      {selectedWeek && (
-        <div style={{ 
-          marginLeft: '10px', 
-          fontSize: '12px', 
-          color: '#666',
-          fontStyle: 'italic'
-        }}>
-          📅 {formatWeekRange(availableWeeks.find(w => w.id === selectedWeek))}
-        </div>
-      )}
+     
     </div>
   );
 }
