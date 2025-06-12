@@ -4,13 +4,27 @@ export default function AdminLogin({ onLogin }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password === 'admin') {
-      sessionStorage.setItem('admin', 'true');
-      onLogin();
-    } else {
-      setError('❌ Incorrect password');
+    
+    try {
+      const response = await fetch('/.netlify/functions/verifyAdminPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok && result.valid) {
+        sessionStorage.setItem('admin', 'true');
+        onLogin();
+      } else {
+        setError('❌ Incorrect password');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('❌ Connection error');
     }
   };
 
