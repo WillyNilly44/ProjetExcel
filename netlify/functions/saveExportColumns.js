@@ -6,7 +6,7 @@ exports.handler = async (event) => {
     if (!event.body) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Aucun body fourni" })
+        body: JSON.stringify({ error: "No body provided" })
       };
     }
 
@@ -14,10 +14,10 @@ exports.handler = async (event) => {
     try {
       payload = JSON.parse(event.body);
     } catch (parseErr) {
-      console.error("Erreur JSON.parse :", parseErr);
+      console.error("JSON.parse error:", parseErr);
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Erreur de parsing JSON", raw: event.body })
+        body: JSON.stringify({ error: "JSON parsing error", raw: event.body })
       };
     }
 
@@ -26,7 +26,7 @@ exports.handler = async (event) => {
     if (!Array.isArray(columns)) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Champ 'columns' invalide", value: columns })
+        body: JSON.stringify({ error: "Invalid 'columns' field", value: columns })
       };
     }
 
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
       .upsert([{ id: 'singleton', columns, updated_at: new Date().toISOString() }]);
 
     if (error) {
-      console.error("Erreur Supabase :", error);
+      console.error("Supabase error:", error);
       return {
         statusCode: 500,
         body: JSON.stringify({ error: error.message })
@@ -48,7 +48,7 @@ exports.handler = async (event) => {
     };
 
   } catch (err) {
-    console.error("Erreur inattendue :", err);
+    console.error("Unexpected error:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message })

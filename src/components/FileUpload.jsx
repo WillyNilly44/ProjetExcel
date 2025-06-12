@@ -34,14 +34,14 @@ const FileUpload = ({ onDataLoaded }) => {
 
       onDataLoaded(sheets);
     } catch (err) {
-      console.error('Erreur durant le chargement du fichier depuis Supabase:', err);
+      console.error('Error while uploading:', err);
     }
   };
 
   return (
     <div style={{ marginBottom: '1rem' }}>
       <button className="primary-button" onClick={() => inputRef.current?.click()}>
-        📤 Upload un fichier Excel
+        📤 Upload excel file
       </button>
       <input
         ref={inputRef}

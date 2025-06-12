@@ -215,10 +215,10 @@ export default function CalendarView({ data, initialDate }) {
         fontSize: '14px',
         color: '#333'
       }}>
-        📅 <strong>Calendar:</strong> {events.length} événements
+        📅 <strong>Calendar:</strong> {events.length} events
         {initialDate && (
           <span style={{ marginLeft: '10px', color: '#666' }}>
-            | Semaine du {getMondayOfWeek(new Date(initialDate)).toLocaleDateString('fr-FR')} au {getSundayOfWeek(new Date(initialDate)).toLocaleDateString('fr-FR')}
+            | Week of {getMondayOfWeek(new Date(initialDate)).toLocaleDateString('fr-FR')} to {getSundayOfWeek(new Date(initialDate)).toLocaleDateString('fr-FR')}
           </span>
         )}
       </div>
@@ -261,12 +261,12 @@ export default function CalendarView({ data, initialDate }) {
                   {rca && <><strong>RCA :</strong> {rca}<br /></>}
                   {impact && <><strong>Impact :</strong> {impact}<br /></>}
                   {startTime && (
-                    <><strong>Début :</strong> {startTime.toLocaleString('fr-FR', { 
+                    <><strong>Start :</strong> {startTime.toLocaleString('en-US', { 
                       dateStyle: 'short', 
                       timeStyle: 'short' 
                     })}<br /></>
                   )}
-                  {isAdminNote && <em style={{ color: '#666' }}>Entrée administrative</em>}
+                  {isAdminNote && <em style={{ color: '#666' }}>Admin Entry</em>}
                 </div>
               }
               placement="top"

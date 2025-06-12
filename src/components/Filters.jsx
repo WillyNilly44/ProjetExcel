@@ -32,6 +32,7 @@ export default function Filters({
     const monday = getMondayOfWeek(date);
     return monday.toISOString().split('T')[0];
   }
+
   const getCurrentWeekDefaults = () => {
     const today = new Date();
     const currentYear = today.getFullYear().toString();
@@ -51,8 +52,8 @@ export default function Filters({
   const [selectedWeek, setSelectedWeek] = useState('');
   
   const monthNames = [
-    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
   const allDates = useMemo(() => {
@@ -205,18 +206,18 @@ export default function Filters({
     const endDay = week.sunday.getDate();
     const endMonth = week.sunday.getMonth() + 1;
     
-    return `Semaine du ${startDay}/${startMonth} au ${endDay}/${endMonth}`;
+    return `Week of ${startMonth}/${startDay} to ${endMonth}/${endDay}`;
   };
 
   return (
     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
       <label>
-        Année:
+        Year:
         <select 
           value={selectedYear} 
           onChange={(e) => setSelectedYear(e.target.value)}
         >
-          <option value="">-- Toutes --</option>
+          <option value="">-- All --</option>
           {availableYears.map(year => (
             <option key={year} value={year}>{year}</option>
           ))}
@@ -225,12 +226,12 @@ export default function Filters({
 
       {selectedYear && (
         <label>
-          Mois:
+          Month:
           <select 
             value={selectedMonth} 
             onChange={(e) => setSelectedMonth(e.target.value)}
           >
-            <option value="">-- Tous les mois --</option>
+            <option value="">-- All months --</option>
             {availableMonths.map(monthIndex => (
               <option key={monthIndex} value={monthIndex}>
                 {monthNames[monthIndex]}
@@ -242,12 +243,12 @@ export default function Filters({
 
       {selectedYear && selectedMonth !== '' && availableWeeks.length > 0 && (
         <label>
-          Semaine:
+          Week:
           <select 
             value={selectedWeek} 
             onChange={(e) => setSelectedWeek(e.target.value)}
           >
-            <option value="">-- Toutes les semaines --</option>
+            <option value="">-- All weeks --</option>
             {availableWeeks.map(week => (
               <option key={week.id} value={week.id}>
                 {formatWeekRange(week)}

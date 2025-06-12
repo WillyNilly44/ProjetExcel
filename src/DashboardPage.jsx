@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 const MONTH_OPTIONS = [
-  'Tous', 'Jan', 'Feb', 'March', 'April', 'May', 'June',
+  'All', 'Jan', 'Feb', 'March', 'April', 'May', 'June',
   'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'
 ];
 
@@ -12,7 +12,7 @@ export default function DashboardPage({ workbook, thresholds }) {
   const [filteredData, setFilteredData] = useState([]);
   const [weeklyHeaders, setWeeklyHeaders] = useState([]);
   const [averageLine, setAverageLine] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState('Tous');
+  const [selectedMonth, setSelectedMonth] = useState('All');
 
   useEffect(() => {
     if (!workbook) return;
@@ -54,8 +54,6 @@ export default function DashboardPage({ workbook, thresholds }) {
       .slice(weeklyStartIndex + 2)
       .filter(row => row.some(cell => cell !== ''));
 
-
-
     const formattedWeekly = dataRows.map((row, idx) => {
       const obj = {};
       weeklyHeadersRow.forEach((h, i) => {
@@ -77,13 +75,13 @@ export default function DashboardPage({ workbook, thresholds }) {
   }, [workbook]);
 
   useEffect(() => {
-    if (selectedMonth === "Tous") {
+    if (selectedMonth === "All") {
       setFilteredData(weeklyData);
     } else {
-      const moisMinuscule = selectedMonth.toLowerCase();
+      const monthLowercase = selectedMonth.toLowerCase();
       setFilteredData(
         weeklyData.filter(row =>
-          row["Week"]?.toString().toLowerCase().includes(moisMinuscule)
+          row["Week"]?.toString().toLowerCase().includes(monthLowercase)
         )
       );
     }
@@ -91,9 +89,9 @@ export default function DashboardPage({ workbook, thresholds }) {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>📊 Feuille Dashboard</h2>
+      <h2>📊 Dashboard Sheet</h2>
 
-      <h3>Statistiques globales (par année)</h3>
+      <h3>Global Statistics (by year)</h3>
       {summaryData.length > 0 ? (
         <table className="dashboard-summary-table">
           <thead>
@@ -113,12 +111,12 @@ export default function DashboardPage({ workbook, thresholds }) {
             ))}
           </tbody>
         </table>
-      ) : <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les statistiques globales.</p>}
+      ) : <p style={{ color: 'gray' }}>No data found for global statistics.</p>}
 
-      <h3>Détails hebdomadaires</h3>
+      <h3>Weekly Details</h3>
 
       <div style={{ marginBottom: 10 }}>
-        <label>Filtrer par mois : </label>
+        <label>Filter by month: </label>
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
           {MONTH_OPTIONS.map((m, i) => (
             <option key={i} value={m}>{m}</option>
@@ -171,7 +169,7 @@ export default function DashboardPage({ workbook, thresholds }) {
           </tbody>
         </table>
       ) : (
-        <p style={{ color: 'gray' }}>Aucune donnée trouvée pour les semaines.</p>
+        <p style={{ color: 'gray' }}>No data found for weeks.</p>
       )}
     </div>
   );

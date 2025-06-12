@@ -25,22 +25,22 @@ const INITIAL_FORM_STATE = {
 };
 
 const WEEKDAY_OPTIONS = [
-  { value: '', label: '— Sélectionner —' },
-  { value: 'Monday', label: 'Lundi' },
-  { value: 'Tuesday', label: 'Mardi' },
-  { value: 'Wednesday', label: 'Mercredi' },
-  { value: 'Thursday', label: 'Jeudi' },
-  { value: 'Friday', label: 'Vendredi' },
-  { value: 'Saturday', label: 'Samedi' },
-  { value: 'Sunday', label: 'Dimanche' }
+  { value: '', label: '— Select —' },
+  { value: 'Monday', label: 'Monday' },
+  { value: 'Tuesday', label: 'Tuesday' },
+  { value: 'Wednesday', label: 'Wednesday' },
+  { value: 'Thursday', label: 'Thursday' },
+  { value: 'Friday', label: 'Friday' },
+  { value: 'Saturday', label: 'Saturday' },
+  { value: 'Sunday', label: 'Sunday' }
 ];
 
 const THRESHOLD_FIELDS = [
-  ['maintenance_yellow', 'Maintenance (jaune)'],
-  ['maintenance_red', 'Maintenance (rouge)'],
-  ['incident_yellow', 'Incident (jaune)'],
-  ['incident_red', 'Incident (rouge)'],
-  ['impact', 'Impact (seuil)']
+  ['maintenance_yellow', 'Maintenance (yellow)'],
+  ['maintenance_red', 'Maintenance (red)'],
+  ['incident_yellow', 'Incident (yellow)'],
+  ['incident_red', 'Incident (red)'],
+  ['impact', 'Impact (threshold)']
 ];
 
 
@@ -162,14 +162,14 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
       const result = await res.json();
       if (res.ok) {
         setThresholds(localThresholds);
-        alert("Seuils enregistrés !");
+        alert("Thresholds saved!");
       } else {
-        console.error("Erreur backend :", result);
-        alert("Erreur : " + result.error);
+        console.error("Backend error:", result);
+        alert("Error: " + result.error);
       }
     } catch (e) {
-      console.error("Erreur réseau :", e);
-      alert("Erreur de communication avec le serveur.");
+      console.error("Network error:", e);
+      alert("Server communication error.");
     }
   }, [localThresholds, setThresholds]);
 
@@ -189,12 +189,12 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         setForm(INITIAL_FORM_STATE);
         toggleModal('form');
       } else {
-        console.error("Erreur backend :", result.error);
-        alert("Erreur lors de l'ajout de la note");
+        console.error("Backend error:", result.error);
+        alert("Error adding note");
       }
     } catch (error) {
-      console.error("Erreur réseau :", error);
-      alert("Erreur de communication avec le serveur.");
+      console.error("Network error:", error);
+      alert("Server communication error.");
     }
   }, [form, setAdminNotes, toggleModal]);
 
@@ -210,12 +210,12 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
       if (res.ok) {
         setAdminNotes(prev => prev.filter(note => note.id !== id));
       } else {
-        console.error("Erreur suppression :", result.error);
-        alert("Échec de la suppression de la note.");
+        console.error("Delete error:", result.error);
+        alert("Failed to delete note.");
       }
     } catch (error) {
-      console.error("Erreur réseau :", error);
-      alert("Erreur de communication avec le serveur.");
+      console.error("Network error:", error);
+      alert("Server communication error.");
     }
   }, [setAdminNotes]);
 
@@ -266,16 +266,16 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
       <h2>Admin Page</h2>
       <div className="top-buttons">
         <button className="primary-button" onClick={() => toggleModal('upload')}>
-          📤 Upload fichier Excel
+          📤 Upload Excel File
         </button>
         <button className="primary-button" onClick={() => toggleModal('export')}>
-          🧩 Affichage des Colonnes
+          🧩 Column Display
         </button>
         <button className="primary-button" onClick={() => toggleModal('thresholds')}>
-          🎛 Modifier les seuils
+          🎛 Edit Thresholds
         </button>
         <button className="primary-button" onClick={() => toggleModal('form')}>
-          ➕ Ajouter récurrence
+          ➕ Add Recurrence
         </button>
       </div>
 
@@ -285,7 +285,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
       </Modal>
 
       {/* Export Columns Modal */}
-      <Modal isOpen={modals.export} onClose={() => toggleModal('export')} title="🧩 Colonnes à exporter">
+      <Modal isOpen={modals.export} onClose={() => toggleModal('export')} title="🧩 Export Columns">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={exportColumnsLocal} strategy={horizontalListSortingStrategy}>
             <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -304,7 +304,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
           </SortableContext>
         </DndContext>
 
-        <h4>Colonnes disponibles :</h4>
+        <h4>Available columns:</h4>
         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
           {availableColumns.map(col => (
             <button
@@ -325,7 +325,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
       </Modal>
 
       {/* Thresholds Modal */}
-      <Modal isOpen={modals.thresholds} onClose={() => toggleModal('thresholds')} title="🎛 Modifier les seuils">
+      <Modal isOpen={modals.thresholds} onClose={() => toggleModal('thresholds')} title="🎛 Edit Thresholds">
         <div className="form-grid">
           {THRESHOLD_FIELDS.map(([key, label]) => (
             <label key={key}>
@@ -338,47 +338,47 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             </label>
           ))}
         </div>
-        <button className="primary-button" onClick={updateThresholds}>💾 Enregistrer</button>
+        <button className="primary-button" onClick={updateThresholds}>💾 Save</button>
       </Modal>
 
       {/* Form Modal */}
-      <Modal isOpen={modals.form} onClose={() => toggleModal('form')} title="➕ Ajouter récurrence">
+      <Modal isOpen={modals.form} onClose={() => toggleModal('form')} title="➕ Add Recurrence">
         <div className="form-section">
           <h4>Identification</h4>
           <div className="form-grid">
             {renderFormInput('Incident', 'incident')}
             {renderFormInput('District', 'district')}
             {renderFormInput('Ticket #', 'ticket_number')}
-            {renderFormInput('Assigné à', 'assigned')}
+            {renderFormInput('Assigned to', 'assigned')}
           </div>
         </div>
 
         <div className="form-section">
-          <h4>Horaire</h4>
+          <h4>Schedule</h4>
           <div className="form-grid">
-            {renderFormInput('Récurrence', 'weekday', 'select', WEEKDAY_OPTIONS)}
-            {renderFormInput('Début', 'start_duration_hrs', 'time')}
-            {renderFormInput('Fin', 'end_duration_hrs', 'time')}
+            {renderFormInput('Recurrence', 'weekday', 'select', WEEKDAY_OPTIONS)}
+            {renderFormInput('Start', 'start_duration_hrs', 'time')}
+            {renderFormInput('End', 'end_duration_hrs', 'time')}
           </div>
         </div>
 
         <div className="form-section">
-          <h4>Durées</h4>
+          <h4>Duration</h4>
           <div className="form-grid">
-            {renderFormInput('Estimée (h)', 'est_duration_hrs')}
-            {renderFormInput('Réelle (h)', 'real_time_duration_hrs')}
+            {renderFormInput('Estimated (h)', 'est_duration_hrs')}
+            {renderFormInput('Actual (h)', 'real_time_duration_hrs')}
           </div>
         </div>
 
         <div className="form-section">
-          <h4>Détails</h4>
+          <h4>Details</h4>
           <div className="form-grid">
             {renderFormInput('Maintenance', 'maint_event')}
             {renderFormInput('Incident', 'incid_event')}
-            {renderFormInput('Impact business', 'business_impact')}
+            {renderFormInput('Business impact', 'business_impact')}
             {renderFormInput('RCA', 'rca')}
             <label>
-              Type de log
+              Log type
               <select value={form.log_type} onChange={(e) => setForm(prev => ({ ...prev, log_type: e.target.value }))}>
                 <option value="application">Application</option>
                 <option value="operational">Operational</option>
@@ -388,18 +388,18 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         </div>
 
         <div className="form-section">
-          <h4>Résumé / Note</h4>
+          <h4>Summary / Note</h4>
           {renderFormInput('Note', 'note')}
         </div>
 
-        <button className="primary-button" onClick={addNote}>➕ Ajouter</button>
+        <button className="primary-button" onClick={addNote}>➕ Add</button>
       </Modal>
 
       <div className="logout-wrapper">
-        <button className="danger-button" onClick={onLogout}>🔓 Retourner</button>
+        <button className="danger-button" onClick={onLogout}>🔓 Back</button>
       </div>
 
-      <h3>Entrées Admin</h3>
+      <h3>Admin Entries</h3>
       <div className="admin-note-list">
         {adminNotes.map((note, idx) => (
           <div key={note.id || idx} className="admin-note-item">
@@ -413,7 +413,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
               className="danger-button"
               onClick={() => removeNote(note.id)}
             >
-              Supprimer
+              Delete
             </button>
           </div>
         ))}

@@ -13,11 +13,11 @@ export default function PaginationControls({ currentPage, setCurrentPage, totalI
 
   return (
     <div style={{ marginTop: '20px', textAlign: 'center' }}>
-      <button onClick={prev} disabled={currentPage === 0}>⬅ Précédent</button>
+      <button onClick={prev} disabled={currentPage === 0}>⬅ Previous</button>
       <span style={{ margin: '0 15px', fontWeight: 'bold' }}>
-        Page {currentPage + 1} sur {totalPages}
+        Page {currentPage + 1} of {totalPages}
       </span>
-      <button onClick={next} disabled={(currentPage + 1) * pageSize >= totalItems}>Suivant ➡</button>
+      <button onClick={next} disabled={(currentPage + 1) * pageSize >= totalItems}>Next ➡</button>
     </div>
   );
 }

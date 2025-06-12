@@ -8,7 +8,7 @@ exports.handler = async () => {
     .single();
 
   if (error) {
-    console.error("❌ Erreur Supabase (getExportColumns):", error);
+    console.error("❌ Supabase Error (getExportColumns):", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message })

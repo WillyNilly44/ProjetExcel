@@ -9,7 +9,7 @@ exports.handler = async () => {
     if (error || !data || data.length === 0) {
       return {
         statusCode: 404,
-        body: JSON.stringify({ error: 'Aucun fichier trouvé dans Supabase' })
+        body: JSON.stringify({ error: 'No file found in Supabase' })
       };
     }
 
@@ -33,7 +33,7 @@ exports.handler = async () => {
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message || 'Erreur inconnue' })
+      body: JSON.stringify({ error: err.message || 'Unknown error' })
     };
   }
 };

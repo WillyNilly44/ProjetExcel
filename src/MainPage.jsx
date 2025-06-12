@@ -104,6 +104,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
+
   const sheetsToLoad = useMemo(() => {
     if (!sheetNames.length) return [];
     
@@ -183,10 +184,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         setAdminNotes(json.data || []);
         setIsLoading(false);
       } catch (err) {
-        console.error("Contenu invalide depuis getAdminNotes:", text);
+        console.error("Invalid content from getAdminNotes:", text);
       }
     } catch (err) {
-      console.error('Erreur chargement adminNotes :', err);
+      console.error('Error loading adminNotes:', err);
     }
   }, []);
 
@@ -207,7 +208,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         const base64 = arrayBufferToBase64(arrayBuffer);
         sessionStorage.setItem(CACHE_KEY, base64);
       } catch (err) {
-        console.error('Erreur chargement automatique depuis Supabase:', err);
+        console.error('Error auto-loading from Supabase:', err);
         return;
       }
     }
@@ -219,7 +220,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     );
 
     if (validSheets.length === 0) {
-      alert("Aucune feuille valide trouvée.");
+      alert("No valid sheets found.");
       return;
     }
 
@@ -263,8 +264,8 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   if (isLoading) {
     return (
       <div style={{ textAlign: 'center', paddingTop: '50px' }}>
-        <img src="https://i.gifer.com/ZZ5H.gif" alt="Chargement..." style={{ width: '100px' }} />
-        <p>Chargement des données...</p>
+        <img src="https://i.gifer.com/ZZ5H.gif" alt="Loading..." style={{ width: '100px' }} />
+        <p>Loading data...</p>
       </div>
     );
   }
@@ -292,7 +293,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <label htmlFor="dataSourceSelect" style={{ whiteSpace: 'nowrap', fontSize: '14px' }}>
-              Feuilles à afficher :
+              Sheets to display:
             </label>
             <select
               id="dataSourceSelect"
@@ -300,7 +301,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
               onChange={handleDataSourceChange}
               style={{ height: '32px', minWidth: '120px', fontSize: '14px' }}
             >
-              <option value="fusion">Fusionnées</option>
+              <option value="fusion">Merged</option>
               <option value="operational">Operational Logs</option>
               <option value="application">Application Logs</option>
             </select>
@@ -332,7 +333,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             }}
             onClick={handleViewModeToggle}
           >
-            {viewMode === 'table' ? '📅 Afficher Calendrier' : '📋 Afficher Tableau'}
+            {viewMode === 'table' ? '📅 Show Calendar' : '📋 Show Table'}
           </button>
 
           <div style={{ height: '32px', display: 'flex', alignItems: 'center' }}>
@@ -378,7 +379,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             maxHeight: '80%',
             overflowY: 'auto'
           }}>
-            <h3>Détails de l'entrée</h3>
+            <h3>Entry Details</h3>
             <table style={{ width: '100%' }}>
               <tbody>
                 {Object.entries(selectedEntry).map(([key, value]) => (
@@ -393,7 +394,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
             </table>
             <div style={{ textAlign: 'right', marginTop: 20 }}>
               <button onClick={handleCloseModal} style={{ padding: '6px 12px', cursor: 'pointer' }}>
-                Fermer
+                Close
               </button>
             </div>
           </div>
@@ -409,7 +410,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
           <div style={{ width: '100%', maxWidth: '1200px' }}>
             {viewMode === 'table' ? (
               <>
-                <Suspense fallback={<p>Chargement...</p>}>
+                <Suspense fallback={<p>Loading...</p>}>
                   <DataTable
                     data={filteredData}
                     pageSize={-1}

@@ -40,12 +40,12 @@ function App() {
         "__EMPTY_1": "Incid.",
         "Business impact ?": "Impact ?",
         "RCA": "RCA",
-        "Duration (hrs)": "Durée estimée",
+        "Duration (hrs)": "Estimated Duration",
         "__EMPTY_2": "Start",
         "__EMPTY_3": "End",
         "__EMPTY_5": "Acc. time",
         "__EMPTY_4": "Acc. Bus. Imp.",
-        "Assigned": "Responsable",
+        "Assigned": "Assigned",
         "Note": "Note",
         "Ticket #": "Ticket",
         "Status": "Status",
@@ -99,7 +99,7 @@ function App() {
     }
 
     return (
-      <Suspense fallback={<p>Chargement de l'interface admin...</p>}>
+      <Suspense fallback={<p>Loading admin interface...</p>}>
         <AdminPanel
           onLogout={() => {
             sessionStorage.removeItem('admin');
@@ -124,7 +124,7 @@ function App() {
           <MenuDropdown onAdminClick={() => setAdminView(true)} />
         </header>
 
-        <Suspense fallback={<p>Chargement de la page...</p>}>
+        <Suspense fallback={<p>Loading page...</p>}>
           <Routes>
             <Route
               path="/"

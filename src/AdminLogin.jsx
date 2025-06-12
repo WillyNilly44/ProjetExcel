@@ -10,32 +10,31 @@ export default function AdminLogin({ onLogin }) {
       sessionStorage.setItem('admin', 'true');
       onLogin();
     } else {
-      setError('❌ Mot de passe incorrect');
+      setError('❌ Incorrect password');
     }
   };
 
   return (
     <div className="admin-login-wrapper">
       <div className="admin-login-box">
-        <h2>🔐 Connexion Admin</h2>
+        <h2>🔐 Admin Login</h2>
 
         <form onSubmit={handleSubmit}>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mot de passe"
+            placeholder="Password"
             className="admin-login-input"
           />
 
           <div className="button-group">
-            <button type="submit" className="admin-login-button">Connexion</button>
+            <button type="submit" className="admin-login-button">Login</button>
             <button type="button" className="admin-login-button secondary" onClick={() => window.location.reload()}>
-              Retourner
+              Back
             </button>
           </div>
         </form>
-
 
         {error && <p className="admin-login-error">{error}</p>}
       </div>

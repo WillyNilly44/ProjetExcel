@@ -21,12 +21,12 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Seuils mis à jour.', data })
+      body: JSON.stringify({ message: 'Thresholds updated.', data })
     };
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Erreur de traitement : ' + err.message })
+      body: JSON.stringify({ error: 'Processing error: ' + err.message })
     };
   }
 };

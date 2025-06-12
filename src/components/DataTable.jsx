@@ -7,7 +7,7 @@ export default function DataTable({ data, pageSize, currentPage, onRowClick, vis
   const pageData = pageSize === -1 ? data : data.slice(start, start + pageSize);
 
 
-  if (pageData.length === 0) return <p style={{ color: 'red' }}>Aucune donnée disponible.</p>;
+  if (pageData.length === 0) return <p style={{ color: 'red' }}>No data available</p>;
 
   const headers = (Array.isArray(visibleColumns) && visibleColumns.length > 0)
     ? visibleColumns

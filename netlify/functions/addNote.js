@@ -4,7 +4,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      body: JSON.stringify({ error: 'Méthode non autorisée' }),
+      body: JSON.stringify({ error: 'Method not allowed' }),
     };
   }
 
@@ -30,7 +30,7 @@ exports.handler = async (event) => {
   } catch (err) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Données invalides' }),
+      body: JSON.stringify({ error: 'Invalid data' }),
     };
   }
 };
