@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useCallback, useMemo, useRef } from 'react';
 import CalendarView from './components/CalendarView';
 import PaginationControls from './components/PaginationControls';
 import ExportPdfBtn from './components/ExportPdfBtn';
@@ -104,6 +104,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const [isMonthSelected, setIsMonthSelected] = useState(false);
   const [calendarStartDate, setCalendarStartDate] = useState(null);
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const filtersRef = useRef();
 
   const sheetsToLoad = useMemo(() => {
     if (!sheetNames.length) return [];
@@ -192,6 +193,9 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   }, []);
 
   const fetchLatestExcel = useCallback(async () => {
+    // ✅ CLEAR CACHE FIRST - Add this line
+    sessionStorage.removeItem(CACHE_KEY);
+    
     const cached = sessionStorage.getItem(CACHE_KEY);
     let arrayBuffer;
 
@@ -200,9 +204,32 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     } else {
       try {
         sessionStorage.removeItem(CACHE_KEY);
-        const res = await fetch('/.netlify/functions/getLatestExcel');
+        
+        // ✅ ADD CACHE-BUSTING - Add timestamp to prevent browser caching
+        const timestamp = Date.now();
+        const res = await fetch(`/.netlify/functions/getLatestExcel?t=${timestamp}`, {
+          cache: 'no-store',  // ✅ Add this
+          headers: {          // ✅ Add this
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         const { url } = await res.json();
-        const response = await fetch(url);
+        
+        // ✅ ADD CACHE-BUSTING TO FILE URL TOO
+        const fileUrlWithCacheBuster = `${url}${url.includes('?') ? '&' : '?'}t=${timestamp}`;
+        
+        const response = await fetch(fileUrlWithCacheBuster, {
+          cache: 'no-store',  // ✅ Add this
+          headers: {          // ✅ Add this
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
         arrayBuffer = await response.arrayBuffer();
 
         const base64 = arrayBufferToBase64(arrayBuffer);
@@ -246,6 +273,33 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const handleCloseModal = useCallback(() => {
     setSelectedEntry(null);
   }, []);
+
+  const handleResetFilters = () => {
+    setFilteredData(data);
+    setCurrentPage(0);
+    setIsMonthSelected(false);
+    setCalendarStartDate(new Date());
+    
+    if (filtersRef.current) {
+      filtersRef.current.resetFilters();
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsLoading(true);
+    
+    // Clear all caches
+    sessionStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_KEY);
+    
+    // Force re-fetch
+    await fetchLatestExcel();
+    
+    setIsLoading(false);
+    
+    // Optional: Show success message
+    console.log('Data refreshed successfully!');
+  };
 
   useEffect(() => {
     fetchAdminNotes();
@@ -309,12 +363,52 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
 
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <Filters
+              ref={filtersRef}
               originalData={data}
               setFilteredData={setFilteredData}
               setCurrentPage={setCurrentPage}
               onMonthFilterChange={setIsMonthSelected}
               onMonthYearChange={setCalendarStartDate}
             />
+
+            {/* Reset Filter Button */}
+            <button
+              onClick={handleResetFilters}
+              className="btn-gradient-warning px-4 py-2 text-white font-semibold rounded-xl flex items-center gap-2 text-sm shadow-lg hover-lift"
+              style={{
+                height: '32px',
+                fontSize: '14px',
+                padding: '0 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                lineHeight: '1',
+                boxSizing: 'border-box'
+              }}
+            >
+              <span>🔄</span>
+              Reset Filters
+            </button>
+
+            <button
+              onClick={handleManualRefresh}
+              className="btn-gradient-primary px-4 py-2 text-white font-semibold rounded-xl flex items-center gap-2 text-sm shadow-lg hover-lift"
+              style={{
+                height: '32px',
+                fontSize: '14px',
+                padding: '0 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: 'none',
+                lineHeight: '1',
+                boxSizing: 'border-box'
+              }}
+            >
+              <span>⟳</span>
+              Refresh Data
+            </button>
           </div>
 
           <button

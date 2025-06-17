@@ -1,14 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { extractDateInfo } from '../utils/dateUtils';
 
-export default function Filters({
+const Filters = forwardRef(({
   originalData,
   setFilteredData,
   setCurrentPage,
   onMonthFilterChange,
   onMonthYearChange,
-}) {
+}, ref) => {
 
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [justReset, setJustReset] = useState(false);
+  
   function getMondayOfWeek(date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -46,11 +49,23 @@ export default function Filters({
     };
   };
 
-  const defaults = getCurrentWeekDefaults();
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
   const [selectedWeek, setSelectedWeek] = useState('');
   
+  useImperativeHandle(ref, () => ({
+    resetFilters: () => {
+      setJustReset(true);
+      setSelectedYear('');
+      setSelectedMonth('');
+      setSelectedWeek('');
+      
+      setTimeout(() => {
+        setJustReset(false);
+      }, 200);
+    }
+  }));
+
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -109,7 +124,8 @@ export default function Filters({
   }, [allDates, selectedYear, selectedMonth]);
 
   useEffect(() => {
-    if (originalData.length > 0 && !selectedYear) {
+    if (!hasInitialized && !justReset && originalData.length > 0 && availableYears.length > 0) {
+      const defaults = getCurrentWeekDefaults();
       const hasCurrentYear = availableYears.includes(Number(defaults.year));
       
       if (hasCurrentYear) {
@@ -136,8 +152,10 @@ export default function Filters({
           }
         }, 0);
       }
+      
+      setHasInitialized(true);
     }
-  }, [originalData, availableYears, allDates, defaults.year, defaults.month, defaults.week, selectedYear]);
+  }, [originalData, availableYears, allDates, hasInitialized, justReset]);
 
   const filteredData = useMemo(() => {
     if (!selectedYear) return originalData;
@@ -160,19 +178,6 @@ export default function Filters({
       return true;
     });
   }, [originalData, selectedYear, selectedMonth, selectedWeek]);
-
-  useEffect(() => {
-    if (selectedYear !== defaults.year) {
-      setSelectedMonth('');
-      setSelectedWeek('');
-    }
-  }, [selectedYear, defaults.year]);
-
-  useEffect(() => {
-    if (selectedMonth !== defaults.month) {
-      setSelectedWeek('');
-    }
-  }, [selectedMonth, defaults.month]);
 
   useEffect(() => {
     setFilteredData(filteredData);
@@ -260,4 +265,6 @@ export default function Filters({
      
     </div>
   );
-}
+});
+
+export default Filters;
