@@ -193,7 +193,7 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   }, []);
 
   const fetchLatestExcel = useCallback(async () => {
-    // ✅ CLEAR CACHE FIRST - Add this line
+
     sessionStorage.removeItem(CACHE_KEY);
     
     const cached = sessionStorage.getItem(CACHE_KEY);
@@ -205,11 +205,10 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
       try {
         sessionStorage.removeItem(CACHE_KEY);
         
-        // ✅ ADD CACHE-BUSTING - Add timestamp to prevent browser caching
         const timestamp = Date.now();
         const res = await fetch(`/.netlify/functions/getLatestExcel?t=${timestamp}`, {
-          cache: 'no-store',  // ✅ Add this
-          headers: {          // ✅ Add this
+          cache: 'no-store',  
+          headers: {          
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
@@ -218,12 +217,11 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
         
         const { url } = await res.json();
         
-        // ✅ ADD CACHE-BUSTING TO FILE URL TOO
         const fileUrlWithCacheBuster = `${url}${url.includes('?') ? '&' : '?'}t=${timestamp}`;
         
         const response = await fetch(fileUrlWithCacheBuster, {
-          cache: 'no-store',  // ✅ Add this
-          headers: {          // ✅ Add this
+          cache: 'no-store',  
+          headers: {          
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
@@ -288,17 +286,13 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
   const handleManualRefresh = async () => {
     setIsLoading(true);
     
-    // Clear all caches
     sessionStorage.removeItem(CACHE_KEY);
     localStorage.removeItem(CACHE_KEY);
     
-    // Force re-fetch
     await fetchLatestExcel();
     
     setIsLoading(false);
     
-    // Optional: Show success message
-    console.log('Data refreshed successfully!');
   };
 
   useEffect(() => {
