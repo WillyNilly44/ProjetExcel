@@ -16,6 +16,8 @@ function App() {
   const [sheetNames, setSheetNames] = useState([]);
   const [exportColumns, setExportColumns] = useState([]);
   const [allColumns, setAllColumns] = useState([]);
+  const [excelData, setExcelData] = useState([]);
+  
   const [thresholds, setThresholds] = useState({
     maintenance_yellow: 15,
     maintenance_red: 25,
@@ -112,6 +114,7 @@ function App() {
           setThresholds={setThresholds}
           setExportColumns={setExportColumns}
           allColumns={allColumns}
+          excelData={excelData}
         />
       </Suspense>
     );
@@ -136,6 +139,7 @@ function App() {
                   setSheetNames={setSheetNames}
                   adminNotes={adminNotes}
                   exportColumns={exportColumns}
+                  onExcelDataLoad={setExcelData}
                 />
               }
             />

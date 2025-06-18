@@ -91,7 +91,14 @@ function base64ToArrayBuffer(base64) {
   return bytes.buffer;
 }
 
-export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNames, exportColumns }) {
+export default function MainPage({ 
+  workbook, 
+  setWorkbook, 
+  sheetNames, 
+  setSheetNames, 
+  exportColumns, 
+  onExcelDataLoad 
+}) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState('');
@@ -174,7 +181,12 @@ export default function MainPage({ workbook, setWorkbook, sheetNames, setSheetNa
     setData(normalizedMerged);
     setFilteredData(normalizedMerged);
     setCurrentPage(0);
-  }, [adminNotes, dataSource]);
+    
+    if (onExcelDataLoad) {
+      onExcelDataLoad(normalizedMerged);
+    }
+    
+  }, [adminNotes, dataSource, onExcelDataLoad]);
 
   const fetchAdminNotes = useCallback(async () => {
     try {

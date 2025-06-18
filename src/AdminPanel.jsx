@@ -84,10 +84,19 @@ const SortableItem = React.memo(({ id, label, onRemove }) => {
   );
 });
 
-export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns, allColumns }) {
+export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns, allColumns, excelData }) {
+
+  
+  if (excelData && excelData.length > 0) {
+    const assignedValues = excelData.map(row => row.Assigned || row.assigned).filter(Boolean);
+  }
+
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
   const [localThresholds, setLocalThresholds] = useState(thresholds);
+  const [assignedOptions, setAssignedOptions] = useState([
+    { value: '', label: '— Select Assignee —' }
+  ]);
 
   const [modals, setModals] = useState({
     form: false,
@@ -98,7 +107,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   const allPossibleColumns = useMemo(() => allColumns || [], [allColumns]);
   const sensors = useSensors(useSensor(PointerSensor));
-  const availableColumns = useMemo(() => 
+  const availableColumns = useMemo(() =>
     allPossibleColumns.filter(c => !exportColumnsLocal.includes(c.key)),
     [allPossibleColumns, exportColumnsLocal]
   );
@@ -175,7 +184,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   const addNote = useCallback(async () => {
     if (!form.weekday && !form.note) return;
-    
+
     try {
       const response = await fetch('/.netlify/functions/addNote', {
         method: 'POST',
@@ -183,7 +192,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         body: JSON.stringify(form)
       });
       const result = await response.json();
-      
+
       if (response.ok) {
         setAdminNotes(prev => [...prev, ...result.data]);
         setForm(INITIAL_FORM_STATE);
@@ -206,7 +215,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         body: JSON.stringify({ id })
       });
       const result = await res.json();
-      
+
       if (res.ok) {
         setAdminNotes(prev => prev.filter(note => note.id !== id));
       } else {
@@ -240,6 +249,46 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     };
     fetchExportColumns();
   }, [setExportColumns]);
+
+  useEffect(() => {
+    if (excelData && Array.isArray(excelData) && excelData.length > 0) {
+      console.log('🔍 Debug: Excel Data Rows:', excelData);
+      console.log('🔍 Debug: First Row:', excelData[0]);
+      console.log('🔍 Debug: Column Names:', Object.keys(excelData[0]));
+      
+
+      const assignedValues = excelData.map(row => ({
+        assigned: row.Assigned,
+        assigned_lower: row.assigned,
+        assigned_to: row['Assigned to'],
+        all_keys: Object.keys(row)
+      }));
+    }
+  }, [excelData]);
+
+  useEffect(() => {
+    if (excelData && Array.isArray(excelData) && excelData.length > 0) {
+      
+      const uniqueAssigned = [...new Set(
+        excelData
+          .map(row => row.Assigned || row.assigned || row['Assigned to'] || '')
+          .filter(value => value && value.trim() !== '') 
+          .map(value => value.trim()) 
+      )].sort(); 
+
+      
+      const options = [
+        { value: '', label: '— Select Assignee —' },
+        ...uniqueAssigned.map(name => ({ value: name, label: name }))
+      ];
+      setAssignedOptions(options);
+    }
+  }, [excelData]);
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    addNote();
+  };
 
   const renderFormInput = useCallback((label, field, type = 'text', options = null) => (
     <label key={field}>
@@ -292,11 +341,11 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
               {exportColumnsLocal.map(key => {
                 const col = allPossibleColumns.find(c => c.key === key);
                 return (
-                  <SortableItem 
-                    key={key} 
-                    id={key} 
-                    label={col?.label || key} 
-                    onRemove={removeColumn} 
+                  <SortableItem
+                    key={key}
+                    id={key}
+                    label={col?.label || key}
+                    onRemove={removeColumn}
                   />
                 );
               })}
@@ -310,12 +359,12 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             <button
               key={col.key}
               onClick={() => addColumn(col.key)}
-              style={{ 
-                margin: 4, 
-                padding: '6px 10px', 
-                backgroundColor: '#ddd', 
-                borderRadius: '6px', 
-                cursor: 'pointer' 
+              style={{
+                margin: 4,
+                padding: '6px 10px',
+                backgroundColor: '#ddd',
+                borderRadius: '6px',
+                cursor: 'pointer'
               }}
             >
               ➕ {col.label}
@@ -324,7 +373,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         </div>
       </Modal>
 
-      {/* Thresholds Modal */}
       <Modal isOpen={modals.thresholds} onClose={() => toggleModal('thresholds')} title="🎛 Edit Thresholds">
         <div className="form-grid">
           {THRESHOLD_FIELDS.map(([key, label]) => (
@@ -349,7 +397,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             {renderFormInput('Incident', 'incident')}
             {renderFormInput('District', 'district')}
             {renderFormInput('Ticket #', 'ticket_number')}
-            {renderFormInput('Assigned to', 'assigned')}
+            {renderFormInput('Assigned to', 'assigned', 'select', assignedOptions)}
           </div>
         </div>
 
