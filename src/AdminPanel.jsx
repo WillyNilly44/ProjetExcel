@@ -97,6 +97,9 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
   const [assignedOptions, setAssignedOptions] = useState([
     { value: '', label: '— Select Assignee —' }
   ]);
+  const [districtOptions, setDistrictOptions] = useState([
+  { value: '', label: '— Select District —' }
+]);
 
   const [modals, setModals] = useState({
     form: false,
@@ -252,26 +255,10 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   useEffect(() => {
     if (excelData && Array.isArray(excelData) && excelData.length > 0) {
-      console.log('🔍 Debug: Excel Data Rows:', excelData);
-      console.log('🔍 Debug: First Row:', excelData[0]);
-      console.log('🔍 Debug: Column Names:', Object.keys(excelData[0]));
-      
-
-      const assignedValues = excelData.map(row => ({
-        assigned: row.Assigned,
-        assigned_lower: row.assigned,
-        assigned_to: row['Assigned to'],
-        all_keys: Object.keys(row)
-      }));
-    }
-  }, [excelData]);
-
-  useEffect(() => {
-    if (excelData && Array.isArray(excelData) && excelData.length > 0) {
       
       const uniqueAssigned = [...new Set(
         excelData
-          .map(row => row.Assigned || row.assigned || row['Assigned to'] || '')
+          .map(row => row.Assigned || row.assigned || row['Assigned'] || '')
           .filter(value => value && value.trim() !== '') 
           .map(value => value.trim()) 
       )].sort(); 
@@ -282,6 +269,23 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         ...uniqueAssigned.map(name => ({ value: name, label: name }))
       ];
       setAssignedOptions(options);
+    }
+  }, [excelData]);
+
+  useEffect(() => {
+    if (excelData && Array.isArray(excelData) && excelData.length > 0) {
+      
+      const uniqueDistricts = [...new Set(
+        excelData
+          .map(row => row.District)
+          .filter(value => value!== '') 
+      )].sort(); 
+
+      const options = [
+        { value: '', label: '— Select District —' },
+        ...uniqueDistricts.map(name => ({ value: name, label: name }))
+      ];
+      setDistrictOptions(options);
     }
   }, [excelData]);
 
@@ -395,7 +399,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
           <h4>Identification</h4>
           <div className="form-grid">
             {renderFormInput('Incident', 'incident')}
-            {renderFormInput('District', 'district')}
+            {renderFormInput('District', 'district','select', districtOptions)}
             {renderFormInput('Ticket #', 'ticket_number')}
             {renderFormInput('Assigned to', 'assigned', 'select', assignedOptions)}
           </div>
@@ -421,8 +425,8 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         <div className="form-section">
           <h4>Details</h4>
           <div className="form-grid">
-            {renderFormInput('Maintenance', 'maint_event')}
-            {renderFormInput('Incident', 'incid_event')}
+            {renderFormInput('Maintenance Event', 'maint_event')}
+            {renderFormInput('Incident Event', 'incid_event')}
             {renderFormInput('Business impact', 'business_impact')}
             {renderFormInput('RCA', 'rca')}
             <label>
