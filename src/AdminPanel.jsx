@@ -16,7 +16,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-
 const INITIAL_FORM_STATE = {
   incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
   business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
@@ -42,7 +41,6 @@ const THRESHOLD_FIELDS = [
   ['incident_red', 'Incident (red)'],
   ['impact', 'Impact (threshold)']
 ];
-
 
 const SortableItem = React.memo(({ id, label, onRemove }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -85,8 +83,19 @@ const SortableItem = React.memo(({ id, label, onRemove }) => {
 });
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns, allColumns, excelData }) {
-
   
+  // ✅ Get user access level from sessionStorage
+  const adminLevel = sessionStorage.getItem('adminLevel') || '';
+  const hasThresholdAccess = adminLevel === 'threshold' || adminLevel === 'full';
+  const hasFullAccess = adminLevel === 'full';
+
+  // ✅ Log access level for debugging
+  useEffect(() => {
+    console.log('🔍 AdminPanel - Current access level:', adminLevel);
+    console.log('🔍 Has threshold access:', hasThresholdAccess);
+    console.log('🔍 Has full access:', hasFullAccess);
+  }, [adminLevel, hasThresholdAccess, hasFullAccess]);
+
   if (excelData && excelData.length > 0) {
     const assignedValues = excelData.map(row => row.Assigned || row.assigned).filter(Boolean);
   }
@@ -98,8 +107,8 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     { value: '', label: '— Select Assignee —' }
   ]);
   const [districtOptions, setDistrictOptions] = useState([
-  { value: '', label: '— Select District —' }
-]);
+    { value: '', label: '— Select District —' }
+  ]);
 
   const [modals, setModals] = useState({
     form: false,
@@ -255,7 +264,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   useEffect(() => {
     if (excelData && Array.isArray(excelData) && excelData.length > 0) {
-      
       const uniqueAssigned = [...new Set(
         excelData
           .map(row => row.Assigned || row.assigned || row['Assigned'] || '')
@@ -263,7 +271,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
           .map(value => value.trim()) 
       )].sort(); 
 
-      
       const options = [
         { value: '', label: '— Select Assignee —' },
         ...uniqueAssigned.map(name => ({ value: name, label: name }))
@@ -274,11 +281,10 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   useEffect(() => {
     if (excelData && Array.isArray(excelData) && excelData.length > 0) {
-      
       const uniqueDistricts = [...new Set(
         excelData
           .map(row => row.District)
-          .filter(value => value!== '') 
+          .filter(value => value !== '') 
       )].sort(); 
 
       const options = [
@@ -316,159 +322,204 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
 
   return (
     <div className="admin-panel">
-      <h2>Admin Page</h2>
+      <h2>
+        Admin Page 
+        <span style={{ 
+          marginLeft: '10px', 
+          fontSize: '14px',
+          color: hasFullAccess ? '#10b981' : '#f59e0b'
+        }}>
+          ({hasFullAccess ? '🔓 Full Access' : '🔒 Threshold Only'})
+        </span>
+      </h2>
+
+      {/* ✅ Action Buttons - Show based on access level */}
       <div className="top-buttons">
-        <button className="primary-button" onClick={() => toggleModal('upload')}>
-          📤 Upload Excel File
-        </button>
-        <button className="primary-button" onClick={() => toggleModal('export')}>
-          🧩 Column Display
-        </button>
-        <button className="primary-button" onClick={() => toggleModal('thresholds')}>
-          🎛 Edit Thresholds
-        </button>
-        <button className="primary-button" onClick={() => toggleModal('form')}>
-          ➕ Add Recurrence
-        </button>
+        {hasFullAccess && (
+          <>
+            <button className="primary-button" onClick={() => toggleModal('upload')}>
+              📤 Upload Excel File
+            </button>
+            <button className="primary-button" onClick={() => toggleModal('export')}>
+              🧩 Column Display
+            </button>
+            <button className="primary-button" onClick={() => toggleModal('form')}>
+              ➕ Add Recurrence
+            </button>
+          </>
+        )}
+        
+        {/* Threshold button - Available to both levels */}
+        {hasThresholdAccess && (
+          <button className="primary-button" onClick={() => toggleModal('thresholds')}>
+            🎛 Edit Thresholds
+          </button>
+        )}
       </div>
 
-      {/* Upload Modal */}
-      <Modal isOpen={modals.upload} onClose={() => toggleModal('upload')} title="📤 Upload Excel">
-        <FileUpload onDataLoaded={() => alert("File uploaded!")} />
-      </Modal>
+      {/* ✅ Upload Modal - Full Access Only */}
+      {hasFullAccess && (
+        <Modal isOpen={modals.upload} onClose={() => toggleModal('upload')} title="📤 Upload Excel">
+          <FileUpload onDataLoaded={() => alert("File uploaded!")} />
+        </Modal>
+      )}
 
-      {/* Export Columns Modal */}
-      <Modal isOpen={modals.export} onClose={() => toggleModal('export')} title="🧩 Export Columns">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={exportColumnsLocal} strategy={horizontalListSortingStrategy}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              {exportColumnsLocal.map(key => {
-                const col = allPossibleColumns.find(c => c.key === key);
-                return (
-                  <SortableItem
-                    key={key}
-                    id={key}
-                    label={col?.label || key}
-                    onRemove={removeColumn}
-                  />
-                );
-              })}
+      {/* ✅ Export Columns Modal - Full Access Only */}
+      {hasFullAccess && (
+        <Modal isOpen={modals.export} onClose={() => toggleModal('export')} title="🧩 Export Columns">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={exportColumnsLocal} strategy={horizontalListSortingStrategy}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                {exportColumnsLocal.map(key => {
+                  const col = allPossibleColumns.find(c => c.key === key);
+                  return (
+                    <SortableItem
+                      key={key}
+                      id={key}
+                      label={col?.label || key}
+                      onRemove={removeColumn}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
+
+          <h4>Available columns:</h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+            {availableColumns.map(col => (
+              <button
+                key={col.key}
+                onClick={() => addColumn(col.key)}
+                style={{
+                  margin: 4,
+                  padding: '6px 10px',
+                  backgroundColor: '#ddd',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                ➕ {col.label}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* ✅ Thresholds Modal - Available to Both Levels */}
+      {hasThresholdAccess && (
+        <Modal isOpen={modals.thresholds} onClose={() => toggleModal('thresholds')} title="🎛 Edit Thresholds">
+          <div className="form-grid">
+            {THRESHOLD_FIELDS.map(([key, label]) => (
+              <label key={key}>
+                {label}
+                <input
+                  type="number"
+                  value={localThresholds[key]}
+                  onChange={handleThresholdChange(key)}
+                />
+              </label>
+            ))}
+          </div>
+          <button className="primary-button" onClick={updateThresholds}>💾 Save</button>
+        </Modal>
+      )}
+
+      {/* ✅ Form Modal - Full Access Only */}
+      {hasFullAccess && (
+        <Modal isOpen={modals.form} onClose={() => toggleModal('form')} title="➕ Add Recurrence">
+          <div className="form-section">
+            <h4>Identification</h4>
+            <div className="form-grid">
+              {renderFormInput('Incident', 'incident')}
+              {renderFormInput('District', 'district','select', districtOptions)}
+              {renderFormInput('Ticket #', 'ticket_number')}
+              {renderFormInput('Assigned to', 'assigned', 'select', assignedOptions)}
             </div>
-          </SortableContext>
-        </DndContext>
-
-        <h4>Available columns:</h4>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {availableColumns.map(col => (
-            <button
-              key={col.key}
-              onClick={() => addColumn(col.key)}
-              style={{
-                margin: 4,
-                padding: '6px 10px',
-                backgroundColor: '#ddd',
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-            >
-              ➕ {col.label}
-            </button>
-          ))}
-        </div>
-      </Modal>
-
-      <Modal isOpen={modals.thresholds} onClose={() => toggleModal('thresholds')} title="🎛 Edit Thresholds">
-        <div className="form-grid">
-          {THRESHOLD_FIELDS.map(([key, label]) => (
-            <label key={key}>
-              {label}
-              <input
-                type="number"
-                value={localThresholds[key]}
-                onChange={handleThresholdChange(key)}
-              />
-            </label>
-          ))}
-        </div>
-        <button className="primary-button" onClick={updateThresholds}>💾 Save</button>
-      </Modal>
-
-      {/* Form Modal */}
-      <Modal isOpen={modals.form} onClose={() => toggleModal('form')} title="➕ Add Recurrence">
-        <div className="form-section">
-          <h4>Identification</h4>
-          <div className="form-grid">
-            {renderFormInput('Incident', 'incident')}
-            {renderFormInput('District', 'district','select', districtOptions)}
-            {renderFormInput('Ticket #', 'ticket_number')}
-            {renderFormInput('Assigned to', 'assigned', 'select', assignedOptions)}
           </div>
-        </div>
 
-        <div className="form-section">
-          <h4>Schedule</h4>
-          <div className="form-grid">
-            {renderFormInput('Recurrence', 'weekday', 'select', WEEKDAY_OPTIONS)}
-            {renderFormInput('Start', 'start_duration_hrs', 'time')}
-            {renderFormInput('End', 'end_duration_hrs', 'time')}
+          <div className="form-section">
+            <h4>Schedule</h4>
+            <div className="form-grid">
+              {renderFormInput('Recurrence', 'weekday', 'select', WEEKDAY_OPTIONS)}
+              {renderFormInput('Start', 'start_duration_hrs', 'time')}
+              {renderFormInput('End', 'end_duration_hrs', 'time')}
+            </div>
           </div>
-        </div>
 
-        <div className="form-section">
-          <h4>Duration</h4>
-          <div className="form-grid">
-            {renderFormInput('Estimated (h)', 'est_duration_hrs')}
-            {renderFormInput('Actual (h)', 'real_time_duration_hrs')}
+          <div className="form-section">
+            <h4>Duration</h4>
+            <div className="form-grid">
+              {renderFormInput('Estimated (h)', 'est_duration_hrs')}
+              {renderFormInput('Actual (h)', 'real_time_duration_hrs')}
+            </div>
           </div>
-        </div>
 
-        <div className="form-section">
-          <h4>Details</h4>
-          <div className="form-grid">
-            {renderFormInput('Maintenance Event', 'maint_event')}
-            {renderFormInput('Incident Event', 'incid_event')}
-            {renderFormInput('Business impact', 'business_impact')}
-            {renderFormInput('RCA', 'rca')}
-            <label>
-              Log type
-              <select value={form.log_type} onChange={(e) => setForm(prev => ({ ...prev, log_type: e.target.value }))}>
-                <option value="application">Application</option>
-                <option value="operational">Operational</option>
-              </select>
-            </label>
+          <div className="form-section">
+            <h4>Details</h4>
+            <div className="form-grid">
+              {renderFormInput('Maintenance Event', 'maint_event')}
+              {renderFormInput('Incident Event', 'incid_event')}
+              {renderFormInput('Business impact', 'business_impact')}
+              {renderFormInput('RCA', 'rca')}
+              <label>
+                Log type
+                <select value={form.log_type} onChange={(e) => setForm(prev => ({ ...prev, log_type: e.target.value }))}>
+                  <option value="application">Application</option>
+                  <option value="operational">Operational</option>
+                </select>
+              </label>
+            </div>
           </div>
-        </div>
 
-        <div className="form-section">
-          <h4>Summary / Note</h4>
-          {renderFormInput('Note', 'note')}
-        </div>
+          <div className="form-section">
+            <h4>Summary / Note</h4>
+            {renderFormInput('Note', 'note')}
+          </div>
 
-        <button className="primary-button" onClick={addNote}>➕ Add</button>
-      </Modal>
+          <button className="primary-button" onClick={addNote}>➕ Add</button>
+        </Modal>
+      )}
 
       <div className="logout-wrapper">
         <button className="danger-button" onClick={onLogout}>🔓 Back</button>
       </div>
 
-      <h3>Admin Entries</h3>
-      <div className="admin-note-list">
-        {adminNotes.map((note, idx) => (
-          <div key={note.id || idx} className="admin-note-item">
-            <div>
-              <div className="admin-note-title">{note.note}</div>
-              <div className="admin-note-meta">
-                📅 {note.weekday} — 🏷 {note.incident} — 🏢 {note.district} — 👤 {note.assigned}
+      {/* ✅ Admin Entries - Full Access Only */}
+      {hasFullAccess && (
+        <>
+          <h3>Admin Entries</h3>
+          <div className="admin-note-list">
+            {adminNotes.map((note, idx) => (
+              <div key={note.id || idx} className="admin-note-item">
+                <div>
+                  <div className="admin-note-title">{note.note}</div>
+                  <div className="admin-note-meta">
+                    📅 {note.weekday} — 🏷 {note.incident} — 🏢 {note.district} — 👤 {note.assigned}
+                  </div>
+                </div>
+                <button
+                  className="danger-button"
+                  onClick={() => removeNote(note.id)}
+                >
+                  Delete
+                </button>
               </div>
-            </div>
-            <button
-              className="danger-button"
-              onClick={() => removeNote(note.id)}
-            >
-              Delete
-            </button>
+            ))}
           </div>
-        ))}
+        </>
+      )}
+
+      {/* ✅ Show access level indicator */}
+      <div style={{ 
+        marginTop: '20px',
+        padding: '10px', 
+        background: hasFullAccess ? '#065f46' : '#92400e',
+        color: 'white',
+        borderRadius: '8px',
+        textAlign: 'center'
+      }}>
+        Current Access Level: {hasFullAccess ? '🔓 Full Admin Access' : '🔒 Threshold Management Only'}
       </div>
     </div>
   );

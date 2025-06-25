@@ -8,21 +8,26 @@ exports.handler = async (event) => {
 
   try {
     const { password } = JSON.parse(event.body);
-    const adminPassword = process.env.ADMIN_PASSWORD;
+    const adminPassword = process.env.ADMIN_PASSWORD;           
+    const superAdminPassword = process.env.ADMIN_PASSWORD_LVL;  
     
-    if (!adminPassword) {
-      console.error('ADMIN_PASSWORD environment variable is not set!');
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: 'Server configuration error' }),
-      };
+    let isValid = false;
+    let level = '';
+    
+    if (password === adminPassword) {
+      isValid = true; 
+      level = 'threshold';
+    } else if (password === superAdminPassword) {
+      isValid = true; 
+      level = 'full';
     }
-    
-    const isValid = password === adminPassword;
     
     return {
       statusCode: 200,
-      body: JSON.stringify({ valid: isValid }),
+      body: JSON.stringify({ 
+        valid: isValid,
+        level: level
+      }),
     };
   } catch (err) {
     console.error('Verify password error:', err);

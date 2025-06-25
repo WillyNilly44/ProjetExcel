@@ -17,8 +17,10 @@ export default function AdminLogin({ onLogin }) {
       const result = await response.json();
       
       if (response.ok && result.valid) {
+       
         sessionStorage.setItem('admin', 'true');
-        onLogin();
+        sessionStorage.setItem('adminLevel', result.level); 
+        onLogin(result.level); 
       } else {
         setError('❌ Incorrect password');
       }
@@ -51,6 +53,17 @@ export default function AdminLogin({ onLogin }) {
         </form>
 
         {error && <p className="admin-login-error">{error}</p>}
+        
+        <div style={{ 
+          marginTop: '15px', 
+          fontSize: '12px', 
+          color: '#666',
+          textAlign: 'center'
+        }}>
+          Two access levels available:<br/>
+          🔒 Threshold access<br/>
+          🔓 Full access
+        </div>
       </div>
     </div>
   );
