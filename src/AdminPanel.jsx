@@ -20,7 +20,8 @@ const INITIAL_FORM_STATE = {
   incident: '', district: '', weekday: '', maint_event: '', incid_event: '',
   business_impact: '', rca: '', est_duration_hrs: '', start_duration_hrs: '',
   end_duration_hrs: '', real_time_duration_hrs: '', ticket_number: '',
-  assigned: '', note: '', log_type: 'application'
+  assigned: '', note: '', log_type: 'application',
+  isRecurrence: false
 };
 
 const WEEKDAY_OPTIONS = [
@@ -84,22 +85,15 @@ const SortableItem = React.memo(({ id, label, onRemove }) => {
 
 export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresholds, setThresholds, setExportColumns, allColumns, excelData }) {
   
-  // ✅ Get user access level from sessionStorage
+  // ✅ User access level
   const adminLevel = sessionStorage.getItem('adminLevel') || '';
   const hasThresholdAccess = adminLevel === 'threshold' || adminLevel === 'full';
   const hasFullAccess = adminLevel === 'full';
 
-  // ✅ Log access level for debugging
-  useEffect(() => {
-    console.log('🔍 AdminPanel - Current access level:', adminLevel);
-    console.log('🔍 Has threshold access:', hasThresholdAccess);
-    console.log('🔍 Has full access:', hasFullAccess);
-  }, [adminLevel, hasThresholdAccess, hasFullAccess]);
-
-  if (excelData && excelData.length > 0) {
-    const assignedValues = excelData.map(row => row.Assigned || row.assigned).filter(Boolean);
-  }
-
+  // ✅ State variables
+  const [awsConnected, setAwsConnected] = useState(false);
+  const [awsData, setAwsData] = useState([]);
+  const [isLoadingAws, setIsLoadingAws] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM_STATE);
   const [exportColumnsLocal, setExportColumnsLocal] = useState([]);
   const [localThresholds, setLocalThresholds] = useState(thresholds);
@@ -117,6 +111,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     export: false
   });
 
+  // ✅ Memoized values
   const allPossibleColumns = useMemo(() => allColumns || [], [allColumns]);
   const sensors = useSensors(useSensor(PointerSensor));
   const availableColumns = useMemo(() =>
@@ -124,6 +119,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     [allPossibleColumns, exportColumnsLocal]
   );
 
+  // ✅ Helper functions
   const toggleModal = useCallback((modalName) => {
     setModals(prev => ({ ...prev, [modalName]: !prev[modalName] }));
   }, []);
@@ -154,7 +150,17 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
   }, [exportColumnsLocal, setExportColumns]);
 
   const handleChange = useCallback((field) => (e) => {
-    setForm(prev => ({ ...prev, [field]: e.target.value }));
+    const newValue = e.target.value;
+    
+    setForm(prev => {
+      const updated = { ...prev, [field]: newValue };
+      
+      if (field === 'isRecurrence' && !e.target.checked) {
+        updated.weekday = '';
+      }
+      
+      return updated;
+    });
   }, []);
 
   const handleThresholdChange = useCallback((field) => (e) => {
@@ -194,14 +200,114 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     }
   }, [localThresholds, setThresholds]);
 
-  const addNote = useCallback(async () => {
-    if (!form.weekday && !form.note) return;
+  // ✅ AWS Database functions
+  const loadAwsData = useCallback(async () => {
+    if (!awsConnected) return;
 
     try {
+      console.log('📊 Loading AWS database records...');
+      
+      const response = await fetch('/.netlify/functions/awsDBConnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'READ',
+          query: {} // Empty query to get all records
+        })
+      });
+
+      console.log('📡 Load response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('📊 Load result:', result);
+
+      // ✅ Check if result has the expected structure
+      if (result.success && Array.isArray(result.data)) {
+        setAwsData(result.data);
+        console.log(`✅ Loaded ${result.data.length} records from database`);
+      } else {
+        console.warn('⚠️ Unexpected response format:', result);
+        setAwsData([]); // Set empty array as fallback
+        
+        if (result.error) {
+          console.error('❌ Database error:', result.error);
+        }
+      }
+    } catch (error) {
+      console.error('🚨 Error loading database records:', error);
+      setAwsData([]); // Set empty array on error
+      
+      // Don't disconnect on data loading error, just log it
+      console.warn('⚠️ Database connection maintained, but data loading failed');
+    }
+  }, [awsConnected]);
+
+  const addNote = useCallback(async () => {
+    if (!form.note) {
+      alert('Please enter a note/description');
+      return;
+    }
+    
+    if (form.isRecurrence && !form.weekday) {
+      alert('Please select a day of the week for recurring events');
+      return;
+    }
+
+    try {
+      if (awsConnected && hasFullAccess) {
+        const awsResponse = await fetch('/.netlify/functions/awsDBConnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'CREATE',
+            data: {
+              incident: form.incident || 'General',
+              district: form.district || 'N/A',
+              log_date: new Date().toISOString().split('T')[0],
+              event_main: form.maint_event ? parseInt(form.maint_event) : null,
+              event_incid: form.incid_event ? parseInt(form.incid_event) : null,
+              business_impact: form.business_impact ? 1 : 0,
+              rca: form.rca ? parseInt(form.rca) : null,
+              log_start: form.start_duration_hrs || '00:00:00',
+              log_end: form.end_duration_hrs || '23:59:59',
+              estimated_time: form.est_duration_hrs ? parseInt(form.est_duration_hrs) : null,
+              actual_time: form.real_time_duration_hrs ? parseInt(form.real_time_duration_hrs) : null,
+              ticket_number: form.ticket_number ? parseInt(form.ticket_number) : null,
+              assigned: form.assigned || null,
+              log_status: 'ACTIVE',
+              note: form.note,
+              log_type: form.log_type || 'application',
+              uploader: 'admin',
+              weekday: form.isRecurrence ? form.weekday : null
+            }
+          })
+        });
+
+        const awsResult = await awsResponse.json();
+
+        if (awsResponse.ok && awsResult.success) {
+          setAwsData(prev => [...prev, awsResult.data]);
+          alert('✅ Entry saved to database successfully!');
+          setForm(INITIAL_FORM_STATE);
+          toggleModal('form');
+          return;
+        } else {
+          throw new Error(awsResult.error || 'Failed to save to database');
+        }
+      }
+
+      // Fallback to original system
       const response = await fetch('/.netlify/functions/addNote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({
+          ...form,
+          weekday: form.isRecurrence ? form.weekday : ''
+        })
       });
       const result = await response.json();
 
@@ -209,15 +315,45 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         setAdminNotes(prev => [...prev, ...result.data]);
         setForm(INITIAL_FORM_STATE);
         toggleModal('form');
+        alert(form.isRecurrence ? 'Recurring event added!' : 'One-time event added!');
       } else {
         console.error("Backend error:", result.error);
         alert("Error adding note");
       }
     } catch (error) {
-      console.error("Network error:", error);
-      alert("Server communication error.");
+      console.error("Database error:", error);
+      alert(`❌ Error: ${error.message}`);
     }
-  }, [form, setAdminNotes, toggleModal]);
+  }, [form, setAdminNotes, toggleModal, awsConnected, hasFullAccess]);
+
+  const deleteAwsEntry = useCallback(async (id) => {
+    if (!awsConnected) return;
+
+    if (!confirm('Are you sure you want to delete this entry from the database?')) return;
+
+    try {
+      const response = await fetch('/.netlify/functions/awsDBConnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'DELETE',
+          id: id
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setAwsData(prev => prev.filter(item => item.id !== id));
+        alert('✅ Entry deleted from database');
+      } else {
+        throw new Error(result.error || 'Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert(`❌ Failed to delete: ${error.message}`);
+    }
+  }, [awsConnected]);
 
   const removeNote = useCallback(async (id) => {
     try {
@@ -240,6 +376,43 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     }
   }, [setAdminNotes]);
 
+  // ✅ Auto-connect to AWS on mount
+  useEffect(() => {
+    const autoConnectToAws = async () => {
+      if (!hasFullAccess) return;
+
+      setIsLoadingAws(true);
+      try {
+        const response = await fetch('/.netlify/functions/awsDBConnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'TEST_CONNECTION'
+          })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          setAwsConnected(true);
+          console.log('✅ Auto-connected to SQL Server');
+          await loadAwsData();
+        } else {
+          console.warn('❌ Database auto-connection failed:', result.error);
+          setAwsConnected(false);
+        }
+      } catch (error) {
+        console.error('Database auto-connection error:', error);
+        setAwsConnected(false);
+      } finally {
+        setIsLoadingAws(false);
+      }
+    };
+
+    autoConnectToAws();
+  }, [hasFullAccess, loadAwsData]);
+
+  // ✅ Other useEffects
   useEffect(() => {
     if (exportColumnsLocal.length > 0) {
       saveExportColumns(exportColumnsLocal);
@@ -295,11 +468,7 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
     }
   }, [excelData]);
 
-  const handleFormSubmit = (e) => {
-    e.preventDefault();
-    addNote();
-  };
-
+  // ✅ Render form input helper
   const renderFormInput = useCallback((label, field, type = 'text', options = null) => (
     <label key={field}>
       {label}
@@ -309,6 +478,13 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+      ) : type === 'checkbox' ? (
+        <input
+          type="checkbox"
+          checked={form[field]}
+          onChange={(e) => setForm(prev => ({ ...prev, [field]: e.target.checked }))}
+          style={{ width: 'auto', marginLeft: '10px' }}
+        />
       ) : (
         <input
           type={type}
@@ -331,9 +507,17 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         }}>
           ({hasFullAccess ? '🔓 Full Access' : '🔒 Threshold Only'})
         </span>
+        {hasFullAccess && (
+          <span style={{ 
+            marginLeft: '10px', 
+            fontSize: '12px',
+            color: isLoadingAws ? '#f59e0b' : awsConnected ? '#10b981' : '#ef4444'
+          }}>
+            {isLoadingAws ? '⏳ Connecting...' : awsConnected ? '🔗 DB Connected' : '⚠️ DB Offline'}
+          </span>
+        )}
       </h2>
 
-      {/* ✅ Action Buttons - Show based on access level */}
       <div className="top-buttons">
         {hasFullAccess && (
           <>
@@ -344,12 +528,11 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
               🧩 Column Display
             </button>
             <button className="primary-button" onClick={() => toggleModal('form')}>
-              ➕ Add Recurrence
+              ➕ Add Entry
             </button>
           </>
         )}
         
-        {/* Threshold button - Available to both levels */}
         {hasThresholdAccess && (
           <button className="primary-button" onClick={() => toggleModal('thresholds')}>
             🎛 Edit Thresholds
@@ -357,14 +540,13 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         )}
       </div>
 
-      {/* ✅ Upload Modal - Full Access Only */}
+      {/* Modals */}
       {hasFullAccess && (
         <Modal isOpen={modals.upload} onClose={() => toggleModal('upload')} title="📤 Upload Excel">
           <FileUpload onDataLoaded={() => alert("File uploaded!")} />
         </Modal>
       )}
 
-      {/* ✅ Export Columns Modal - Full Access Only */}
       {hasFullAccess && (
         <Modal isOpen={modals.export} onClose={() => toggleModal('export')} title="🧩 Export Columns">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -406,7 +588,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         </Modal>
       )}
 
-      {/* ✅ Thresholds Modal - Available to Both Levels */}
       {hasThresholdAccess && (
         <Modal isOpen={modals.thresholds} onClose={() => toggleModal('thresholds')} title="🎛 Edit Thresholds">
           <div className="form-grid">
@@ -425,9 +606,30 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
         </Modal>
       )}
 
-      {/* ✅ Form Modal - Full Access Only */}
       {hasFullAccess && (
-        <Modal isOpen={modals.form} onClose={() => toggleModal('form')} title="➕ Add Recurrence">
+        <Modal 
+          isOpen={modals.form} 
+          onClose={() => toggleModal('form')} 
+          title={
+            awsConnected 
+              ? (form.isRecurrence ? "➕ Add Recurring DB Entry" : "➕ Add DB Entry")
+              : (form.isRecurrence ? "➕ Add Recurring Event" : "➕ Add Event")
+          }
+        >
+          <div style={{ 
+            padding: '10px', 
+            marginBottom: '15px',
+            backgroundColor: awsConnected ? '#d1fae5' : '#fef3c7',
+            border: `1px solid ${awsConnected ? '#10b981' : '#f59e0b'}`,
+            borderRadius: '6px',
+            fontSize: '14px'
+          }}>
+            {awsConnected 
+              ? '🔗 Connected to database - entries will be saved to SQL Server'
+              : '⚠️ Database offline - entries will be saved locally'
+            }
+          </div>
+
           <div className="form-section">
             <h4>Identification</h4>
             <div className="form-grid">
@@ -441,7 +643,22 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
           <div className="form-section">
             <h4>Schedule</h4>
             <div className="form-grid">
-              {renderFormInput('Recurrence', 'weekday', 'select', WEEKDAY_OPTIONS)}
+              <label style={{ display: 'flex', alignItems: 'center' }}>
+                Is this a recurring event?
+                <input
+                  type="checkbox"
+                  checked={form.isRecurrence}
+                  onChange={(e) => setForm(prev => ({ 
+                    ...prev, 
+                    isRecurrence: e.target.checked,
+                    weekday: e.target.checked ? prev.weekday : ''
+                  }))}
+                  style={{ width: 'auto', marginLeft: '10px' }}
+                />
+              </label>
+              
+              {form.isRecurrence && renderFormInput('Day of Week', 'weekday', 'select', WEEKDAY_OPTIONS)}
+              
               {renderFormInput('Start', 'start_duration_hrs', 'time')}
               {renderFormInput('End', 'end_duration_hrs', 'time')}
             </div>
@@ -477,15 +694,43 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
             {renderFormInput('Note', 'note')}
           </div>
 
-          <button className="primary-button" onClick={addNote}>➕ Add</button>
+          <button className="primary-button" onClick={addNote}>
+            ➕ {awsConnected ? 'Save to Database' : 'Add Entry'}
+          </button>
         </Modal>
+      )}
+
+      {hasFullAccess && awsConnected && (
+        <>
+          <h3>Database Entries ({awsData.length})</h3>
+          <div className="aws-data-list">
+            {awsData.map((entry, idx) => (
+              <div key={entry.id || idx} className="admin-note-item">
+                <div>
+                  <div className="admin-note-title">
+                    {entry.note || entry.incident || 'Untitled Entry'}
+                  </div>
+                  <div className="admin-note-meta">
+                    📅 {entry.log_date} — 🏷 {entry.incident} — 🏢 {entry.district} — 👤 {entry.assigned}
+                    {entry.day_of_the_week && ` — 🔄 ${entry.day_of_the_week}`}
+                  </div>
+                </div>
+                <button
+                  className="danger-button"
+                  onClick={() => deleteAwsEntry(entry.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="logout-wrapper">
         <button className="danger-button" onClick={onLogout}>🔓 Back</button>
       </div>
 
-      {/* ✅ Admin Entries - Full Access Only */}
       {hasFullAccess && (
         <>
           <h3>Admin Entries</h3>
@@ -509,18 +754,6 @@ export default function AdminPanel({ onLogout, adminNotes, setAdminNotes, thresh
           </div>
         </>
       )}
-
-      {/* ✅ Show access level indicator */}
-      <div style={{ 
-        marginTop: '20px',
-        padding: '10px', 
-        background: hasFullAccess ? '#065f46' : '#92400e',
-        color: 'white',
-        borderRadius: '8px',
-        textAlign: 'center'
-      }}>
-        Current Access Level: {hasFullAccess ? '🔓 Full Admin Access' : '🔒 Threshold Management Only'}
-      </div>
     </div>
   );
 }
