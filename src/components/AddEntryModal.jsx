@@ -6,6 +6,8 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
   const [errors, setErrors] = useState({});
   const [districtSuggestions, setDistrictSuggestions] = useState([]);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
+  const [isRecurrence, setIsRecurrence] = useState(false);
+  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -33,13 +35,20 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
   // Get default value based on column type
   const getDefaultValue = (column) => {
     const dataType = column.DATA_TYPE.toLowerCase();
+    const columnName = column.COLUMN_NAME.toLowerCase();
     
     if (dataType.includes('bit') || dataType.includes('boolean')) {
       return false;
-    } else if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
-      return '';
     } else if (dataType.includes('date')) {
       return new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    } else if (dataType.includes('time')) {
+      return '09:00'; // Default time
+    } else if (columnName === 'log_status') {
+      return 'Not completed'; // Default status
+    } else if (columnName === 'log_type') {
+      return 'operational'; // Default type
+    } else if (columnName === 'uploader') {
+      return 'System User'; // Default uploader
     } else {
       return '';
     }
@@ -61,50 +70,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     }
   };
 
-  // Validate form
-  const validateForm = () => {
-    
-    const newErrors = {};
-    
-    columns.forEach(column => {
-      const columnName = column.COLUMN_NAME;
-      const value = formData[columnName];
-      
-      
-      // Skip auto-generated columns
-      if (['id', 'created_at', 'updated_at'].includes(columnName.toLowerCase())) {
-        return;
-      }
-      
-      // Check required fields - be more specific about empty values
-      if (column.IS_NULLABLE === 'NO') {
-        if (value === undefined || value === null || value === '' || (typeof value === 'string' && value.trim() === '')) {
-          newErrors[columnName] = 'This field is required';
-        } else {
-        }
-      }
-      
-      // ✅ NEW: District-specific validation
-      if (columnName.toLowerCase().includes('district') && value) {
-        if (value.length !== 3) {
-          newErrors[columnName] = 'District must be exactly 3 characters';
-        } else if (!/^[A-Z]{3}$/.test(value)) {
-          newErrors[columnName] = 'District must contain only uppercase letters';
-        }
-      }
-      
-      // Email validation (if you have email fields)
-      if (columnName.toLowerCase().includes('email') && value && !value.includes('@')) {
-        newErrors[columnName] = 'Please enter a valid email address';
-      }
-    });
-    
-    setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
-    return isValid;
-  };
-
-  // Submit form
+  // Update the handleSubmit function to match DB column names:
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -115,7 +81,23 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     setIsLoading(true);
     
     try {
-      await onSave(formData);
+      // ✅ Convert form data to match database schema
+      const submissionData = {
+        ...formData,
+        isRecurrence,
+        day_of_the_week: isRecurrence ? selectedDayOfWeek : null // ✅ Match DB column name
+      };
+      
+      // ✅ Debug log to see what's being sent
+      console.log('🐛 Submitting data:', {
+        isRecurrence,
+        selectedDayOfWeek,
+        day_of_the_week: submissionData.day_of_the_week,
+        formData: submissionData
+      });
+      
+      await onSave(submissionData);
+      resetForm();
       onClose();
     } catch (error) {
       console.error('❌ Failed to save entry:', error);
@@ -123,6 +105,55 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Add validation for required fields based on your DB schema:
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // ✅ Validate required fields based on your DB schema
+    const requiredFields = {
+      'incident': 'Incident',
+      'district': 'District', 
+      'log_date': 'Log Date',
+      'business_impact': 'Business Impact',
+      'log_start': 'Log Start Time',
+      'log_end': 'Log End Time', 
+      'log_status': 'Log Status',
+      'log_type': 'Log Type',
+      'uploader': 'Uploader'
+    };
+    
+    Object.entries(requiredFields).forEach(([fieldName, displayName]) => {
+      const value = formData[fieldName];
+      if (!value && value !== false && value !== 0) { // Allow false/0 for boolean/numeric fields
+        newErrors[fieldName] = `${displayName} is required`;
+      }
+    });
+    
+    // District-specific validation
+    if (formData.district) {
+      if (formData.district.length !== 3) {
+        newErrors.district = 'District must be exactly 3 characters';
+      } else if (!/^[A-Z]{3}$/.test(formData.district)) {
+        newErrors.district = 'District must contain only uppercase letters';
+      }
+    }
+    
+    // Time validation (log_end > log_start)
+    if (formData.log_start && formData.log_end) {
+      if (formData.log_end <= formData.log_start) {
+        newErrors.log_end = 'End time must be after start time';
+      }
+    }
+    
+    // ✅ Recurrence validation
+    if (isRecurrence && !selectedDayOfWeek) {
+      newErrors.recurrence = 'Please select a day of the week for recurrence';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   // Format column name for display
@@ -437,6 +468,13 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     }
   };
 
+  const resetForm = () => {
+    setFormData({});
+    setErrors({});
+    setIsRecurrence(false); // ✅ Reset recurrence
+    setSelectedDayOfWeek(''); // ✅ Reset day selection
+  };
+
   if (!isOpen) return null;
 
   const filteredColumns = columns.filter(column => 
@@ -505,18 +543,19 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
             maxHeight: '60vh',
             overflowY: 'auto'
           }}>
+            {/* Existing form grid */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 300px))', // ✅ CHANGED: Reduced from 280px to 200px min, 300px max
-              gap: '24px 32px', // ✅ REDUCED: Less spacing
-              justifyContent: 'start' // ✅ NEW: Align items to the left instead of stretching
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 300px))',
+              gap: '24px 32px',
+              justifyContent: 'start'
             }}>
               {filteredColumns.map(column => (
                 <div key={column.COLUMN_NAME} style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '6px', // ✅ REDUCED: Less space between label and input
-                  maxWidth: '280px' // ✅ NEW: Maximum width constraint
+                  gap: '6px',
+                  maxWidth: '280px'
                 }}>
                   <label style={{
                     fontSize: '14px',
@@ -547,13 +586,148 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               ))}
             </div>
 
+            {/* ✅ NEW: Recurrence Section */}
+            <div style={{
+              marginTop: '32px',
+              padding: '20px',
+              backgroundColor: isRecurrence ? '#f0f9ff' : '#f8fafc',
+              border: `2px solid ${isRecurrence ? '#0ea5e9' : '#e2e8f0'}`,
+              borderRadius: '8px',
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '24px' }}>
+                  {isRecurrence ? '🔄' : '⭕'}
+                </div>
+                <h4 style={{
+                  margin: 0,
+                  color: isRecurrence ? '#0c4a6e' : '#1f2937',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}>
+                  Recurrence Settings
+                </h4>
+                {isRecurrence && selectedDayOfWeek && (
+                  <div style={{
+                    padding: '4px 8px',
+                    backgroundColor: '#0ea5e9',
+                    color: 'white',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}>
+                    Every {selectedDayOfWeek}
+                  </div>
+                )}
+              </div>
+              
+              {/* Recurrence Checkbox */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginBottom: '16px'
+              }}>
+                <input
+                  type="checkbox"
+                  id="isRecurrence"
+                  checked={isRecurrence}
+                  onChange={(e) => {
+                    setIsRecurrence(e.target.checked);
+                    if (!e.target.checked) {
+                      setSelectedDayOfWeek(''); // Clear day selection if unchecked
+                    }
+                  }}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    cursor: 'pointer'
+                  }}
+                />
+                <label 
+                  htmlFor="isRecurrence"
+                  style={{
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer'
+                  }}
+                >
+                  This is a recurring event
+                </label>
+              </div>
+              
+              {/* Day of Week Selection - Only show if recurrence is checked */}
+              {isRecurrence && (
+                <div style={{ marginTop: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '8px'
+                  }}>
+                    📅 Day of the Week *
+                  </label>
+                  <select
+                    value={selectedDayOfWeek}
+                    onChange={(e) => setSelectedDayOfWeek(e.target.value)}
+                    style={{
+                      width: '100%',
+                      maxWidth: '300px',
+                      padding: '12px 16px',
+                      border: `2px solid ${errors.recurrence ? '#ef4444' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: errors.recurrence ? '#fef2f2' : 'white',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="">Select a day...</option>
+                    <option value="monday">📅 Monday</option>
+                    <option value="tuesday">📅 Tuesday</option>
+                    <option value="wednesday">📅 Wednesday</option>
+                    <option value="thursday">📅 Thursday</option>
+                    <option value="friday">📅 Friday</option>
+                    <option value="saturday">📅 Saturday</option>
+                    <option value="sunday">📅 Sunday</option>
+                  </select>
+                  
+                  {errors.recurrence && (
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#ef4444',
+                      marginTop: '6px',
+                      fontStyle: 'italic'
+                    }}>
+                      {errors.recurrence}
+                    </div>
+                  )}
+                  
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#6b7280',
+                    marginTop: '6px',
+                    fontStyle: 'italic'
+                  }}>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Existing submit error section */}
             {errors.submit && (
               <div style={{
-                marginTop: '24px', // ✅ INCREASED: More space above submit error
-                padding: '16px', // ✅ INCREASED: More padding
+                marginTop: '24px',
+                padding: '16px',
                 backgroundColor: '#fef2f2',
                 border: '1px solid #fecaca',
-                borderRadius: '8px', // ✅ INCREASED: More rounded
+                borderRadius: '8px',
                 color: '#dc2626',
                 fontSize: '14px'
               }}>
@@ -564,10 +738,10 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
 
           {/* Modal Footer */}
           <div style={{
-            padding: '24px', // ✅ INCREASED: More padding
+            padding: '24px',
             borderTop: '1px solid #e5e7eb',
             display: 'flex',
-            gap: '16px', // ✅ INCREASED: More space between buttons
+            gap: '16px',
             justifyContent: 'flex-end',
             backgroundColor: '#f8fafc'
           }}>

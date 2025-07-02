@@ -75,10 +75,12 @@ export default function LogEntriesTable() {
       setIsLoading(false);
     }
   };
+  // Update the handleSaveEntry function to use the new endpoint:
   const handleSaveEntry = async (formData) => {
     try {
+      console.log('📤 Sending form data:', formData);
       
-      const response = await fetch('/.netlify/functions/AddLogEntry', {
+      const response = await fetch('/.netlify/functions/AddLogEntryWithRecurrence', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -86,13 +88,18 @@ export default function LogEntriesTable() {
         body: JSON.stringify(formData)
       });
 
+      const result = await response.json();
+      
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
-
       if (result.success) {
+        console.log('✅ Success:', result.message);
+        
+        // Show success message (you could add a toast notification here)
+        alert(result.message);
+        
         // Refresh data to show new entry
         await fetchLogEntries();
       } else {
