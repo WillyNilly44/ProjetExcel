@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] }) {
+export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], getExistingDistricts }) {
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [districtSuggestions, setDistrictSuggestions] = useState([]);
+  const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
 
   // Initialize form data when modal opens
   useEffect(() => {
@@ -61,9 +63,6 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
 
   // Validate form
   const validateForm = () => {
-    console.log('🔍 Starting validation...'); // ✅ Debug log
-    console.log('📊 Current form data:', formData); // ✅ Debug log
-    console.log('📋 Columns to check:', columns); // ✅ Debug log
     
     const newErrors = {};
     
@@ -71,15 +70,9 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
       const columnName = column.COLUMN_NAME;
       const value = formData[columnName];
       
-      console.log(`🔎 Checking ${columnName}:`, {
-        value,
-        nullable: column.IS_NULLABLE,
-        dataType: column.DATA_TYPE
-      }); // ✅ Debug log
       
       // Skip auto-generated columns
       if (['id', 'created_at', 'updated_at'].includes(columnName.toLowerCase())) {
-        console.log(`⏭ Skipping auto-generated column: ${columnName}`);
         return;
       }
       
@@ -87,36 +80,42 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
       if (column.IS_NULLABLE === 'NO') {
         if (value === undefined || value === null || value === '' || (typeof value === 'string' && value.trim() === '')) {
           newErrors[columnName] = 'This field is required';
-          console.log(`❌ Required field missing: ${columnName}`); // ✅ Debug log
         } else {
-          console.log(`✅ Required field OK: ${columnName} = ${value}`); // ✅ Debug log
         }
+      }
+      
+      // ✅ NEW: District-specific validation
+      if (columnName.toLowerCase().includes('district') && value) {
+        if (value.length !== 3) {
+          newErrors[columnName] = 'District must be exactly 3 characters';
+        } else if (!/^[A-Z]{3}$/.test(value)) {
+          newErrors[columnName] = 'District must contain only uppercase letters';
+        }
+      }
+      
+      // Email validation (if you have email fields)
+      if (columnName.toLowerCase().includes('email') && value && !value.includes('@')) {
+        newErrors[columnName] = 'Please enter a valid email address';
       }
     });
     
-    console.log('📝 Validation errors found:', newErrors); // ✅ Debug log
     setErrors(newErrors);
     const isValid = Object.keys(newErrors).length === 0;
-    console.log(`🎯 Form is ${isValid ? 'VALID' : 'INVALID'}`); // ✅ Debug log
     return isValid;
   };
 
   // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('🔄 Form submitted with data:', formData); // ✅ Debug log
     
     if (!validateForm()) {
-      console.log('❌ Form validation failed:', errors); // ✅ Debug log
       return;
     }
     
     setIsLoading(true);
     
     try {
-      console.log('📤 Calling onSave with:', formData); // ✅ Debug log
       await onSave(formData);
-      console.log('✅ onSave completed successfully'); // ✅ Debug log
       onClose();
     } catch (error) {
       console.error('❌ Failed to save entry:', error);
@@ -131,6 +130,36 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
     return columnName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  // Add useEffect to get existing districts when form opens:
+  useEffect(() => {
+    if (isOpen && getExistingDistricts) { // ✅ Check if function exists
+      try {
+        const existingDistricts = getExistingDistricts();
+        setDistrictSuggestions(existingDistricts || []);
+      } catch (error) {
+        console.warn('Could not load existing districts:', error);
+        setDistrictSuggestions([]);
+      }
+    } else {
+      setDistrictSuggestions([]); // ✅ Set empty array if no function
+    }
+  }, [isOpen, getExistingDistricts]); // ✅ Add getExistingDistricts to dependencies
+
+  // Add function to filter district suggestions:
+  const getFilteredDistrictSuggestions = (inputValue) => {
+    if (!districtSuggestions || districtSuggestions.length === 0) {
+      return []; // ✅ Return empty array if no suggestions
+    }
+    
+    if (!inputValue || inputValue.length === 0) {
+      return districtSuggestions;
+    }
+    
+    return districtSuggestions.filter(district =>
+      district && district.toLowerCase().startsWith(inputValue.toLowerCase())
+    );
   };
 
   // Render input field based on column type
@@ -157,7 +186,108 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
       boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
     };
 
-    if (dataType.includes('bit') || dataType.includes('boolean')) {
+    // ✅ NEW: Special handling for district field
+    if (columnName.toLowerCase().includes('district')) {
+      const filteredSuggestions = getFilteredDistrictSuggestions(value);
+      
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              let inputValue = e.target.value.toUpperCase(); // Convert to uppercase
+              
+              // Limit to 3 characters
+              if (inputValue.length > 3) {
+                inputValue = inputValue.slice(0, 3);
+              }
+              
+              // Only allow letters
+              inputValue = inputValue.replace(/[^A-Z]/g, '');
+              
+              handleInputChange(columnName, inputValue);
+              setShowDistrictSuggestions(inputValue.length > 0 && filteredSuggestions.length > 0);
+            }}
+            onFocus={() => {
+              const filteredSuggestions = getFilteredDistrictSuggestions(value);
+              setShowDistrictSuggestions(value.length > 0 && filteredSuggestions.length > 0);
+            }}
+            onBlur={() => {
+              // Delay hiding suggestions to allow clicks
+              setTimeout(() => setShowDistrictSuggestions(false), 200);
+            }}
+            placeholder=""
+            maxLength={3}
+            style={{
+              ...baseStyle,
+              textTransform: 'uppercase',
+              fontWeight: '500',
+              letterSpacing: '1px'
+            }}
+          />
+          
+          {/* Autocomplete suggestions */}
+          {showDistrictSuggestions && filteredSuggestions.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              backgroundColor: 'white',
+              border: '2px solid #e5e7eb',
+              borderTop: 'none',
+              borderRadius: '0 0 8px 8px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              zIndex: 1000,
+              maxHeight: '150px',
+              overflowY: 'auto'
+            }}>
+              {filteredSuggestions.slice(0, 5).map((district, index) => (
+                <div
+                  key={district}
+                  onClick={() => {
+                    handleInputChange(columnName, district);
+                    setShowDistrictSuggestions(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    borderBottom: index < filteredSuggestions.length - 1 ? '1px solid #f3f4f6' : 'none',
+                    backgroundColor: 'white',
+                    transition: 'background-color 0.2s ease',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    letterSpacing: '1px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f8fafc';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'white';
+                  }}
+                >
+                  {district}
+                </div>
+              ))}
+              
+              {filteredSuggestions.length > 5 && (
+                <div style={{
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  backgroundColor: '#f9fafb'
+                }}>
+                  +{filteredSuggestions.length - 5} more...
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    } else if (dataType.includes('bit') || dataType.includes('boolean')) {
       return (
         <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <input
@@ -262,7 +392,6 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
             marginTop: '4px',
             fontStyle: 'italic'
           }}>
-            Enter in hours (e.g., 2.5 = 2 hours 30 minutes)
             {displayValue && ` = ${Math.round(parseFloat(displayValue) * 60)} minutes`}
           </div>
         </div>
@@ -372,21 +501,22 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [] })
         {/* Modal Body */}
         <form onSubmit={handleSubmit}>
           <div style={{
-            padding: '24px', // ✅ INCREASED: More padding
+            padding: '24px',
             maxHeight: '60vh',
             overflowY: 'auto'
           }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-              gap: '32px 40px', // ✅ FIXED: First value = vertical gap, Second value = horizontal gap
-              // Alternative: columnGap: '40px', rowGap: '32px'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 300px))', // ✅ CHANGED: Reduced from 280px to 200px min, 300px max
+              gap: '24px 32px', // ✅ REDUCED: Less spacing
+              justifyContent: 'start' // ✅ NEW: Align items to the left instead of stretching
             }}>
               {filteredColumns.map(column => (
                 <div key={column.COLUMN_NAME} style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px' // ✅ Space between label and input
+                  gap: '6px', // ✅ REDUCED: Less space between label and input
+                  maxWidth: '280px' // ✅ NEW: Maximum width constraint
                 }}>
                   <label style={{
                     fontSize: '14px',

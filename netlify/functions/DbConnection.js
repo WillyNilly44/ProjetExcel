@@ -13,7 +13,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('🔄 Connecting to AWS RDS...');
     
     const requiredEnvVars = ['AWS_RDS_HOST', 'AWS_RDS_DATABASE', 'AWS_RDS_USER', 'AWS_RDS_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -39,12 +38,9 @@ exports.handler = async (event, context) => {
       }
     };
 
-    console.log('📡 Connecting to database...');
     const pool = await sql.connect(config);
-    console.log('✅ Connected to AWS RDS');
     
     // ✅ FIXED: Get actual column names from the table
-    console.log('📊 Getting column information...');
     const columnQuery = `
       SELECT 
         COLUMN_NAME,
@@ -58,7 +54,6 @@ exports.handler = async (event, context) => {
     
     const columnResult = await pool.request().query(columnQuery);
     const columns = columnResult.recordset;
-    console.log(`✅ Found ${columns.length} columns:`, columns.map(c => c.COLUMN_NAME).join(', '));
     
     if (columns.length === 0) {
       throw new Error('No columns found for LOG_ENTRIES table. Check if table exists.');
@@ -67,20 +62,14 @@ exports.handler = async (event, context) => {
     // ✅ FIXED: Build SELECT query with actual column names
     const columnNames = columns.map(col => `[${col.COLUMN_NAME}]`).join(', ');
     
-    console.log('📊 Fetching LOG_ENTRIES data...');
     const dataQuery = `
       SELECT TOP 100 ${columnNames}
       FROM LOG_ENTRIES
       ORDER BY [id] DESC
     `;
     
-    console.log('🔍 Executing query:', dataQuery);
     const dataResult = await pool.request().query(dataQuery);
-    console.log(`✅ Retrieved ${dataResult.recordset.length} log entries`);
-    
-    // Close connection
     await pool.close();
-    console.log('✅ Connection closed');
 
     return {
       statusCode: 200,

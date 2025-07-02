@@ -21,7 +21,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('🗑 Deleting log entry...');
     
     const requiredEnvVars = ['AWS_RDS_HOST', 'AWS_RDS_DATABASE', 'AWS_RDS_USER', 'AWS_RDS_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -38,7 +37,6 @@ exports.handler = async (event, context) => {
       throw new Error('Entry ID is required');
     }
 
-    console.log('🔍 Deleting entry with ID:', entryId);
 
     const host = process.env.AWS_RDS_HOST.replace(',1433', '');
     
@@ -57,9 +55,7 @@ exports.handler = async (event, context) => {
       }
     };
 
-    console.log('📡 Connecting to database...');
     const pool = await sql.connect(config);
-    console.log('✅ Connected to AWS RDS');
 
     // First, check if entry exists
     const checkQuery = 'SELECT id FROM LOG_ENTRIES WHERE id = @entryId';
@@ -77,14 +73,11 @@ exports.handler = async (event, context) => {
     const deleteRequest = pool.request();
     deleteRequest.input('entryId', sql.Int, entryId);
     
-    console.log('🗑 Executing DELETE query...');
     const result = await deleteRequest.query(deleteQuery);
     
-    console.log(`✅ Entry deleted. Rows affected: ${result.rowsAffected[0]}`);
 
     // Close connection
     await pool.close();
-    console.log('✅ Connection closed');
 
     return {
       statusCode: 200,

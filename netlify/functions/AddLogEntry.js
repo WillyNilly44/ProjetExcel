@@ -21,7 +21,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('🔄 Adding new log entry...');
     
     const requiredEnvVars = ['AWS_RDS_HOST', 'AWS_RDS_DATABASE', 'AWS_RDS_USER', 'AWS_RDS_PASSWORD'];
     const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
@@ -32,7 +31,6 @@ exports.handler = async (event, context) => {
 
     // Parse request body
     const requestData = JSON.parse(event.body);
-    console.log('📝 Entry data received:', Object.keys(requestData));
 
     const host = process.env.AWS_RDS_HOST.replace(',1433', '');
     
@@ -51,9 +49,7 @@ exports.handler = async (event, context) => {
       }
     };
 
-    console.log('📡 Connecting to database...');
     const pool = await sql.connect(config);
-    console.log('✅ Connected to AWS RDS');
 
     // Build INSERT query dynamically
     const columns = Object.keys(requestData).filter(key => requestData[key] !== undefined && requestData[key] !== '');
@@ -66,7 +62,6 @@ exports.handler = async (event, context) => {
       SELECT SCOPE_IDENTITY() as newId;
     `;
 
-    console.log('🏗 Building query with columns:', columns);
     
     // Create request and add parameters
     const request = pool.request();
@@ -74,7 +69,6 @@ exports.handler = async (event, context) => {
       let value = requestData[column];
       const columnName = column.toLowerCase();
       
-      console.log(`🔍 Processing column ${column}: ${value} (type: ${typeof value})`);
       
       // Handle different data types
       if (typeof value === 'boolean') {
@@ -84,18 +78,15 @@ exports.handler = async (event, context) => {
       } else if (typeof value === 'string') {
         // Handle datetime strings (date + time)
         if (value.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
-          console.log(`📅 DateTime field: ${column} = ${value}`);
           request.input(`param${index}`, sql.DateTime, new Date(value));
         }
         // Handle date-only strings
         else if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          console.log(`📅 Date field: ${column} = ${value}`);
           request.input(`param${index}`, sql.Date, new Date(value + 'T00:00:00'));
         }
         // Handle time-only strings (for pure time fields)
         else if (value.match(/^\d{2}:\d{2}(:\d{2})?$/) && 
                  (columnName.includes('start_time') || columnName.includes('end_time'))) {
-          console.log(`⏰ Time field: ${column} = ${value}`);
           request.input(`param${index}`, sql.Time, value);
         }
         // Handle regular strings
@@ -109,15 +100,12 @@ exports.handler = async (event, context) => {
       }
     });
 
-    console.log('💾 Executing INSERT query...');
     const result = await request.query(insertQuery);
     const newId = result.recordset[0]?.newId;
     
-    console.log(`✅ New log entry created with ID: ${newId}`);
 
     // Close connection
     await pool.close();
-    console.log('✅ Connection closed');
 
     return {
       statusCode: 200,
