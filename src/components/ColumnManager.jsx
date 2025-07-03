@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function ColumnManager({ 
   isOpen, 
@@ -8,10 +8,48 @@ export default function ColumnManager({
   columnOrder, 
   onSave 
 }) {
-  const [localVisible, setLocalVisible] = useState(visibleColumns);
-  const [localOrder, setLocalOrder] = useState(columnOrder);
+  const [localVisible, setLocalVisible] = useState([]);
+  const [localOrder, setLocalOrder] = useState([]);
+
+  // ✅ FIX: Sync local state with props when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalVisible([...visibleColumns]);
+      setLocalOrder([...columnOrder]);
+    }
+  }, [isOpen, visibleColumns, columnOrder]);
 
   if (!isOpen) return null;
+
+  // ✅ FIX: Handle cases where columns might be empty
+  if (!columns || columns.length === 0) {
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '40px',
+          borderRadius: '8px',
+          textAlign: 'center'
+        }}>
+          <div>No columns available</div>
+          <button onClick={onClose} style={{ marginTop: '16px', padding: '8px 16px' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggleColumn = (columnName) => {
     setLocalVisible(prev => 
@@ -56,6 +94,13 @@ export default function ColumnManager({
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
+  const handleClose = () => {
+    // Reset to original values when closing without saving
+    setLocalVisible([...visibleColumns]);
+    setLocalOrder([...columnOrder]);
+    onClose();
+  };
+
   return (
     <div style={{
       position: 'fixed',
@@ -92,7 +137,7 @@ export default function ColumnManager({
             ⚙️ Manage Columns
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose} // ✅ Use handleClose instead of onClose
             style={{
               background: 'none',
               border: 'none',
@@ -265,7 +310,7 @@ export default function ColumnManager({
           backgroundColor: '#f8fafc'
         }}>
           <button
-            onClick={onClose}
+            onClick={handleClose} // ✅ Use handleClose instead of onClose
             style={{
               padding: '12px 24px',
               border: '2px solid #d1d5db',

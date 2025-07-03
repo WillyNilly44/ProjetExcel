@@ -1,6 +1,5 @@
 import React from 'react';
 import LogEntriesTable from './components/LogEntriesTable';
-import './styles/App.css';
 
 function App() {
   return (

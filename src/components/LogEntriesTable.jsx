@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
+import '../style.css'; // ✅ Import the CSS file
 
 export default function LogEntriesTable() {
   const [data, setData] = useState([]);
@@ -8,19 +9,18 @@ export default function LogEntriesTable() {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('Ready to load');
   const [connectionInfo, setConnectionInfo] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false); // ✅ NEW: Modal state
+  const [showAddModal, setShowAddModal] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [columnOrder, setColumnOrder] = useState([]);
   const [showColumnManager, setShowColumnManager] = useState(false);
-
-  // Add new state variables for filters after existing useState declarations:
   const [dateFilters, setDateFilters] = useState({
     year: '',
     month: '',
     week: '',
-    logType: '' // ✅ NEW: Add log type filter
+    logType: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [showVirtualEntries, setShowVirtualEntries] = useState(true);
 
   const fetchLogEntries = async () => {
     setIsLoading(true);
@@ -78,7 +78,6 @@ export default function LogEntriesTable() {
   // Update the handleSaveEntry function to use the new endpoint:
   const handleSaveEntry = async (formData) => {
     try {
-      console.log('📤 Sending form data:', formData);
       
       const response = await fetch('/.netlify/functions/AddLogEntryWithRecurrence', {
         method: 'POST',
@@ -94,9 +93,7 @@ export default function LogEntriesTable() {
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      if (result.success) {
-        console.log('✅ Success:', result.message);
-        
+      if (result.success) {        
         // Show success message (you could add a toast notification here)
         alert(result.message);
         
@@ -252,20 +249,54 @@ export default function LogEntriesTable() {
 
   // Add this useEffect to initialize visible columns when columns are loaded:
   useEffect(() => {
-    if (columns.length > 0 && visibleColumns.length === 0) {
-      // Initially show all columns
-      const allColumns = columns.map(col => col.COLUMN_NAME);
-      setVisibleColumns(allColumns);
-      setColumnOrder(allColumns);
+    if (columns.length > 0) {
+      // Get all column names
+      const allColumnNames = columns.map(col => col.COLUMN_NAME);
+      
+      // Try to load saved preferences
+      const savedVisible = localStorage.getItem('logEntries_visibleColumns');
+      const savedOrder = localStorage.getItem('logEntries_columnOrder');
+      
+      if (savedVisible && savedOrder) {
+        try {
+          const parsedVisible = JSON.parse(savedVisible);
+          const parsedOrder = JSON.parse(savedOrder);
+          
+          // Validate that all saved columns still exist
+          const validVisible = parsedVisible.filter(name => allColumnNames.includes(name));
+          const validOrder = parsedOrder.filter(name => allColumnNames.includes(name));
+          
+          // Add any new columns that weren't in saved preferences
+          const missingColumns = allColumnNames.filter(name => !validOrder.includes(name));
+          
+          const finalVisible = [...validVisible, ...missingColumns];
+          const finalOrder = [...validOrder, ...missingColumns];
+          
+          setVisibleColumns(finalVisible);
+          setColumnOrder(finalOrder);
+          
+        } catch (e) {
+          console.warn('⚠️ Failed to parse saved column preferences, using defaults');
+          setVisibleColumns(allColumnNames);
+          setColumnOrder(allColumnNames);
+        }
+      } else {
+        // No saved preferences, show all columns
+        setVisibleColumns(allColumnNames);
+        setColumnOrder(allColumnNames);
+      }
     }
-  }, [columns]);
+  }, [columns]); // ✅ Only depend on columns
 
   // Add function to get filtered and ordered columns:
   const getDisplayColumns = () => {
-    return columnOrder
+    const displayColumns = columnOrder
       .filter(columnName => visibleColumns.includes(columnName))
       .map(columnName => columns.find(col => col.COLUMN_NAME === columnName))
       .filter(Boolean);
+    
+    
+    return displayColumns;
   };
 
   // Add import at the top:
@@ -273,12 +304,17 @@ export default function LogEntriesTable() {
 
   // Add the column management functions:
   const handleColumnManagerSave = (newVisibleColumns, newColumnOrder) => {
+    
     setVisibleColumns(newVisibleColumns);
     setColumnOrder(newColumnOrder);
     
     // Save to localStorage for persistence
-    localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
-    localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
+    try {
+      localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
+      localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
+    } catch (e) {
+      console.error('❌ Failed to save column preferences:', e);
+    }
   };
 
   // Load saved column preferences on mount:
@@ -292,7 +328,7 @@ export default function LogEntriesTable() {
           const parsedVisible = JSON.parse(savedVisible);
           const parsedOrder = JSON.parse(savedOrder);
           
-          // Validate that all columns still exist
+          // Validate that all saved columns still exist
           const currentColumnNames = columns.map(col => col.COLUMN_NAME);
           const validVisible = parsedVisible.filter(name => currentColumnNames.includes(name));
           const validOrder = parsedOrder.filter(name => currentColumnNames.includes(name));
@@ -387,26 +423,28 @@ export default function LogEntriesTable() {
     return weeks;
   };
 
-  // Add function to filter data based on date filters:
+  // Update the getFilteredData function to respect the toggle:
   const getFilteredData = () => {
     if (!data || data.length === 0) return [];
-    if (!dateFilters.year && !dateFilters.month && !dateFilters.week && !dateFilters.logType) return data;
+    
+    // ✅ Generate recurring entries first, but respect the toggle
+    const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
+    
+    if (!dateFilters.year && !dateFilters.month && !dateFilters.week && !dateFilters.logType) {
+      return expandedData;
+    }
     
     const dateColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('date') || 
       col.COLUMN_NAME.toLowerCase().includes('created')
     );
     
-    // Find log type column (could be event_main, log_type, type, etc.)
     const logTypeColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('event_main') ||
-      col.COLUMN_NAME.toLowerCase().includes('log_type') ||
-      col.COLUMN_NAME.toLowerCase().includes('type') ||
-      col.COLUMN_NAME.toLowerCase().includes('category')
+      col.COLUMN_NAME.toLowerCase().includes('log_type')
     );
     
-    return data.filter(entry => {
-      // Date filtering (existing logic)
+    return expandedData.filter(entry => {
+      // Date filtering
       if (dateColumn) {
         const dateValue = entry[dateColumn.COLUMN_NAME];
         if (dateValue) {
@@ -441,25 +479,16 @@ export default function LogEntriesTable() {
         }
       }
       
-      // ✅ NEW: Log type filtering
+      // Log type filtering
       if (dateFilters.logType && logTypeColumn) {
         const entryLogType = entry[logTypeColumn.COLUMN_NAME];
         if (!entryLogType) return false;
         
         const normalizedEntryType = entryLogType.toString().toLowerCase().trim();
         const selectedType = dateFilters.logType.toLowerCase();
-        
-        // Handle different possible values
-        switch (selectedType) {
-          case 'merged':
-            return normalizedEntryType.includes('merged') || normalizedEntryType.includes('merge');
-          case 'operational':
-            return normalizedEntryType.includes('operational') || normalizedEntryType.includes('ops') || normalizedEntryType.includes('operation');
-          case 'application':
-            return normalizedEntryType.includes('application') || normalizedEntryType.includes('app');
-          default:
-            return normalizedEntryType === selectedType;
-        }
+
+        // ✅ More flexible matching for log types
+        return normalizedEntryType.includes(selectedType);
       }
       
       return true;
@@ -468,26 +497,8 @@ export default function LogEntriesTable() {
 
   // Add function to get available log types from data:
   const getAvailableLogTypes = () => {
-    if (!data || data.length === 0) return [];
-    
-    // Find log type column
-    const logTypeColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('event_main') ||
-      col.COLUMN_NAME.toLowerCase().includes('log_type') ||
-      col.COLUMN_NAME.toLowerCase().includes('type') ||
-      col.COLUMN_NAME.toLowerCase().includes('category')
-    );
-    
-    if (!logTypeColumn) return [];
-    
-    const types = data
-      .map(entry => entry[logTypeColumn.COLUMN_NAME])
-      .filter(type => type && typeof type === 'string')
-      .map(type => type.trim())
-      .filter((type, index, array) => array.indexOf(type) === index)
-      .sort();
-    
-    return types;
+    // ✅ Return only the two allowed types instead of pulling from database
+    return ['Operational', 'Application'];
   };
 
   // Update the clearFilters function:
@@ -517,10 +528,80 @@ export default function LogEntriesTable() {
     });
   };
 
+  // Update the generateRecurringEntries function - it's missing the return statement:
+  const generateRecurringEntries = (data) => {
+    if (!data || data.length === 0) {
+      return data;
+    }
+    
+    const expandedData = [...data];
+    const today = new Date();
+    
+    let recurringFound = 0;
+    let virtualCreated = 0;
+    
+    data.forEach(entry => {
+      const hasRecurrence = entry.is_recurring === 1 || entry.is_recurring === true || entry.recurrence_day;
+      
+      
+      if (hasRecurrence && entry.recurrence_day) {
+        recurringFound++;
+        
+        // Rest of your generation logic...
+        const dayMapping = {
+          'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
+          'thursday': 4, 'friday': 5, 'saturday': 6
+        };
+        
+        const targetDay = dayMapping[entry.recurrence_day.toLowerCase()];
+        
+        if (targetDay !== undefined) {
+          const weekOffsets = [-2, -1, 1, 2];
+          
+          weekOffsets.forEach(weekOffset => {
+            // Your existing generation logic...
+            const startOfTargetWeek = new Date(today);
+            startOfTargetWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
+            
+            const recurringDate = new Date(startOfTargetWeek);
+            recurringDate.setDate(startOfTargetWeek.getDate() + targetDay);
+            
+            const originalDate = new Date(entry.log_date);
+            if (recurringDate.toDateString() === originalDate.toDateString()) {
+              return;
+            }
+            
+            const virtualEntry = {
+              ...entry,
+              id: `${entry.id}_recurring_${recurringDate.getTime()}`,
+              log_date: recurringDate.toISOString().split('T')[0],
+              is_virtual: true,
+              original_id: entry.id,
+              week_offset: weekOffset,
+              target_day: entry.recurrence_day,
+              generated_on: today.toISOString().split('T')[0],
+              relative_to_current: true
+            };
+            
+            virtualCreated++;
+            expandedData.push(virtualEntry);
+          });
+        }
+      }
+    });    
+    return expandedData.sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
+  };
+
+  const getConnectionStatusClass = () => {
+    if (connectionStatus.includes('✅')) return 'success';
+    if (connectionStatus.includes('❌')) return 'error';
+    return 'neutral';
+  };
+
   if (isLoading) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <div style={{ fontSize: '18px', color: '#6b7280' }}>
+      <div className="loading-container">
+        <div className="loading-text">
           ⏳ Loading log entries...
         </div>
       </div>
@@ -528,49 +609,29 @@ export default function LogEntriesTable() {
   }
 
   return (
-    <div style={{ 
-      maxWidth: '1400px', 
-      margin: '0 auto',
-      fontFamily: 'Arial, sans-serif'
-    }}>
+    <div className="log-entries-container">
       {/* Status Header */}
-      <div style={{ 
-        backgroundColor: '#f8fafc', 
-        border: '1px solid #e2e8f0', 
-        borderRadius: '8px', 
-        padding: '20px',
-        marginBottom: '20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
+      <div className="status-header">
         <div>
-          <h2 style={{ margin: '0 0 8px 0', color: '#1f2937' }}></h2>
-          <div style={{ 
-            fontSize: '16px', 
-            fontWeight: 'bold',
-            color: connectionStatus.includes('✅') ? '#10b981' : 
-                  connectionStatus.includes('❌') ? '#ef4444' : '#6b7280'
-          }}>
+          <h2></h2>
+          <div className={`status-text ${getConnectionStatusClass()}`}>
             {connectionStatus}
           </div>
         </div>
         
-        {/* ✅ UPDATED: Add both buttons */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div className="button-group">
+          <button 
+            onClick={() => setShowVirtualEntries(!showVirtualEntries)}
+            disabled={isLoading || columns.length === 0}
+            className={`btn btn-virtual-entries ${showVirtualEntries ? 'active' : 'inactive'}`}
+          >
+            🔄 Recurrences {showVirtualEntries ? '✅' : '❌'}
+          </button>
+          
           <button 
             onClick={() => setShowFilters(!showFilters)}
             disabled={isLoading || columns.length === 0}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: showFilters ? '#8b5cf6' : (isLoading ? '#9ca3af' : '#6366f1'),
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (isLoading || columns.length === 0) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
+            className={`btn btn-filters ${showFilters ? 'active' : 'inactive'}`}
           >
             🔍 Filters {showFilters ? '▼' : '▶'}
           </button>
@@ -578,16 +639,7 @@ export default function LogEntriesTable() {
           <button 
             onClick={() => setShowColumnManager(true)}
             disabled={isLoading || columns.length === 0}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: isLoading ? '#9ca3af' : '#6366f1',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (isLoading || columns.length === 0) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
+            className="btn btn-columns"
           >
             ⚙️ Columns
           </button>
@@ -595,16 +647,7 @@ export default function LogEntriesTable() {
           <button 
             onClick={() => setShowAddModal(true)}
             disabled={isLoading || columns.length === 0}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: isLoading ? '#9ca3af' : '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (isLoading || columns.length === 0) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
+            className="btn btn-add"
           >
             ➕ Add Entry
           </button>
@@ -612,255 +655,46 @@ export default function LogEntriesTable() {
           <button 
             onClick={fetchLogEntries}
             disabled={isLoading}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
+            className="btn btn-refresh"
           >
             {isLoading ? '⏳ Loading...' : '🔄 Refresh Data'}
           </button>
         </div>
       </div>
 
-      {/* Data Table */}
-      {!data || data.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '18px', color: '#6b7280' }}>
-            📝 No log entries found
-          </div>
-        </div>
-      ) : (
-        <div style={{ 
-          backgroundColor: 'white',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{
-            backgroundColor: '#f8fafc',
-            padding: '16px',
-            borderBottom: '1px solid #e2e8f0'
-          }}>
-            <h3 style={{ margin: 0, color: '#1f2937' }}>
-              📋 LOG ENTRIES
-            </h3>
-          </div>
-          
-          <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto' }}>
-            <table style={{ 
-              width: '100%', 
-              borderCollapse: 'collapse',
-              fontSize: '14px'
-            }}>
-              <thead style={{ 
-                backgroundColor: '#f3f4f6', 
-                position: 'sticky', 
-                top: 0,
-                zIndex: 1
-              }}>
-                <tr>
-                  {getDisplayColumns().map((column) => (
-                    <th 
-                      key={column.COLUMN_NAME} 
-                      style={headerStyle} 
-                      title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
-                    >
-                      {formatColumnName(column.COLUMN_NAME)}
-                    </th>
-                  ))}
-                  <th style={{
-                    ...headerStyle,
-                    width: '80px',
-                    textAlign: 'center'
-                  }}>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFilteredData().map((entry, index) => (
-                  <tr key={entry.id || index} style={{
-                    backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    {getDisplayColumns().map((column) => (
-                      <td 
-                        key={column.COLUMN_NAME} 
-                        style={getColumnStyle(column.COLUMN_NAME, column.DATA_TYPE)}
-                        title={entry[column.COLUMN_NAME]}
-                      >
-                        <div style={{ 
-                          overflow: 'hidden', 
-                          textOverflow: 'ellipsis', 
-                          whiteSpace: 'nowrap',
-                          maxWidth: column.COLUMN_NAME.toLowerCase().includes('note') ? '200px' : 'none'
-                        }}>
-                          {formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE)}
-                        </div>
-                      </td>
-                    ))}
-                    {/* Delete button column stays the same */}
-                    <td style={{
-                      ...cellStyle,
-                      width: '80px',
-                      textAlign: 'center',
-                      padding: '8px'
-                    }}>
-                      <button
-                        onClick={() => handleDeleteEntry(entry.id)}
-                        disabled={!entry.id}
-                        style={{
-                          padding: '6px 12px',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: entry.id ? 'pointer' : 'not-allowed',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          opacity: entry.id ? 1 : 0.5,
-                          transition: 'all 0.2s ease'
-                        }}
-                        title={entry.id ? 'Delete this entry' : 'No ID available'}
-                      >
-                        🗑 Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ✅ NEW: Add Entry Modal */}
-      <AddEntryModal 
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSave={handleSaveEntry}
-        columns={columns}
-      />
-
-      {/* ✅ NEW: Column Manager Modal */}
-      <ColumnManager 
-        isOpen={showColumnManager}
-        onClose={() => setShowColumnManager(false)}
-        columns={columns}
-        visibleColumns={visibleColumns}
-        columnOrder={columnOrder}
-        onSave={handleColumnManagerSave}
-      />
-
-      {/* Add filter panel after the button section: */}
+      {/* Filter Panel */}
       {showFilters && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '20px',
-          marginTop: '16px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '16px'
-          }}>
-            <h3 style={{ margin: 0, color: '#1f2937', fontSize: '16px' }}>
-              📅 Filters
-            </h3>
-            <button
-              onClick={clearFilters}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-            >
+        <div className="filter-panel">
+          <div className="filter-header">
+            <h3 className="filter-title">📅 Filters</h3>
+            <button onClick={clearFilters} className="filter-clear-btn">
               🗑 Clear All
             </button>
           </div>
           
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', // ✅ Smaller columns to fit 5 filters
-            gap: '16px',
-            alignItems: 'end'
-          }}>
-            {/* ✅ NEW: Log Type Filter - First position */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                🏷️ Log Type
-              </label>
+          <div className="filter-grid">
+            {/* Log Type Filter */}
+            <div className="filter-group">
+              <label>🏷️ Log Type</label>
               <select
                 value={dateFilters.logType}
                 onChange={(e) => handleFilterChange('logType', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: 'white'
-                }}
+                className="filter-select"
               >
                 <option value="">All Types</option>
                 <option value="operational">Operational</option>
                 <option value="application">Application</option>
-                {/* ✅ Also show other types from actual data */}
-                {getAvailableLogTypes()
-                  .filter(type => !['merged', 'operational', 'application'].some(predefined => 
-                    type.toLowerCase().includes(predefined.toLowerCase())
-                  ))
-                  .map(type => (
-                  <option key={type} value={type}>
-                    📋 {type}
-                  </option>
-                ))}
+                {/* ✅ REMOVED: Dynamic options from database */}
               </select>
             </div>
             
             {/* Year Filter */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                📅 Year
-              </label>
+            <div className="filter-group">
+              <label>📅 Year</label>
               <select
                 value={dateFilters.year}
                 onChange={(e) => handleFilterChange('year', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: 'white'
-                }}
+                className="filter-select"
               >
                 <option value="">All Years</option>
                 {getAvailableYears().map(year => (
@@ -870,64 +704,38 @@ export default function LogEntriesTable() {
             </div>
             
             {/* Month Filter */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                📊 Month
-              </label>
+            <div className="filter-group">
+              <label>📊 Month</label>
               <select
                 value={dateFilters.month}
                 onChange={(e) => handleFilterChange('month', e.target.value)}
                 disabled={!dateFilters.year}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: dateFilters.year ? 'white' : '#f9fafb',
-                  cursor: dateFilters.year ? 'pointer' : 'not-allowed'
-                }}
+                className="filter-select"
               >
                 <option value="">All Months</option>
-                {/*
-                  Month options generated here
-                */}
-                {/*
-                  ... existing month options ...
-                */}
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
               </select>
             </div>
             
             {/* Week Filter */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                📍 Week
-              </label>
+            <div className="filter-group">
+              <label>📍 Week</label>
               <select
                 value={dateFilters.week}
                 onChange={(e) => handleFilterChange('week', e.target.value)}
                 disabled={!dateFilters.year || !dateFilters.month}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: (dateFilters.year && dateFilters.month) ? 'white' : '#f9fafb',
-                  cursor: (dateFilters.year && dateFilters.month) ? 'pointer' : 'not-allowed'
-                }}
+                className="filter-select"
               >
                 <option value="">All Weeks</option>
                 {dateFilters.year && dateFilters.month && 
@@ -938,44 +746,119 @@ export default function LogEntriesTable() {
                   ))
                 }
               </select>
-            </div>
-            
-            {/* Filter Summary */}
-            <div style={{
-              padding: '12px',
-              backgroundColor: '#e0f2fe',
-              borderRadius: '6px',
-              border: '1px solid #0891b2'
-            }}>
-              <div style={{ fontSize: '12px', color: '#0c4a6e', fontWeight: '500' }}>
-                📊 Showing: {getFilteredData().length} of {data.length} entries
-              </div>
-              {(dateFilters.logType || dateFilters.year || dateFilters.month || dateFilters.week) && (
-                <div style={{ fontSize: '11px', color: '#155e75', marginTop: '4px' }}>
-                  {dateFilters.logType && `Type: ${dateFilters.logType}`}
-                  {dateFilters.year && ` • Year: ${dateFilters.year}`}
-                  {dateFilters.month && ` • Month: ${new Date(2024, dateFilters.month - 1).toLocaleString('default', { month: 'long' })}`}
-                  {dateFilters.week && ` • Week: ${dateFilters.week}`}
-                </div>
-              )}
-            </div>
+            </div>      
           </div>
         </div>
       )}
+
+      {/* Data Table */}
+      {!data || data.length === 0 ? (
+        <div className="no-data">
+          <div className="no-data-text">📝 No log entries found</div>
+        </div>
+      ) : (
+        <div className="table-container">
+          <div className="table-header">
+            <h3 className="table-title">📋 LOG ENTRIES</h3>
+          </div>
+          
+          <div className="table-scroll-container">
+            <table className="data-table">
+              <thead className="table-head">
+                <tr>
+                  {getDisplayColumns().map((column) => (
+                    <th 
+                      key={column.COLUMN_NAME} 
+                      className="table-header-cell"
+                      title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
+                    >
+                      {formatColumnName(column.COLUMN_NAME)}
+                    </th>
+                  ))}
+                  <th className="table-header-cell table-header-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getFilteredData().map((entry, index) => (
+                  <tr 
+                    key={entry.id || index} 
+                    className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
+                  >
+                    {getDisplayColumns().map((column) => {
+                      const cellClasses = [
+                        'table-cell',
+                        getColumnType(column.COLUMN_NAME, column.DATA_TYPE),
+                        entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') ? 'incident virtual' : ''
+                      ].filter(Boolean).join(' ');
+
+                      return (
+                        <td 
+                          key={column.COLUMN_NAME} 
+                          className={cellClasses}
+                          title={`${entry[column.COLUMN_NAME]}${entry.is_virtual ? ' (Recurring Entry)' : ''}`}
+                        >
+                          <div className={`cell-content ${column.COLUMN_NAME.toLowerCase().includes('note') ? 'note' : ''}`}>
+                            {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
+                              <span className="virtual-icon">🔄</span>
+                            )}
+                            <span className={entry.is_virtual ? 'virtual-text' : 'normal-text'}>
+                              {formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE)}
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    })}
+                    <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
+                      <button
+                        onClick={() => handleDeleteEntry(entry.original_id || entry.id)}
+                        disabled={!entry.id || entry.is_virtual}
+                        className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
+                        title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
+                      >
+                        {entry.is_virtual ? '🔄' : '🗑'} {entry.is_virtual ? 'Recu.' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modals */}
+      <AddEntryModal 
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSave={handleSaveEntry}
+        columns={columns}
+      />
+
+      <ColumnManager 
+        isOpen={showColumnManager}
+        onClose={() => setShowColumnManager(false)}
+        columns={columns}
+        visibleColumns={visibleColumns}
+        columnOrder={columnOrder}
+        onSave={handleColumnManagerSave}
+      />
     </div>
   );
 }
-
-const headerStyle = {
-  padding: '12px 8px',
-  textAlign: 'left',
-  fontWeight: '600',
-  color: '#374151',
-  borderBottom: '2px solid #d1d5db'
-};
-
-const cellStyle = {
-  padding: '8px',
-  borderBottom: '1px solid #e5e7eb',
-  verticalAlign: 'top'
-};
+function getColumnType(columnName, dataType) {
+  const lowerName = columnName.toLowerCase();
+  
+  if (dataType === 'bit' || typeof dataType === 'boolean') {
+    return 'center';
+  }
+  
+  if (lowerName.includes('status')) {
+    return 'status';
+  }
+  
+  if (lowerName.includes('note') || lowerName.includes('description')) {
+    return 'note';
+  }
+  
+  return '';
+}

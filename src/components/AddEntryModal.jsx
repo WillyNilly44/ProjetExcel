@@ -42,13 +42,13 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     } else if (dataType.includes('date')) {
       return new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     } else if (dataType.includes('time')) {
-      return '09:00'; // Default time
+      return '08:00'; // Default time
     } else if (columnName === 'log_status') {
       return 'Not completed'; // Default status
     } else if (columnName === 'log_type') {
-      return 'operational'; // Default type
+      return 'Operational'; // Default type
     } else if (columnName === 'uploader') {
-      return 'System User'; // Default uploader
+      return 'William'; // Default uploader
     } else {
       return '';
     }
@@ -88,13 +88,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
         day_of_the_week: isRecurrence ? selectedDayOfWeek : null // ✅ Match DB column name
       };
       
-      // ✅ Debug log to see what's being sent
-      console.log('🐛 Submitting data:', {
-        isRecurrence,
-        selectedDayOfWeek,
-        day_of_the_week: submissionData.day_of_the_week,
-        formData: submissionData
-      });
+  
       
       await onSave(submissionData);
       resetForm();

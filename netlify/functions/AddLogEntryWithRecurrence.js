@@ -1,15 +1,21 @@
 const sql = require('mssql');
 
-const config = {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER,
-  database: process.env.DB_DATABASE,
-  options: {
-    encrypt: true,
-    trustServerCertificate: true
-  }
-};
+  const host = process.env.AWS_RDS_HOST.replace(',1433', '');
+    
+    const config = {
+      server: host,
+      database: process.env.AWS_RDS_DATABASE,
+      user: process.env.AWS_RDS_USER,
+      password: process.env.AWS_RDS_PASSWORD.replace(/"/g, ''),
+      port: parseInt(process.env.AWS_RDS_PORT) || 1433,
+      options: {
+        encrypt: true,
+        trustServerCertificate: true,
+        enableArithAbort: true,
+        requestTimeout: 30000,
+        connectionTimeout: 30000
+      }
+    };
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -36,8 +42,6 @@ exports.handler = async (event, context) => {
     // ✅ Remove fields that shouldn't be in LOG_ENTRIES
     delete formData.dayOfWeek; // Remove if present
     
-    console.log('📝 Inserting log entry:', formData);
-    console.log('🔄 Recurrence data:', { isRecurrence, day_of_the_week });
     
     await sql.connect(config);
     
@@ -65,7 +69,7 @@ exports.handler = async (event, context) => {
       const result = await request.query(insertQuery);
       const insertedId = result.recordset[0].id;
       
-      console.log('✅ Log entry created with ID:', insertedId);
+
       
       // 2. Insert recurrence if enabled
       if (isRecurrence && day_of_the_week && insertedId) {
@@ -79,7 +83,6 @@ exports.handler = async (event, context) => {
         recurrenceRequest.input('dayOfWeek', sql.VarChar(12), day_of_the_week);
         
         await recurrenceRequest.query(recurrenceQuery);
-        console.log('🔄 Recurrence created for:', day_of_the_week);
       }
       
       await transaction.commit();

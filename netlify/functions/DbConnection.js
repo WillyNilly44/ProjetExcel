@@ -1,11 +1,27 @@
 const sql = require('mssql');
 
+const host = process.env.AWS_RDS_HOST.replace(',1433', '');
+
+const config = {
+  server: host,
+  database: process.env.AWS_RDS_DATABASE,
+  user: process.env.AWS_RDS_USER,
+  password: process.env.AWS_RDS_PASSWORD.replace(/"/g, ''),
+  port: parseInt(process.env.AWS_RDS_PORT) || 1433,
+  options: {
+    encrypt: true,
+    trustServerCertificate: true,
+    enableArithAbort: true,
+    requestTimeout: 30000,
+    connectionTimeout: 30000
+  }
+};
+
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-    'Content-Type': 'application/json'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
@@ -13,91 +29,70 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    await sql.connect(config);
     
-    const requiredEnvVars = ['AWS_RDS_HOST', 'AWS_RDS_DATABASE', 'AWS_RDS_USER', 'AWS_RDS_PASSWORD'];
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    // ✅ FIX: Join with recurrence table to get recurrence data
+    const query = `
+      SELECT 
+        le.*,
+        CASE WHEN ler.day_of_the_week IS NOT NULL THEN 1 ELSE 0 END as is_recurring,
+        ler.day_of_the_week as recurrence_day
+      FROM LOG_ENTRIES le
+      LEFT JOIN LOG_ENTRIES_RECURRENCES ler ON le.id = ler.log_entry_id
+      ORDER BY le.log_date DESC
+    `;
     
-    if (missingVars.length > 0) {
-      throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
-    }
-
-    const host = process.env.AWS_RDS_HOST.replace(',1433', '');
     
-    const config = {
-      server: host,
-      database: process.env.AWS_RDS_DATABASE,
-      user: process.env.AWS_RDS_USER,
-      password: process.env.AWS_RDS_PASSWORD.replace(/"/g, ''),
-      port: parseInt(process.env.AWS_RDS_PORT) || 1433,
-      options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        enableArithAbort: true,
-        requestTimeout: 30000,
-        connectionTimeout: 30000
-      }
-    };
-
-    const pool = await sql.connect(config);
+    const result = await sql.query(query);
+    const data = result.recordset;
     
-    // ✅ FIXED: Get actual column names from the table
+    // Get column information
     const columnQuery = `
       SELECT 
-        COLUMN_NAME,
-        DATA_TYPE,
-        IS_NULLABLE,
-        ORDINAL_POSITION
+        COLUMN_NAME, 
+        DATA_TYPE, 
+        IS_NULLABLE, 
+        CHARACTER_MAXIMUM_LENGTH,
+        COLUMN_DEFAULT
       FROM INFORMATION_SCHEMA.COLUMNS 
       WHERE TABLE_NAME = 'LOG_ENTRIES'
       ORDER BY ORDINAL_POSITION
     `;
     
-    const columnResult = await pool.request().query(columnQuery);
-    const columns = columnResult.recordset;
+    const columnResult = await sql.query(columnQuery);
     
-    if (columns.length === 0) {
-      throw new Error('No columns found for LOG_ENTRIES table. Check if table exists.');
-    }
-    
-    // ✅ FIXED: Build SELECT query with actual column names
-    const columnNames = columns.map(col => `[${col.COLUMN_NAME}]`).join(', ');
-    
-    const dataQuery = `
-      SELECT TOP 100 ${columnNames}
-      FROM LOG_ENTRIES
-      ORDER BY [id] DESC
-    `;
-    
-    const dataResult = await pool.request().query(dataQuery);
-    await pool.close();
-
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        message: `Successfully retrieved ${dataResult.recordset.length} log entries`,
-        data: dataResult.recordset,
-        columns: columns,
+        data: data,
+        columns: columnResult.recordset,
+        totalRecords: data.length,
         server: config.server,
         database: config.database,
-        totalRecords: dataResult.recordset.length,
         timestamp: new Date().toISOString()
       })
     };
 
   } catch (error) {
-    console.error('❌ Database operation failed:', error);
-
+    console.error('❌ Database query failed:', error);
+    
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
         error: error.message,
-        code: error.code || 'UNKNOWN_ERROR',
+        code: error.code,
         timestamp: new Date().toISOString()
       })
     };
+  } finally {
+    try {
+      await sql.close();
+    } catch (closeError) {
+      console.error('⚠️ Error closing database connection:', closeError);
+    }
   }
 };
