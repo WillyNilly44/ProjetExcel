@@ -10,7 +10,8 @@ const PDFExport = ({
   formatColumnName, 
   formatCellValue, 
   getDisplayColumns,
-  disabled = false 
+  disabled = false,
+  compact = false // ✅ NEW: Add compact mode for dropdown
 }) => {
   
   const exportToPDF = () => {
@@ -137,6 +138,36 @@ const PDFExport = ({
     }
   };
 
+  if (compact) {
+    // Compact version for dropdown
+    return (
+      <div className="pdf-export-compact">
+        <button 
+          onClick={exportToPDF}
+          disabled={disabled || data.length === 0}
+          className="btn btn-export compact"
+          title={data.length === 0 ? 'No data to export' : `Export ${data.length} entries to PDF`}
+        >
+          📄 Export PDF ({data.length})
+        </button>
+        
+        {data.length > 0 && (
+          <div className="export-info-compact">
+            <span className="export-count">
+              {data.length} entries ready
+              {showVirtualEntries && data.filter(e => e.is_virtual).length > 0 && (
+                <span className="virtual-count">
+                  ({data.filter(e => e.is_virtual).length} virtual)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Original version for standalone use
   return (
     <>
       {/* Export Button */}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
-import PDFExport from './PDFExport'; // ✅ NEW: Import PDFExport component
+import PDFExport from './PDFExport';
+import ToolbarDropdown from './ToolbarDropdown'; // ✅ NEW: Import ToolbarDropdown
 import '../style.css';
 
 export default function LogEntriesTable() {
@@ -620,58 +621,32 @@ export default function LogEntriesTable() {
           </div>
         </div>
         
-        <div className="button-group">
-          <button 
-            onClick={() => setShowVirtualEntries(!showVirtualEntries)}
-            disabled={isLoading || columns.length === 0}
-            className={`btn btn-virtual-entries ${showVirtualEntries ? 'active' : 'inactive'}`}
-          >
-            🔄 Recurrences {showVirtualEntries ? '✅' : '❌'}
-          </button>
-          
-          <button 
-            onClick={() => setShowFilters(!showFilters)}
-            disabled={isLoading || columns.length === 0}
-            className={`btn btn-filters ${showFilters ? 'active' : 'inactive'}`}
-          >
-            🔍 Filters {showFilters ? '▼' : '▶'}
-          </button>
-          
-          {/* ✅ NEW: Use PDFExport Component */}
-          <PDFExport
-            data={getFilteredData()}
-            columns={columns}
-            filters={dateFilters}
+        {/* ✅ NEW: Replace button group with dropdown */}
+        <div className="toolbar-container">
+          <ToolbarDropdown
+            isLoading={isLoading}
+            columnsLength={columns.length}
             showVirtualEntries={showVirtualEntries}
-            formatColumnName={formatColumnName}
-            formatCellValue={formatCellValue}
-            getDisplayColumns={getDisplayColumns}
-            disabled={isLoading || columns.length === 0}
+            setShowVirtualEntries={setShowVirtualEntries}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            setShowColumnManager={setShowColumnManager}
+            setShowAddModal={setShowAddModal}
+            fetchLogEntries={fetchLogEntries}
+            exportComponent={
+              <PDFExport
+                data={getFilteredData()}
+                columns={columns}
+                filters={dateFilters}
+                showVirtualEntries={showVirtualEntries}
+                formatColumnName={formatColumnName}
+                formatCellValue={formatCellValue}
+                getDisplayColumns={getDisplayColumns}
+                disabled={isLoading || columns.length === 0}
+                compact={true} // ✅ Use compact mode in dropdown
+              />
+            }
           />
-          
-          <button 
-            onClick={() => setShowColumnManager(true)}
-            disabled={isLoading || columns.length === 0}
-            className="btn btn-columns"
-          >
-            ⚙️ Columns
-          </button>
-          
-          <button 
-            onClick={() => setShowAddModal(true)}
-            disabled={isLoading || columns.length === 0}
-            className="btn btn-add"
-          >
-            ➕ Add Entry
-          </button>
-          
-          <button 
-            onClick={fetchLogEntries}
-            disabled={isLoading}
-            className="btn btn-refresh"
-          >
-            {isLoading ? '⏳ Loading...' : '🔄 Refresh Data'}
-          </button>
         </div>
       </div>
 
