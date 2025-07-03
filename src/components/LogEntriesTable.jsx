@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
-import '../style.css'; // ✅ Import the CSS file
+import PDFExport from './PDFExport'; // ✅ NEW: Import PDFExport component
+import '../style.css';
 
 export default function LogEntriesTable() {
   const [data, setData] = useState([]);
@@ -636,6 +637,18 @@ export default function LogEntriesTable() {
             🔍 Filters {showFilters ? '▼' : '▶'}
           </button>
           
+          {/* ✅ NEW: Use PDFExport Component */}
+          <PDFExport
+            data={getFilteredData()}
+            columns={columns}
+            filters={dateFilters}
+            showVirtualEntries={showVirtualEntries}
+            formatColumnName={formatColumnName}
+            formatCellValue={formatCellValue}
+            getDisplayColumns={getDisplayColumns}
+            disabled={isLoading || columns.length === 0}
+          />
+          
           <button 
             onClick={() => setShowColumnManager(true)}
             disabled={isLoading || columns.length === 0}
@@ -684,7 +697,6 @@ export default function LogEntriesTable() {
                 <option value="">All Types</option>
                 <option value="operational">Operational</option>
                 <option value="application">Application</option>
-                {/* ✅ REMOVED: Dynamic options from database */}
               </select>
             </div>
             
@@ -750,6 +762,8 @@ export default function LogEntriesTable() {
           </div>
         </div>
       )}
+
+      {/* ✅ PDFExport Info Panel will render here automatically */}
 
       {/* Data Table */}
       {!data || data.length === 0 ? (
@@ -845,6 +859,8 @@ export default function LogEntriesTable() {
     </div>
   );
 }
+
+// Keep the getColumnType function at the bottom
 function getColumnType(columnName, dataType) {
   const lowerName = columnName.toLowerCase();
   

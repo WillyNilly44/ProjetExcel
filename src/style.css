@@ -112,6 +112,21 @@
   color: white;
 }
 
+/* Export button styles */
+.btn-export {
+  background-color: #dc2626;
+  color: white;
+}
+
+.btn-export:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.btn-export:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
 /* No data state */
 .no-data {
   text-align: center;
@@ -538,6 +553,57 @@
 
 .debug-title {
   font-weight: bold;
+}
+
+/* Export info panel */
+.export-info {
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.export-info-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.export-info-icon {
+  font-size: 18px;
+}
+
+.export-info-text {
+  flex: 1;
+  font-size: 14px;
+  color: #92400e;
+}
+
+.export-virtual-note {
+  font-size: 12px;
+  color: #78350f;
+  margin-left: 8px;
+}
+
+.export-quick-btn {
+  padding: 6px 12px;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.export-quick-btn:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.export-quick-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
 }
 
 /* Responsive adjustments */
