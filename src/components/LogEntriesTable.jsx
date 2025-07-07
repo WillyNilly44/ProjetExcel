@@ -3,11 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
 import PDFExport from './PDFExport';
-import ExcelExport from './ExcelExport'; // ✅ NEW
 import ToolbarDropdown from './ToolbarDropdown';
 import MiniLogin from './MiniLogin';
 import TabNavigation from './TabNavigation';
 import UserManagement from './UserManagement';
+import DashboardTab from './DashboardTab'; // ✅ NEW
 import '../style.css';
 
 export default function LogEntriesTable() {
@@ -620,17 +620,13 @@ export default function LogEntriesTable() {
 
   return (
     <div className="log-entries-container">
-      {/* ✅ NEW: Mini Login in fixed position */}
       <MiniLogin />
-
-      {/* ✅ NEW: Tab Navigation */}
       <TabNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
         hasPermission={hasPermission}
       />
 
-      {/* ✅ NEW: Conditional rendering based on active tab */}
       {activeTab === 'logs' && (
         <>
           {/* Status Header */}
@@ -879,6 +875,11 @@ export default function LogEntriesTable() {
             />
           )}
         </>
+      )}
+
+      {/* ✅ NEW: Dashboard Tab */}
+      {activeTab === 'dashboard' && (
+        <DashboardTab />
       )}
 
       {/* ✅ NEW: User Management Tab */}

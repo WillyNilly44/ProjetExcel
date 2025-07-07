@@ -4,10 +4,17 @@ const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
   const tabs = [
     {
       id: 'logs',
-      label: '📊 Log Entries',
+      label: 'Log Entries',
       icon: '📋',
       description: 'View and manage log entries',
       public: true
+    },
+    {
+      id: 'dashboard',
+      label: '📊 Dashboard',
+      description: 'See dashboard info',
+      public: true,
+
     },
     {
       id: 'users',
