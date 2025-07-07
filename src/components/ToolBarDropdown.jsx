@@ -9,8 +9,17 @@ const ToolbarDropdown = ({
   setShowFilters,
   setShowColumnManager,
   setShowAddModal,
+  setShowCSVUpload,
   fetchLogEntries,
-  exportComponent
+  exportComponent,
+  hasPermission,
+  data,
+  columns,
+  dateFilters,
+  formatColumnName,
+  formatCellValue,
+  getDisplayColumns,
+  getFilteredData
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -51,7 +60,7 @@ const ToolbarDropdown = ({
       type: 'divider'
     },
     {
-      id: 'export',
+      id: 'pdf-export',
       label: '📄 Export PDF',
       type: 'component',
       component: exportComponent,
@@ -62,16 +71,6 @@ const ToolbarDropdown = ({
       type: 'divider'
     },
     {
-      id: 'columns',
-      label: '⚙️ Manage Columns',
-      type: 'action',
-      action: () => {
-        setShowColumnManager(true);
-        setIsOpen(false);
-      },
-      disabled: isLoading || columnsLength === 0
-    },
-    {
       id: 'add-entry',
       label: '➕ Add Entry',
       type: 'action',
@@ -79,7 +78,30 @@ const ToolbarDropdown = ({
         setShowAddModal(true);
         setIsOpen(false);
       },
-      disabled: isLoading || columnsLength === 0
+      disabled: isLoading || columnsLength === 0 || !hasPermission('Operator'),
+      requiresLogin: !hasPermission('Operator')
+    },
+    {
+      id: 'csv-upload',
+      label: '📁 CSV Upload',
+      type: 'action',
+      action: () => {
+        setShowCSVUpload(true);
+        setIsOpen(false);
+      },
+      disabled: isLoading || columnsLength === 0 || !hasPermission('Operator'),
+      requiresLogin: !hasPermission('Operator')
+    },
+    {
+      id: 'columns',
+      label: '⚙️ Manage Columns',
+      type: 'action',
+      action: () => {
+        setShowColumnManager(true);
+        setIsOpen(false);
+      },
+      disabled: isLoading || columnsLength === 0 || !hasPermission('Administrator'),
+      requiresLogin: !hasPermission('Administrator')
     },
     {
       id: 'divider-3',
@@ -106,7 +128,7 @@ const ToolbarDropdown = ({
         disabled={isLoading}
       >
         <span className="toolbar-trigger-icon">⚙️</span>
-        <span className="toolbar-trigger-text">Actions</span>
+        <span className="toolbar-trigger-text">Tools</span>
         <span className={`toolbar-trigger-arrow ${isOpen ? 'up' : 'down'}`}>
           {isOpen ? '▲' : '▼'}
         </span>
@@ -116,7 +138,7 @@ const ToolbarDropdown = ({
       {isOpen && (
         <div className="toolbar-menu">
           <div className="toolbar-menu-header">
-            <span className="toolbar-menu-title">📋 Table Actions</span>
+            <span className="toolbar-menu-title">🛠️ Table Tools</span>
             <button 
               onClick={() => setIsOpen(false)}
               className="toolbar-menu-close"
@@ -161,9 +183,13 @@ const ToolbarDropdown = ({
                     key={item.id}
                     onClick={item.action}
                     disabled={item.disabled}
-                    className="toolbar-menu-item action"
+                    className={`toolbar-menu-item action ${item.requiresLogin ? 'requires-login' : ''}`}
+                    title={item.requiresLogin ? 'Login required for this feature' : ''}
                   >
                     <span className="toolbar-menu-item-label">{item.label}</span>
+                    {item.requiresLogin && (
+                      <span className="toolbar-menu-item-lock">🔒</span>
+                    )}
                   </button>
                 );
               }

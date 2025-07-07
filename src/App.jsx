@@ -1,22 +1,16 @@
 import React from 'react';
+import { AuthProvider } from './contexts/AuthContext';
 import LogEntriesTable from './components/LogEntriesTable';
+import './style.css';
 
 function App() {
   return (
-    <div className="App">
-      <header style={{ 
-        backgroundColor: '#1f2937', 
-        color: 'white', 
-        padding: '20px', 
-        textAlign: 'center' 
-      }}>
-        <h1>Log Entries</h1>
-      </header>
-      
-      <main style={{ padding: '20px' }}>
+    <AuthProvider>
+      <div className="App">
+        {/* ✅ No more ProtectedRoute - direct access */}
         <LogEntriesTable />
-      </main>
-    </div>
+      </div>
+    </AuthProvider>
   );
 }
 

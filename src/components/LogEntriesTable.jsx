@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
 import PDFExport from './PDFExport';
-import ToolbarDropdown from './ToolbarDropdown'; // ✅ NEW: Import ToolbarDropdown
+import ExcelExport from './ExcelExport'; // ✅ NEW
+import ToolbarDropdown from './ToolbarDropdown';
+import MiniLogin from './MiniLogin';
+import TabNavigation from './TabNavigation';
+import UserManagement from './UserManagement';
 import '../style.css';
 
 export default function LogEntriesTable() {
+  const { hasPermission } = useAuth();
+  const [activeTab, setActiveTab] = useState('logs');
+  const [showCSVUpload, setShowCSVUpload] = useState(false);
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +54,7 @@ export default function LogEntriesTable() {
       const result = await response.json();
 
       if (result.success) {
-        setConnectionStatus(`✅ Loaded ${result.totalRecords} log entries`);
+        setConnectionStatus(`✅ Loaded`);
         setData(result.data || []);
         setColumns(result.columns || []);
         setConnectionInfo({
@@ -612,225 +620,271 @@ export default function LogEntriesTable() {
 
   return (
     <div className="log-entries-container">
-      {/* Status Header */}
-      <div className="status-header">
-        <div>
-          <h2></h2>
-          <div className={`status-text ${getConnectionStatusClass()}`}>
-            {connectionStatus}
-          </div>
-        </div>
-        
-        {/* ✅ NEW: Replace button group with dropdown */}
-        <div className="toolbar-container">
-          <ToolbarDropdown
-            isLoading={isLoading}
-            columnsLength={columns.length}
-            showVirtualEntries={showVirtualEntries}
-            setShowVirtualEntries={setShowVirtualEntries}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            setShowColumnManager={setShowColumnManager}
-            setShowAddModal={setShowAddModal}
-            fetchLogEntries={fetchLogEntries}
-            exportComponent={
-              <PDFExport
-                data={getFilteredData()}
-                columns={columns}
-                filters={dateFilters}
+      {/* ✅ NEW: Mini Login in fixed position */}
+      <MiniLogin />
+
+      {/* ✅ NEW: Tab Navigation */}
+      <TabNavigation 
+        activeTab={activeTab} 
+        onTabChange={setActiveTab} 
+        hasPermission={hasPermission}
+      />
+
+      {/* ✅ NEW: Conditional rendering based on active tab */}
+      {activeTab === 'logs' && (
+        <>
+          {/* Status Header */}
+          <div className="status-header">
+            <div>
+              <h2>📊 Log Entries System</h2>
+              <div className={`status-text ${getConnectionStatusClass()}`}>
+                {connectionStatus}
+              </div>
+            </div>
+            
+            <div className="toolbar-container">
+              <ToolbarDropdown
+                isLoading={isLoading}
+                columnsLength={columns.length}
                 showVirtualEntries={showVirtualEntries}
+                setShowVirtualEntries={setShowVirtualEntries}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                setShowColumnManager={setShowColumnManager}
+                setShowAddModal={setShowAddModal}
+                setShowCSVUpload={setShowCSVUpload}
+                fetchLogEntries={fetchLogEntries}
+                exportComponent={
+                  <PDFExport
+                    data={getFilteredData()}
+                    columns={columns}
+                    filters={dateFilters}
+                    showVirtualEntries={showVirtualEntries}
+                    formatColumnName={formatColumnName}
+                    formatCellValue={formatCellValue}
+                    getDisplayColumns={getDisplayColumns}
+                    disabled={isLoading || columns.length === 0}
+                    compact={true}
+                  />
+                }
+                hasPermission={hasPermission}
+                data={data}
+                columns={columns}
+                dateFilters={dateFilters}
                 formatColumnName={formatColumnName}
                 formatCellValue={formatCellValue}
                 getDisplayColumns={getDisplayColumns}
-                disabled={isLoading || columns.length === 0}
-                compact={true} // ✅ Use compact mode in dropdown
+                getFilteredData={getFilteredData}
               />
-            }
-          />
-        </div>
-      </div>
-
-      {/* Filter Panel */}
-      {showFilters && (
-        <div className="filter-panel">
-          <div className="filter-header">
-            <h3 className="filter-title">📅 Filters</h3>
-            <button onClick={clearFilters} className="filter-clear-btn">
-              🗑 Clear All
-            </button>
-          </div>
-          
-          <div className="filter-grid">
-            {/* Log Type Filter */}
-            <div className="filter-group">
-              <label>🏷️ Log Type</label>
-              <select
-                value={dateFilters.logType}
-                onChange={(e) => handleFilterChange('logType', e.target.value)}
-                className="filter-select"
-              >
-                <option value="">All Types</option>
-                <option value="operational">Operational</option>
-                <option value="application">Application</option>
-              </select>
             </div>
-            
-            {/* Year Filter */}
-            <div className="filter-group">
-              <label>📅 Year</label>
-              <select
-                value={dateFilters.year}
-                onChange={(e) => handleFilterChange('year', e.target.value)}
-                className="filter-select"
-              >
-                <option value="">All Years</option>
-                {getAvailableYears().map(year => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Month Filter */}
-            <div className="filter-group">
-              <label>📊 Month</label>
-              <select
-                value={dateFilters.month}
-                onChange={(e) => handleFilterChange('month', e.target.value)}
-                disabled={!dateFilters.year}
-                className="filter-select"
-              >
-                <option value="">All Months</option>
-                <option value="1">January</option>
-                <option value="2">February</option>
-                <option value="3">March</option>
-                <option value="4">April</option>
-                <option value="5">May</option>
-                <option value="6">June</option>
-                <option value="7">July</option>
-                <option value="8">August</option>
-                <option value="9">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
-            
-            {/* Week Filter */}
-            <div className="filter-group">
-              <label>📍 Week</label>
-              <select
-                value={dateFilters.week}
-                onChange={(e) => handleFilterChange('week', e.target.value)}
-                disabled={!dateFilters.year || !dateFilters.month}
-                className="filter-select"
-              >
-                <option value="">All Weeks</option>
-                {dateFilters.year && dateFilters.month && 
-                  getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
-                    <option key={week.number} value={week.number}>
-                      {week.label}
-                    </option>
-                  ))
-                }
-              </select>
-            </div>      
           </div>
-        </div>
-      )}
 
-      {/* ✅ PDFExport Info Panel will render here automatically */}
-
-      {/* Data Table */}
-      {!data || data.length === 0 ? (
-        <div className="no-data">
-          <div className="no-data-text">📝 No log entries found</div>
-        </div>
-      ) : (
-        <div className="table-container">
-          <div className="table-header">
-            <h3 className="table-title">📋 LOG ENTRIES</h3>
-          </div>
-          
-          <div className="table-scroll-container">
-            <table className="data-table">
-              <thead className="table-head">
-                <tr>
-                  {getDisplayColumns().map((column) => (
-                    <th 
-                      key={column.COLUMN_NAME} 
-                      className="table-header-cell"
-                      title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
-                    >
-                      {formatColumnName(column.COLUMN_NAME)}
-                    </th>
-                  ))}
-                  <th className="table-header-cell table-header-actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getFilteredData().map((entry, index) => (
-                  <tr 
-                    key={entry.id || index} 
-                    className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="filter-panel">
+              <div className="filter-header">
+                <h3 className="filter-title">📅 Filters</h3>
+                <button onClick={clearFilters} className="filter-clear-btn">
+                  🗑 Clear All
+                </button>
+              </div>
+              
+              <div className="filter-grid">
+                {/* Log Type Filter */}
+                <div className="filter-group">
+                  <label>🏷️ Log Type</label>
+                  <select
+                    value={dateFilters.logType}
+                    onChange={(e) => handleFilterChange('logType', e.target.value)}
+                    className="filter-select"
                   >
-                    {getDisplayColumns().map((column) => {
-                      const cellClasses = [
-                        'table-cell',
-                        getColumnType(column.COLUMN_NAME, column.DATA_TYPE),
-                        entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') ? 'incident virtual' : ''
-                      ].filter(Boolean).join(' ');
+                    <option value="">All Types</option>
+                    <option value="operational">Operational</option>
+                    <option value="application">Application</option>
+                  </select>
+                </div>
+                
+                {/* Year Filter */}
+                <div className="filter-group">
+                  <label>📅 Year</label>
+                  <select
+                    value={dateFilters.year}
+                    onChange={(e) => handleFilterChange('year', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Years</option>
+                    {getAvailableYears().map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* Month Filter */}
+                <div className="filter-group">
+                  <label>📊 Month</label>
+                  <select
+                    value={dateFilters.month}
+                    onChange={(e) => handleFilterChange('month', e.target.value)}
+                    disabled={!dateFilters.year}
+                    className="filter-select"
+                  >
+                    <option value="">All Months</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
+                </div>
+                
+                {/* Week Filter */}
+                <div className="filter-group">
+                  <label>📍 Week</label>
+                  <select
+                    value={dateFilters.week}
+                    onChange={(e) => handleFilterChange('week', e.target.value)}
+                    disabled={!dateFilters.year || !dateFilters.month}
+                    className="filter-select"
+                  >
+                    <option value="">All Weeks</option>
+                    {dateFilters.year && dateFilters.month && 
+                      getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
+                        <option key={week.number} value={week.number}>
+                          {week.label}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>      
+              </div>
+            </div>
+          )}
 
-                      return (
-                        <td 
+          {/* Data Table */}
+          {!data || data.length === 0 ? (
+            <div className="no-data">
+              <div className="no-data-text">📝 No log entries found</div>
+            </div>
+          ) : (
+            <div className="table-container">
+              <div className="table-header">
+                <h3 className="table-title">📋 LOG ENTRIES</h3>
+              </div>
+              
+              <div className="table-scroll-container">
+                <table className="data-table">
+                  <thead className="table-head">
+                    <tr>
+                      {getDisplayColumns().map((column) => (
+                        <th 
                           key={column.COLUMN_NAME} 
-                          className={cellClasses}
-                          title={`${entry[column.COLUMN_NAME]}${entry.is_virtual ? ' (Recurring Entry)' : ''}`}
+                          className="table-header-cell"
+                          title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
                         >
-                          <div className={`cell-content ${column.COLUMN_NAME.toLowerCase().includes('note') ? 'note' : ''}`}>
-                            {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
-                              <span className="virtual-icon">🔄</span>
-                            )}
-                            <span className={entry.is_virtual ? 'virtual-text' : 'normal-text'}>
-                              {formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE)}
-                            </span>
-                          </div>
-                        </td>
-                      );
-                    })}
-                    <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
-                      <button
-                        onClick={() => handleDeleteEntry(entry.original_id || entry.id)}
-                        disabled={!entry.id || entry.is_virtual}
-                        className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
-                        title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
+                          {formatColumnName(column.COLUMN_NAME)}
+                        </th>
+                      ))}
+                      <th className="table-header-cell table-header-actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getFilteredData().map((entry, index) => (
+                      <tr 
+                        key={entry.id || index} 
+                        className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
                       >
-                        {entry.is_virtual ? '🔄' : '🗑'} {entry.is_virtual ? 'Recu.' : 'Delete'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                        {getDisplayColumns().map((column) => {
+                          const cellClasses = [
+                            'table-cell',
+                            getColumnType(column.COLUMN_NAME, column.DATA_TYPE),
+                            entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') ? 'incident virtual' : ''
+                          ].filter(Boolean).join(' ');
+
+                          return (
+                            <td 
+                              key={column.COLUMN_NAME} 
+                              className={cellClasses}
+                              title={`${entry[column.COLUMN_NAME]}${entry.is_virtual ? ' (Recurring Entry)' : ''}`}
+                            >
+                              <div className={`cell-content ${column.COLUMN_NAME.toLowerCase().includes('note') ? 'note' : ''}`}>
+                                {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
+                                  <span className="virtual-icon">🔄</span>
+                                )}
+                                <span className={entry.is_virtual ? 'virtual-text' : 'normal-text'}>
+                                  {formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE)}
+                                </span>
+                              </div>
+                            </td>
+                          );
+                        })}
+                        <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
+                          <button
+                            onClick={() => handleDeleteEntry(entry.original_id || entry.id)}
+                            disabled={!entry.id || entry.is_virtual}
+                            className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
+                            title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
+                          >
+                            {entry.is_virtual ? '🔄' : '🗑'} {entry.is_virtual ? 'Recu.' : 'Delete'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Conditionally render modals based on permissions */}
+          {hasPermission('Operator') && (
+            <AddEntryModal 
+              isOpen={showAddModal}
+              onClose={() => setShowAddModal(false)}
+              onSave={handleSaveEntry}
+              columns={columns}
+            />
+          )}
+
+          {hasPermission('Administrator') && (
+            <ColumnManager 
+              isOpen={showColumnManager}
+              onClose={() => setShowColumnManager(false)}
+              columns={columns}
+              visibleColumns={visibleColumns}
+              columnOrder={columnOrder}
+              onSave={handleColumnManagerSave}
+            />
+          )}
+
+          {/* ✅ NEW: CSV Upload Modal */}
+          {hasPermission('Operator') && showCSVUpload && (
+            <CSVUpload
+              isOpen={showCSVUpload}
+              onClose={() => setShowCSVUpload(false)}
+              onUpload={async (file) => {
+                // Handle CSV file upload
+                console.log('CSV File:', file);
+                
+                // TODO: Implement CSV parsing and data submission
+                
+                setShowCSVUpload(false);
+              }}
+            />
+          )}
+        </>
       )}
 
-      {/* Modals */}
-      <AddEntryModal 
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSave={handleSaveEntry}
-        columns={columns}
-      />
-
-      <ColumnManager 
-        isOpen={showColumnManager}
-        onClose={() => setShowColumnManager(false)}
-        columns={columns}
-        visibleColumns={visibleColumns}
-        columnOrder={columnOrder}
-        onSave={handleColumnManagerSave}
-      />
+      {/* ✅ NEW: User Management Tab */}
+      {activeTab === 'users' && (
+        <UserManagement />
+      )}
     </div>
   );
 }

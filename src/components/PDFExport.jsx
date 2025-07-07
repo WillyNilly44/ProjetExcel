@@ -150,19 +150,6 @@ const PDFExport = ({
         >
           📄 Export PDF ({data.length})
         </button>
-        
-        {data.length > 0 && (
-          <div className="export-info-compact">
-            <span className="export-count">
-              {data.length} entries ready
-              {showVirtualEntries && data.filter(e => e.is_virtual).length > 0 && (
-                <span className="virtual-count">
-                  ({data.filter(e => e.is_virtual).length} virtual)
-                </span>
-              )}
-            </span>
-          </div>
-        )}
       </div>
     );
   }
@@ -179,30 +166,6 @@ const PDFExport = ({
       >
         📄 Export PDF ({data.length})
       </button>
-      
-      {/* Export Info Panel */}
-      {data.length > 0 && (
-        <div className="export-info">
-          <div className="export-info-content">
-            <span className="export-info-icon">📄</span>
-            <span className="export-info-text">
-              Ready to export: <strong>{data.length}</strong> entries
-              {showVirtualEntries && data.filter(e => e.is_virtual).length > 0 && (
-                <span className="export-virtual-note">
-                  (including {data.filter(e => e.is_virtual).length} virtual entries)
-                </span>
-              )}
-            </span>
-            <button 
-              onClick={exportToPDF}
-              className="export-quick-btn"
-              disabled={disabled}
-            >
-              📄 Quick Export
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 };
