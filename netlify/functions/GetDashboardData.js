@@ -47,41 +47,57 @@ exports.handler = async (event, context) => {
     let whereClause = '';
     const queryParams = [];
 
-    if (filters.dateRange) {
-      switch (filters.dateRange) {
-        case 'today':
-          whereClause += whereClause ? ' AND ' : ' WHERE ';
-          whereClause += 'CAST(created_date AS DATE) = CAST(GETDATE() AS DATE)';
-          break;
-        case 'week':
-          whereClause += whereClause ? ' AND ' : ' WHERE ';
-          whereClause += 'created_date >= DATEADD(week, -1, GETDATE())';
-          break;
-        case 'month':
-          whereClause += whereClause ? ' AND ' : ' WHERE ';
-          whereClause += 'created_date >= DATEADD(month, -1, GETDATE())';
-          break;
-        case 'quarter':
-          whereClause += whereClause ? ' AND ' : ' WHERE ';
-          whereClause += 'created_date >= DATEADD(quarter, -1, GETDATE())';
-          break;
-        case 'year':
-          whereClause += whereClause ? ' AND ' : ' WHERE ';
-          whereClause += 'created_date >= DATEADD(year, -1, GETDATE())';
-          break;
-      }
+    // Filter by month
+    if (filters.month) {
+      whereClause += whereClause ? ' AND ' : ' WHERE ';
+      whereClause += 'month = @month';
+      queryParams.push({ name: 'month', type: sql.VarChar, value: filters.month });
     }
 
-    if (filters.category) {
+    // Filter by week
+    if (filters.week) {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
-      whereClause += 'category = @category';
-      queryParams.push({ name: 'category', type: sql.NVarChar, value: filters.category });
+      whereClause += 'week = @week';
+      queryParams.push({ name: 'week', type: sql.VarChar, value: filters.week });
     }
 
-    if (filters.status) {
+    // Filter by maintenance count range
+    if (filters.maintenanceMin !== undefined && filters.maintenanceMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
-      whereClause += 'status = @status';
-      queryParams.push({ name: 'status', type: sql.NVarChar, value: filters.status });
+      whereClause += 'maintenance >= @maintenanceMin';
+      queryParams.push({ name: 'maintenanceMin', type: sql.Int, value: parseInt(filters.maintenanceMin) });
+    }
+
+    if (filters.maintenanceMax !== undefined && filters.maintenanceMax !== '') {
+      whereClause += whereClause ? ' AND ' : ' WHERE ';
+      whereClause += 'maintenance <= @maintenanceMax';
+      queryParams.push({ name: 'maintenanceMax', type: sql.Int, value: parseInt(filters.maintenanceMax) });
+    }
+
+    // Filter by incidents count range
+    if (filters.incidentsMin !== undefined && filters.incidentsMin !== '') {
+      whereClause += whereClause ? ' AND ' : ' WHERE ';
+      whereClause += 'incidents >= @incidentsMin';
+      queryParams.push({ name: 'incidentsMin', type: sql.Int, value: parseInt(filters.incidentsMin) });
+    }
+
+    if (filters.incidentsMax !== undefined && filters.incidentsMax !== '') {
+      whereClause += whereClause ? ' AND ' : ' WHERE ';
+      whereClause += 'incidents <= @incidentsMax';
+      queryParams.push({ name: 'incidentsMax', type: sql.Int, value: parseInt(filters.incidentsMax) });
+    }
+
+    // Filter by business impact range
+    if (filters.businessImpactMin !== undefined && filters.businessImpactMin !== '') {
+      whereClause += whereClause ? ' AND ' : ' WHERE ';
+      whereClause += 'business_impacted >= @businessImpactMin';
+      queryParams.push({ name: 'businessImpactMin', type: sql.Int, value: parseInt(filters.businessImpactMin) });
+    }
+
+    if (filters.businessImpactMax !== undefined && filters.businessImpactMax !== '') {
+      whereClause += whereClause ? ' AND ' : ' WHERE ';
+      whereClause += 'business_impacted <= @businessImpactMax';
+      queryParams.push({ name: 'businessImpactMax', type: sql.Int, value: parseInt(filters.businessImpactMax) });
     }
 
     // Build and execute main query
@@ -89,7 +105,7 @@ exports.handler = async (event, context) => {
       SELECT * 
       FROM LOG_ENTRIES_DASHBOARD 
       ${whereClause}
-      ORDER BY created_date DESC
+      ORDER BY id DESC
     `;
 
     const request = new sql.Request();
@@ -99,12 +115,27 @@ exports.handler = async (event, context) => {
 
     const result = await request.query(query);
 
+    // Calculate summary statistics
+    const summaryStats = {
+      totalRecords: result.recordset.length,
+      totalMaintenance: result.recordset.reduce((sum, row) => sum + (row.maintenance || 0), 0),
+      totalIncidents: result.recordset.reduce((sum, row) => sum + (row.incidents || 0), 0),
+      totalBusinessImpact: result.recordset.reduce((sum, row) => sum + (row.business_impacted || 0), 0),
+      avgMaintenance: result.recordset.length > 0 ? 
+        (result.recordset.reduce((sum, row) => sum + (row.maintenance || 0), 0) / result.recordset.length).toFixed(1) : 0,
+      avgIncidents: result.recordset.length > 0 ? 
+        (result.recordset.reduce((sum, row) => sum + (row.incidents || 0), 0) / result.recordset.length).toFixed(1) : 0,
+      avgBusinessImpact: result.recordset.length > 0 ? 
+        (result.recordset.reduce((sum, row) => sum + (row.business_impacted || 0), 0) / result.recordset.length).toFixed(1) : 0
+    };
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
         data: result.recordset,
         columns: columnsResult.recordset,
+        summary: summaryStats,
         metadata: {
           totalRecords: result.recordset.length,
           appliedFilters: filters,

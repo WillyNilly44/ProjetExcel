@@ -8,12 +8,12 @@ import MiniLogin from './MiniLogin';
 import TabNavigation from './TabNavigation';
 import UserManagement from './UserManagement';
 import DashboardTab from './DashboardTab'; // ✅ NEW
+import EntryDetailModal from './EntryDetailModal'; // ✅ NEW
 import '../style.css';
 
 export default function LogEntriesTable() {
   const { hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState('logs');
-  const [showCSVUpload, setShowCSVUpload] = useState(false);
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,6 +31,9 @@ export default function LogEntriesTable() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showVirtualEntries, setShowVirtualEntries] = useState(true);
+  // ✅ NEW: Add state for detail modal
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const fetchLogEntries = async () => {
     setIsLoading(true);
@@ -167,38 +170,32 @@ export default function LogEntriesTable() {
     
     const lowerColumnName = columnName.toLowerCase();
     
-    // ✅ FIXED: Handle log_start and log_end specifically (before general date check)
+    // Handle log_start and log_end specifically
     if (lowerColumnName.includes('log_start') || lowerColumnName.includes('log_end') || 
         lowerColumnName.includes('start_time') || lowerColumnName.includes('end_time')) {
       if (!value) return '-';
       
-      // Handle different time formats
       if (typeof value === 'string') {
-        // Pure time format "HH:MM" or "HH:MM:SS"
         if (value.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
           const timeParts = value.split(':');
           return `${timeParts[0].padStart(2, '0')}:${timeParts[1]}`;
         }
         
-        // Datetime format - extract time (handles "1970-01-01T13:00:00.000Z" format)
         if (value.includes('T')) {
           const timePart = value.split('T')[1];
           if (timePart) {
-            return timePart.substring(0, 5); // Return HH:MM only
+            return timePart.substring(0, 5);
           }
         }
         
-        // Space-separated datetime
         if (value.includes(' ')) {
           const parts = value.split(' ');
           if (parts.length > 1) {
-            return parts[1].substring(0, 5); // Return HH:MM only
+            return parts[1].substring(0, 5);
           }
         }
         
-        // Handle other datetime formats
         if (value.length > 10 && value.includes(':')) {
-          // Try to find time pattern in the string
           const timeMatch = value.match(/(\d{1,2}):(\d{2})/);
           if (timeMatch) {
             return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
@@ -209,7 +206,7 @@ export default function LogEntriesTable() {
       return value;
     }
     
-    // Date formatting (excluding time fields)
+    // Date formatting
     if ((dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date') || lowerColumnName.includes('created') || lowerColumnName.includes('updated')) && !lowerColumnName.includes('time') && !lowerColumnName.includes('start') && !lowerColumnName.includes('end')) {
       try {
         return new Date(value).toLocaleDateString();
@@ -223,10 +220,9 @@ export default function LogEntriesTable() {
       return value ? '✅' : '❌';
     }
     
-    // ✅ Format estimated_time and actual_time as hours
+    // ✅ FIXED: Format estimated_time and actual_time as hours (data is already in hours)
     if ((lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) && typeof value === 'number') {
-      const hours = (value / 60).toFixed(2);
-      return `${hours}h`;
+      return `${value.toFixed(2)}h`;
     }
     
     // Format other numeric time fields
@@ -234,7 +230,29 @@ export default function LogEntriesTable() {
       return `${value}min`;
     }
     
-    return value.toString();
+    // ✅ FIXED: Truncate long text values with proper logic
+    const stringValue = value.toString();
+    
+    // Different limits based on column type
+    let maxLength;
+    if (lowerColumnName.includes('note') || lowerColumnName.includes('description') || lowerColumnName.includes('comment')) {
+      maxLength = 50; // Longer limit for note/description fields
+    } else if (lowerColumnName.includes('ticket_number')) {
+      maxLength = 15; // ✅ FIXED: Shorter limit for ticket numbers
+    } else if (lowerColumnName.includes('name') || lowerColumnName.includes('title')) {
+      maxLength = 25; // Medium limit for names/titles
+    } else if (lowerColumnName.includes('id') || lowerColumnName.includes('status')) {
+      maxLength = 20; // Shorter limit for IDs/status
+    } else {
+      maxLength = 25; // Default limit for other text fields
+    }
+    
+    // ✅ FIXED: Apply truncation logic properly
+    if (stringValue.length > maxLength) {
+      return `${stringValue.substring(0, maxLength)}...`;
+    }
+    
+    return stringValue;
   };
 
   // Get column styling based on type
@@ -538,7 +556,7 @@ export default function LogEntriesTable() {
     });
   };
 
-  // Update the generateRecurringEntries function - it's missing the return statement:
+  // Update the generateRecurringEntries function:
   const generateRecurringEntries = (data) => {
     if (!data || data.length === 0) {
       return data;
@@ -546,6 +564,7 @@ export default function LogEntriesTable() {
     
     const expandedData = [...data];
     const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
     
     let recurringFound = 0;
     let virtualCreated = 0;
@@ -553,11 +572,9 @@ export default function LogEntriesTable() {
     data.forEach(entry => {
       const hasRecurrence = entry.is_recurring === 1 || entry.is_recurring === true || entry.recurrence_day;
       
-      
       if (hasRecurrence && entry.recurrence_day) {
         recurringFound++;
         
-        // Rest of your generation logic...
         const dayMapping = {
           'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
           'thursday': 4, 'friday': 5, 'saturday': 6
@@ -569,17 +586,28 @@ export default function LogEntriesTable() {
           const weekOffsets = [-2, -1, 1, 2];
           
           weekOffsets.forEach(weekOffset => {
-            // Your existing generation logic...
             const startOfTargetWeek = new Date(today);
             startOfTargetWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
             
             const recurringDate = new Date(startOfTargetWeek);
             recurringDate.setDate(startOfTargetWeek.getDate() + targetDay);
+            recurringDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
             
             const originalDate = new Date(entry.log_date);
-            if (recurringDate.toDateString() === originalDate.toDateString()) {
-              return;
+            originalDate.setHours(0, 0, 0, 0);
+            
+            if (recurringDate.getTime() === originalDate.getTime()) {
+              return; // Skip if this is the original entry date
             }
+            
+            // ✅ NEW: Determine completion status based on date
+            const isFutureDate = recurringDate > today;
+            
+            // Find status column (could be 'status', 'completion_status', etc.)
+            const statusColumn = columns.find(col => 
+              col.COLUMN_NAME.toLowerCase().includes('status') ||
+              col.COLUMN_NAME.toLowerCase().includes('completion')
+            );
             
             const virtualEntry = {
               ...entry,
@@ -593,13 +621,44 @@ export default function LogEntriesTable() {
               relative_to_current: true
             };
             
+            // ✅ NEW: Set status based on date
+            if (statusColumn && isFutureDate) {
+              virtualEntry[statusColumn.COLUMN_NAME] = 'Not Completed';
+            }
+            
+            // ✅ NEW: Also check for common status field names
+            if (isFutureDate) {
+              // Set various possible status fields to "Not Completed" for future dates
+              if ('status' in virtualEntry) virtualEntry.status = 'Not Completed';
+              if ('completion_status' in virtualEntry) virtualEntry.completion_status = 'Not Completed';
+              if ('task_status' in virtualEntry) virtualEntry.task_status = 'Not Completed';
+              if ('log_status' in virtualEntry) virtualEntry.log_status = 'Not Completed';
+            }
+            
             virtualCreated++;
             expandedData.push(virtualEntry);
           });
         }
       }
     });    
-    return expandedData.sort((a, b) => new Date(a.log_date) - new Date(b.log_date));
+    
+    // ✅ SIMPLIFIED: Just sort all entries by date (newest first), maintaining mixed log types
+    return expandedData.sort((a, b) => {
+      const dateA = new Date(a.log_date);
+      const dateB = new Date(b.log_date);
+      
+      // Sort by date first (newest first)
+      const dateDiff = dateB - dateA;
+      if (dateDiff !== 0) {
+        return dateDiff;
+      }
+      
+      // If same date, maintain original order by using ID
+      const idA = typeof a.id === 'string' ? parseInt(a.original_id || a.id) : a.id;
+      const idB = typeof b.id === 'string' ? parseInt(b.original_id || b.id) : b.id;
+      
+      return idB - idA; // Higher ID first (newer entries)
+    });
   };
 
   const getConnectionStatusClass = () => {
@@ -617,6 +676,18 @@ export default function LogEntriesTable() {
       </div>
     );
   }
+
+  // ✅ NEW: Handle row click
+  const handleRowClick = (entry) => {
+    setSelectedEntry(entry);
+    setShowDetailModal(true);
+  };
+
+  // ✅ NEW: Close detail modal
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedEntry(null);
+  };
 
   return (
     <div className="log-entries-container">
@@ -648,7 +719,6 @@ export default function LogEntriesTable() {
                 setShowFilters={setShowFilters}
                 setShowColumnManager={setShowColumnManager}
                 setShowAddModal={setShowAddModal}
-                setShowCSVUpload={setShowCSVUpload}
                 fetchLogEntries={fetchLogEntries}
                 exportComponent={
                   <PDFExport
@@ -794,7 +864,9 @@ export default function LogEntriesTable() {
                     {getFilteredData().map((entry, index) => (
                       <tr 
                         key={entry.id || index} 
-                        className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
+                        className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'} clickable-row`}
+                        onClick={() => handleRowClick(entry)} // ✅ NEW: Add click handler
+                        title="Click to view details"
                       >
                         {getDisplayColumns().map((column) => {
                           const cellClasses = [
@@ -822,7 +894,10 @@ export default function LogEntriesTable() {
                         })}
                         <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
                           <button
-                            onClick={() => handleDeleteEntry(entry.original_id || entry.id)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // ✅ NEW: Prevent row click when clicking delete
+                              handleDeleteEntry(entry.original_id || entry.id);
+                            }}
                             disabled={!entry.id || entry.is_virtual}
                             className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
                             title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
@@ -859,21 +934,15 @@ export default function LogEntriesTable() {
             />
           )}
 
-          {/* ✅ NEW: CSV Upload Modal */}
-          {hasPermission('Operator') && showCSVUpload && (
-            <CSVUpload
-              isOpen={showCSVUpload}
-              onClose={() => setShowCSVUpload(false)}
-              onUpload={async (file) => {
-                // Handle CSV file upload
-                console.log('CSV File:', file);
-                
-                // TODO: Implement CSV parsing and data submission
-                
-                setShowCSVUpload(false);
-              }}
-            />
-          )}
+          <EntryDetailModal
+            isOpen={showDetailModal}
+            onClose={handleCloseDetailModal}
+            entry={selectedEntry}
+            columns={columns}
+            formatColumnName={formatColumnName}
+            formatCellValue={formatCellValue}
+            onSave={handleSaveEntry}
+          />
         </>
       )}
 

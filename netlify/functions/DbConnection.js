@@ -31,7 +31,7 @@ exports.handler = async (event, context) => {
   try {
     await sql.connect(config);
     
-    // ✅ FIX: Join with recurrence table to get recurrence data
+    // ✅ FIXED: Order by date DESC (newest first)
     const query = `
       SELECT 
         le.*,
@@ -39,9 +39,8 @@ exports.handler = async (event, context) => {
         ler.day_of_the_week as recurrence_day
       FROM LOG_ENTRIES le
       LEFT JOIN LOG_ENTRIES_RECURRENCES ler ON le.id = ler.log_entry_id
-      ORDER BY le.log_date DESC
+      ORDER BY le.log_date DESC, le.id DESC
     `;
-    
     
     const result = await sql.query(query);
     const data = result.recordset;

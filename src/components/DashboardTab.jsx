@@ -138,7 +138,7 @@ const DashboardTab = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header">
-        <h2>📊 Dashboard Analytics</h2>
+        <h2>📊 Dashboard</h2>
         <button onClick={fetchDashboardData} className="refresh-btn" disabled={isLoading}>
           {isLoading ? '⏳ Loading...' : '🔄 Refresh'}
         </button>
@@ -174,86 +174,8 @@ const DashboardTab = () => {
               <option value="year">This Year</option>
             </select>
           </div>
-          
-          <div className="filter-group">
-            <label>🏷️ Category</label>
-            <select
-              value={filters.category}
-              onChange={(e) => handleFilterChange('category', e.target.value)}
-              className="filter-select"
-            >
-              <option value="">All Categories</option>
-              <option value="performance">Performance</option>
-              <option value="errors">Errors</option>
-              <option value="usage">Usage</option>
-              <option value="system">System</option>
-            </select>
-          </div>
-          
-          <div className="filter-group">
-            <label>📊 Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="filter-select"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="resolved">Resolved</option>
-              <option value="pending">Pending</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
         </div>
       </div>
-
-      {/* Dashboard Summary Cards */}
-      <div className="dashboard-summary">
-        <div className="summary-card">
-          <div className="summary-icon">📈</div>
-          <div className="summary-content">
-            <div className="summary-title">Total Records</div>
-            <div className="summary-value">{dashboardData.length.toLocaleString()}</div>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon">⚡</div>
-          <div className="summary-content">
-            <div className="summary-title">Active Items</div>
-            <div className="summary-value">
-              {dashboardData.filter(item => 
-                item.status && item.status.toLowerCase() === 'active'
-              ).length.toLocaleString()}
-            </div>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon">✅</div>
-          <div className="summary-content">
-            <div className="summary-title">Completed</div>
-            <div className="summary-value">
-              {dashboardData.filter(item => 
-                item.status && (item.status.toLowerCase() === 'resolved' || item.status.toLowerCase() === 'completed')
-              ).length.toLocaleString()}
-            </div>
-          </div>
-        </div>
-        
-        <div className="summary-card">
-          <div className="summary-icon">⚠️</div>
-          <div className="summary-content">
-            <div className="summary-title">Pending</div>
-            <div className="summary-value">
-              {dashboardData.filter(item => 
-                item.status && item.status.toLowerCase() === 'pending'
-              ).length.toLocaleString()}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Dashboard Data Table */}
       {dashboardData.length === 0 ? (
         <div className="no-data">
@@ -262,12 +184,7 @@ const DashboardTab = () => {
       ) : (
         <div className="dashboard-table-container">
           <div className="table-header">
-            <h3 className="table-title">📋 DASHBOARD DATA</h3>
-            <div className="table-info">
-              <span className="record-count">
-                Showing {dashboardData.length} records
-              </span>
-            </div>
+            <h3 className="table-title">📋 DASHBOARD</h3>
           </div>
           
           <div className="table-scroll-container">
