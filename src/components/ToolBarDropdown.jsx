@@ -9,7 +9,6 @@ const ToolbarDropdown = ({
   setShowFilters,
   setShowColumnManager,
   setShowAddModal,
-  setShowCSVUpload,
   fetchLogEntries,
   exportComponent,
   hasPermission,
@@ -76,17 +75,6 @@ const ToolbarDropdown = ({
       type: 'action',
       action: () => {
         setShowAddModal(true);
-        setIsOpen(false);
-      },
-      disabled: isLoading || columnsLength === 0 || !hasPermission('Operator'),
-      requiresLogin: !hasPermission('Operator')
-    },
-    {
-      id: 'csv-upload',
-      label: '📁 CSV Upload',
-      type: 'action',
-      action: () => {
-        setShowCSVUpload(true);
         setIsOpen(false);
       },
       disabled: isLoading || columnsLength === 0 || !hasPermission('Operator'),

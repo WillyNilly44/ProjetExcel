@@ -2424,14 +2424,14 @@
 }
 
 .field-type {
-  background: #e5e7eb;
+  background: #3e4149;
   padding: 2px 6px;
   border-radius: 4px;
   font-family: monospace;
 }
 
 .field-length {
-  background: #dbeafe;
+  background: #3e4149;
   color: #1e40af;
   padding: 2px 6px;
   border-radius: 4px;
@@ -3365,7 +3365,6 @@ p, span, label {
   color: #94a3b8 !important;
 }
 
-/* Scrollbars */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -3384,7 +3383,6 @@ p, span, label {
   background: #64748b;
 }
 
-/* Select options */
 select option {
   background: #334155 !important;
   color: #e2e8f0 !important;

@@ -7,12 +7,12 @@ import ToolbarDropdown from './ToolbarDropdown';
 import MiniLogin from './MiniLogin';
 import TabNavigation from './TabNavigation';
 import UserManagement from './UserManagement';
-import DashboardTab from './DashboardTab'; // ✅ NEW
-import EntryDetailModal from './EntryDetailModal'; // ✅ NEW
+import DashboardTab from './DashboardTab';
+import EntryDetailModal from './EntryDetailModal';
 import '../style.css';
 
 export default function LogEntriesTable() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth(); // ✅ Added user from AuthContext
   const [activeTab, setActiveTab] = useState('logs');
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -31,7 +31,6 @@ export default function LogEntriesTable() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showVirtualEntries, setShowVirtualEntries] = useState(true);
-  // ✅ NEW: Add state for detail modal
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -689,6 +688,48 @@ export default function LogEntriesTable() {
     setSelectedEntry(null);
   };
 
+  // ✅ Add function to get existing districts
+  const getExistingDistricts = () => {
+    if (!data || data.length === 0) return [];
+    
+    // Find district column
+    const districtColumn = columns.find(col => 
+      col.COLUMN_NAME.toLowerCase().includes('district')
+    );
+    
+    if (!districtColumn) return [];
+    
+    // Extract unique districts
+    const districts = data
+      .map(entry => entry[districtColumn.COLUMN_NAME])
+      .filter(district => district && typeof district === 'string')
+      .filter((district, index, array) => array.indexOf(district) === index)
+      .sort();
+    
+    return districts;
+  };
+
+  // ✅ Add function to get existing incidents
+  const getExistingIncidents = () => {
+    if (!data || data.length === 0) return [];
+    
+    // Find incident column
+    const incidentColumn = columns.find(col => 
+      col.COLUMN_NAME.toLowerCase().includes('incident')
+    );
+    
+    if (!incidentColumn) return [];
+    
+    // Extract unique incidents
+    const incidents = data
+      .map(entry => entry[incidentColumn.COLUMN_NAME])
+      .filter(incident => incident && typeof incident === 'string')
+      .filter((incident, index, array) => array.indexOf(incident) === index)
+      .sort();
+    
+    return incidents;
+  };
+
   return (
     <div className="log-entries-container">
       <MiniLogin />
@@ -920,6 +961,9 @@ export default function LogEntriesTable() {
               onClose={() => setShowAddModal(false)}
               onSave={handleSaveEntry}
               columns={columns}
+              getExistingDistricts={getExistingDistricts}
+              getExistingIncidents={getExistingIncidents} // ✅ Add this prop
+              currentUser={user} // ✅ Now properly passing the user
             />
           )}
 
@@ -946,12 +990,12 @@ export default function LogEntriesTable() {
         </>
       )}
 
-      {/* ✅ NEW: Dashboard Tab */}
+      {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
         <DashboardTab />
       )}
 
-      {/* ✅ NEW: User Management Tab */}
+      {/* User Management Tab */}
       {activeTab === 'users' && (
         <UserManagement />
       )}

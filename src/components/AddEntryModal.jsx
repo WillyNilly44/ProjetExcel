@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], getExistingDistricts }) {
+export default function AddEntryModal({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  columns = [], 
+  getExistingDistricts, 
+  getExistingIncidents, // ✅ Added missing prop
+  currentUser 
+}) {
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [districtSuggestions, setDistrictSuggestions] = useState([]);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
+  const [incidentSuggestions, setIncidentSuggestions] = useState([]); // ✅ Added for incidents
+  const [showIncidentSuggestions, setShowIncidentSuggestions] = useState(false); // ✅ Added for incidents
   const [isRecurrence, setIsRecurrence] = useState(false);
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
 
@@ -17,7 +27,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
         if (!['id', 'created_at', 'updated_at'].includes(column.COLUMN_NAME.toLowerCase())) {
           let defaultValue = getDefaultValue(column);
           
-          // ✅ NEW: Convert stored minutes to hours for display
+          // Convert stored minutes to hours for display
           if ((column.COLUMN_NAME.toLowerCase().includes('estimated_time') || 
                column.COLUMN_NAME.toLowerCase().includes('actual_time')) && 
               defaultValue && typeof defaultValue === 'number') {
@@ -30,13 +40,13 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
       setFormData(initialData);
       setErrors({});
     }
-  }, [isOpen, columns]);
+  }, [isOpen, columns, currentUser]);
 
   // Get default value based on column type
   const getDefaultValue = (column) => {
     const dataType = column.DATA_TYPE.toLowerCase();
     const columnName = column.COLUMN_NAME.toLowerCase();
-    
+
     if (dataType.includes('bit') || dataType.includes('boolean')) {
       return false;
     } else if (dataType.includes('date')) {
@@ -44,11 +54,11 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     } else if (dataType.includes('time')) {
       return '08:00'; // Default time
     } else if (columnName === 'log_status') {
-      return 'Not completed'; // Default status
+      return 'Scheduled'; // Default status
     } else if (columnName === 'log_type') {
       return 'Operational'; // Default type
     } else if (columnName === 'uploader') {
-      return 'William'; // Default uploader
+      return currentUser?.username || 'Unknown User';
     } else {
       return '';
     }
@@ -81,14 +91,14 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     setIsLoading(true);
     
     try {
-      // ✅ Convert form data to match database schema
+      // Convert form data to match database schema
       const submissionData = {
         ...formData,
+        // Ensure uploader is always set to current user
+        uploader: currentUser?.username || 'Unknown User',
         isRecurrence,
-        day_of_the_week: isRecurrence ? selectedDayOfWeek : null // ✅ Match DB column name
+        day_of_the_week: isRecurrence ? selectedDayOfWeek : null // Match DB column name
       };
-      
-  
       
       await onSave(submissionData);
       resetForm();
@@ -105,7 +115,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
   const validateForm = () => {
     const newErrors = {};
     
-    // ✅ Validate required fields based on your DB schema
+    // Validate required fields based on your DB schema
     const requiredFields = {
       'incident': 'Incident',
       'district': 'District', 
@@ -141,7 +151,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
       }
     }
     
-    // ✅ Recurrence validation
+    // Recurrence validation
     if (isRecurrence && !selectedDayOfWeek) {
       newErrors.recurrence = 'Please select a day of the week for recurrence';
     }
@@ -157,25 +167,44 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  // Add useEffect to get existing districts when form opens:
+  // ✅ Add useEffect to get existing incidents and districts when form opens:
   useEffect(() => {
-    if (isOpen && getExistingDistricts) { // ✅ Check if function exists
-      try {
-        const existingDistricts = getExistingDistricts();
-        setDistrictSuggestions(existingDistricts || []);
-      } catch (error) {
-        console.warn('Could not load existing districts:', error);
+    if (isOpen) {
+      // Get existing districts
+      if (getExistingDistricts) {
+        try {
+          const existingDistricts = getExistingDistricts();
+          setDistrictSuggestions(existingDistricts || []);
+        } catch (error) {
+          console.warn('Could not load existing districts:', error);
+          setDistrictSuggestions([]);
+        }
+      } else {
         setDistrictSuggestions([]);
       }
+
+      // ✅ Get existing incidents
+      if (getExistingIncidents) {
+        try {
+          const existingIncidents = getExistingIncidents();
+          setIncidentSuggestions(existingIncidents || []);
+        } catch (error) {
+          console.warn('Could not load existing incidents:', error);
+          setIncidentSuggestions([]);
+        }
+      } else {
+        setIncidentSuggestions([]);
+      }
     } else {
-      setDistrictSuggestions([]); // ✅ Set empty array if no function
+      setDistrictSuggestions([]);
+      setIncidentSuggestions([]);
     }
-  }, [isOpen, getExistingDistricts]); // ✅ Add getExistingDistricts to dependencies
+  }, [isOpen, getExistingDistricts, getExistingIncidents]); // ✅ Added getExistingIncidents to dependencies
 
   // Add function to filter district suggestions:
   const getFilteredDistrictSuggestions = (inputValue) => {
     if (!districtSuggestions || districtSuggestions.length === 0) {
-      return []; // ✅ Return empty array if no suggestions
+      return [];
     }
     
     if (!inputValue || inputValue.length === 0) {
@@ -184,6 +213,21 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
     
     return districtSuggestions.filter(district =>
       district && district.toLowerCase().startsWith(inputValue.toLowerCase())
+    );
+  };
+
+  // ✅ Add function to filter incident suggestions:
+  const getFilteredIncidentSuggestions = (inputValue) => {
+    if (!incidentSuggestions || incidentSuggestions.length === 0) {
+      return [];
+    }
+    
+    if (!inputValue || inputValue.length === 0) {
+      return incidentSuggestions;
+    }
+    
+    return incidentSuggestions.filter(incident =>
+      incident && incident.toLowerCase().includes(inputValue.toLowerCase())
     );
   };
 
@@ -196,23 +240,197 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
 
     const baseStyle = {
       width: '100%',
-      padding: '12px 16px', // ✅ INCREASED: More padding
-      border: `2px solid ${hasError ? '#ef4444' : '#e5e7eb'}`, // ✅ INCREASED: Thicker border
-      borderRadius: '8px', // ✅ INCREASED: More rounded corners
+      padding: '12px 16px',
+      border: `2px solid ${hasError ? '#ef4444' : '#475569'}`,
+      borderRadius: '8px',
       fontSize: '14px',
-      backgroundColor: hasError ? '#fef2f2' : 'white',
-      transition: 'border-color 0.2s ease', // ✅ NEW: Smooth transitions
+      backgroundColor: hasError ? '#7f1d1d' : '#334155',
+      color: '#e2e8f0',
+      transition: 'border-color 0.2s ease',
       outline: 'none'
     };
 
-    // ✅ NEW: Focus styles
+    // Focus styles
     const focusStyle = {
-      borderColor: '#3b82f6',
-      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)'
+      borderColor: '#60a5fa',
+      boxShadow: '0 0 0 3px rgba(96, 165, 250, 0.1)'
     };
 
-    // ✅ NEW: Special handling for district field
-    if (columnName.toLowerCase().includes('district')) {
+    // Special handling for uploader field - make it readonly and show current user
+    if (columnName.toLowerCase().includes('uploader')) {
+      const uploaderValue = currentUser?.username || 'Unknown User';
+      
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={uploaderValue}
+            readOnly
+            style={{
+              ...baseStyle,
+              backgroundColor: '#1e293b',
+              color: '#94a3b8',
+              cursor: 'not-allowed',
+              fontWeight: '500'
+            }}
+          />
+          <div style={{
+            fontSize: '12px',
+            color: '#94a3b8',
+            marginTop: '4px',
+            fontStyle: 'italic'
+          }}>
+            Automatically set to current user
+          </div>
+        </div>
+      );
+    }
+    
+    // ✅ Special handling for incident field - show existing incidents with autocomplete
+    else if (columnName.toLowerCase().includes('incident')) {
+      const filteredSuggestions = getFilteredIncidentSuggestions(value);
+      
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              const inputValue = e.target.value;
+              handleInputChange(columnName, inputValue);
+              setShowIncidentSuggestions(inputValue.length > 0 && filteredSuggestions.length > 0);
+            }}
+            onFocus={() => {
+              const filteredSuggestions = getFilteredIncidentSuggestions(value);
+              setShowIncidentSuggestions(filteredSuggestions.length > 0);
+            }}
+            onBlur={() => {
+              // Delay hiding suggestions to allow clicks
+              setTimeout(() => setShowIncidentSuggestions(false), 200);
+            }}
+            style={{
+              ...baseStyle,
+              fontWeight: '500'
+            }}
+          />
+          
+          {/* Autocomplete suggestions for incidents */}
+          {showIncidentSuggestions && filteredSuggestions.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: 0,
+              right: 0,
+              backgroundColor: '#1e293b',
+              border: '2px solid #475569',
+              borderTop: 'none',
+              borderRadius: '0 0 8px 8px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+              zIndex: 1000,
+              maxHeight: '150px',
+              overflowY: 'auto'
+            }}>
+              {filteredSuggestions.slice(0, 8).map((incident, index) => (
+                <div
+                  key={incident}
+                  onClick={() => {
+                    handleInputChange(columnName, incident);
+                    setShowIncidentSuggestions(false);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    borderBottom: index < filteredSuggestions.length - 1 ? '1px solid #334155' : 'none',
+                    backgroundColor: '#1e293b',
+                    transition: 'background-color 0.2s ease',
+                    fontSize: '14px',
+                    fontWeight: '400',
+                    color: '#e2e8f0'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#334155';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#1e293b';
+                  }}
+                >
+                  {incident}
+                </div>
+              ))}
+              
+              {filteredSuggestions.length > 8 && (
+                <div style={{
+                  padding: '8px 12px',
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  fontStyle: 'italic',
+                  textAlign: 'center',
+                  backgroundColor: '#334155'
+                }}>
+                  +{filteredSuggestions.length - 8} more...
+                </div>
+              )}
+              
+              {/* Show "Type to add new" hint */}
+              <div style={{
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#94a3b8',
+                fontStyle: 'italic',
+                textAlign: 'center',
+                backgroundColor: '#334155',
+                borderTop: '1px solid #475569'
+              }}>
+                💡 Keep typing to add a new incident
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Special handling for log_type field - restrict to Operational and Application only
+    else if (columnName.toLowerCase() === 'log_type') {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={{
+            ...baseStyle,
+            cursor: 'pointer'
+          }}
+          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
+        >
+          <option value="">Select log type...</option>
+          <option value="Operational">🔧 Operational</option>
+          <option value="Application">💻 Application</option>
+        </select>
+      );
+    }
+    
+    // Special handling for log_status field - restrict to Completed and Scheduled only
+    else if (columnName.toLowerCase() === 'log_status') {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={{
+            ...baseStyle,
+            cursor: 'pointer'
+          }}
+          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
+        >
+          <option value="">Select status...</option>
+          <option value="Completed">✅ Completed</option>
+          <option value="Scheduled">📅 Scheduled</option>
+        </select>
+      );
+    }
+    
+    // Special handling for district field
+    else if (columnName.toLowerCase().includes('district')) {
       const filteredSuggestions = getFilteredDistrictSuggestions(value);
       
       return (
@@ -232,17 +450,19 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               inputValue = inputValue.replace(/[^A-Z]/g, '');
               
               handleInputChange(columnName, inputValue);
-              setShowDistrictSuggestions(inputValue.length > 0 && filteredSuggestions.length > 0);
+              // ✅ Show suggestions even when input is empty or when filtering returns results
+              const currentFilteredSuggestions = getFilteredDistrictSuggestions(inputValue);
+              setShowDistrictSuggestions(currentFilteredSuggestions.length > 0);
             }}
             onFocus={() => {
-              const filteredSuggestions = getFilteredDistrictSuggestions(value);
-              setShowDistrictSuggestions(value.length > 0 && filteredSuggestions.length > 0);
+              // ✅ Always show suggestions on focus, regardless of input value
+              const currentFilteredSuggestions = getFilteredDistrictSuggestions(value);
+              setShowDistrictSuggestions(currentFilteredSuggestions.length > 0);
             }}
             onBlur={() => {
               // Delay hiding suggestions to allow clicks
               setTimeout(() => setShowDistrictSuggestions(false), 200);
             }}
-            placeholder=""
             maxLength={3}
             style={{
               ...baseStyle,
@@ -259,16 +479,16 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               top: '100%',
               left: 0,
               right: 0,
-              backgroundColor: 'white',
-              border: '2px solid #e5e7eb',
+              backgroundColor: '#1e293b',
+              border: '2px solid #475569',
               borderTop: 'none',
               borderRadius: '0 0 8px 8px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
               zIndex: 1000,
               maxHeight: '150px',
               overflowY: 'auto'
             }}>
-              {filteredSuggestions.slice(0, 5).map((district, index) => (
+              {filteredSuggestions.slice(0, 8).map((district, index) => (
                 <div
                   key={district}
                   onClick={() => {
@@ -278,117 +498,56 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                   style={{
                     padding: '8px 12px',
                     cursor: 'pointer',
-                    borderBottom: index < filteredSuggestions.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    backgroundColor: 'white',
+                    borderBottom: index < filteredSuggestions.length - 1 ? '1px solid #334155' : 'none',
+                    backgroundColor: '#1e293b',
                     transition: 'background-color 0.2s ease',
                     fontSize: '14px',
                     fontWeight: '500',
-                    letterSpacing: '1px'
+                    letterSpacing: '1px',
+                    color: '#e2e8f0'
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f8fafc';
+                    e.target.style.backgroundColor = '#334155';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'white';
+                    e.target.style.backgroundColor = '#1e293b';
                   }}
                 >
                   {district}
                 </div>
               ))}
               
-              {filteredSuggestions.length > 5 && (
+              {filteredSuggestions.length > 8 && (
                 <div style={{
                   padding: '8px 12px',
                   fontSize: '12px',
-                  color: '#6b7280',
+                  color: '#94a3b8',
                   fontStyle: 'italic',
                   textAlign: 'center',
-                  backgroundColor: '#f9fafb'
+                  backgroundColor: '#334155'
                 }}>
-                  +{filteredSuggestions.length - 5} more...
+                  +{filteredSuggestions.length - 8} more...
                 </div>
               )}
+              
+              {/* Show "Type to add new" hint */}
+              <div style={{
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#94a3b8',
+                fontStyle: 'italic',
+                textAlign: 'center',
+                backgroundColor: '#334155',
+                borderTop: '1px solid #475569'
+              }}>
+                💡 Type to filter existing or add new district
+              </div>
             </div>
           )}
         </div>
       );
-    } else if (dataType.includes('bit') || dataType.includes('boolean')) {
-      return (
-        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={value}
-            onChange={(e) => handleInputChange(columnName, e.target.checked)}
-            style={{ 
-              margin: 0, 
-              width: '18px', 
-              height: '18px',
-              cursor: 'pointer'
-            }}
-          />
-          <span style={{ fontSize: '14px', color: '#374151' }}>Yes</span>
-        </label>
-      );
-    } else if (dataType.includes('text') || columnName.toLowerCase().includes('note')) {
-      return (
-        <textarea
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          placeholder={`Enter ${formatColumnName(columnName).toLowerCase()}`}
-          rows={4} // ✅ INCREASED: More rows for better readability
-          style={{
-            ...baseStyle,
-            resize: 'vertical',
-            minHeight: '100px'
-          }}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
-        />
-      );
-    } else if (dataType.includes('date') && !columnName.toLowerCase().includes('time')) {
-      return (
-        <input
-          type="date"
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          style={baseStyle}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
-        />
-      );
     } 
-    // ✅ FIXED: Specific detection for start_time and end_time fields
-    else if (columnName.toLowerCase().includes('start_time') || columnName.toLowerCase().includes('end_time')) {
-      // Convert any existing datetime value to just time format
-      let timeValue = value;
-      if (value && typeof value === 'string') {
-        if (value.includes('T')) {
-          // If it's a datetime string, extract just the time part
-          timeValue = value.split('T')[1]?.substring(0, 5) || '';
-        } else if (value.includes(' ')) {
-          // If it's a datetime with space, extract time part
-          timeValue = value.split(' ')[1]?.substring(0, 5) || '';
-        } else if (value.length > 5 && value.includes(':')) {
-          // If it's some other long format, try to extract time
-          timeValue = value.substring(0, 5);
-        }
-      }
-      
-      return (
-        <input
-          type="time"
-          value={timeValue}
-          onChange={(e) => {
-            // Store only the time value (HH:MM format)
-            handleInputChange(columnName, e.target.value);
-          }}
-          style={baseStyle}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
-        />
-      );
-    }
-    // ✅ FIXED: Handle estimated_time and actual_time fields in hours
+    // Handle estimated_time and actual_time fields in hours
     else if (columnName.toLowerCase().includes('estimated_time') || columnName.toLowerCase().includes('actual_time')) {
       // Convert stored minutes to hours for display
       const displayValue = value ? (parseFloat(value) / 60).toString() : '';
@@ -409,11 +568,11 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
             min="0"
             style={baseStyle}
             onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-            onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
+            onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
           />
           <div style={{
             fontSize: '12px',
-            color: '#6b7280',
+            color: '#94a3b8',
             marginTop: '4px',
             fontStyle: 'italic'
           }}>
@@ -423,16 +582,19 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
       );
     }
     
-    // ✅ Handle other time fields (generic)
+    // Handle other time fields (generic)
     else if (dataType.includes('time') || columnName.toLowerCase().includes('time') && !columnName.toLowerCase().includes('expected_down_time')) {
       return (
         <input
           type="time"
           value={value}
           onChange={(e) => handleInputChange(columnName, e.target.value)}
-          style={baseStyle}
+          style={{
+            ...baseStyle,
+            colorScheme: 'dark'
+          }}
           onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
+          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
         />
       );
     } else if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
@@ -444,7 +606,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
           placeholder={`Enter ${formatColumnName(columnName).toLowerCase()}`}
           style={baseStyle}
           onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
+          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
         />
       );
     } else {
@@ -456,7 +618,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
           placeholder={`Enter ${formatColumnName(columnName).toLowerCase()}`}
           style={baseStyle}
           onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#e5e7eb', boxShadow: 'none' })}
+          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
         />
       );
     }
@@ -465,8 +627,8 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
   const resetForm = () => {
     setFormData({});
     setErrors({});
-    setIsRecurrence(false); // ✅ Reset recurrence
-    setSelectedDayOfWeek(''); // ✅ Reset day selection
+    setIsRecurrence(false);
+    setSelectedDayOfWeek('');
   };
 
   if (!isOpen) return null;
@@ -482,40 +644,41 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0, 0, 0, 0.9)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      padding: '20px' // ✅ NEW: Padding for mobile
+      padding: '20px'
     }}>
       <div style={{
-        backgroundColor: 'white',
+        backgroundColor: '#0f172a',
         borderRadius: '12px',
         width: '100%',
-        maxWidth: '700px', // ✅ INCREASED: Wider modal
+        maxWidth: '700px',
         maxHeight: '90vh',
         overflow: 'hidden',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+        border: '1px solid #1e293b'
       }}>
         {/* Modal Header */}
         <div style={{
-          padding: '24px', // ✅ INCREASED: More padding
-          borderBottom: '1px solid #e5e7eb',
+          padding: '24px',
+          borderBottom: '1px solid #1e293b',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          backgroundColor: '#f8fafc'
+          backgroundColor: '#1e293b'
         }}>
-          <h2 style={{ margin: 0, color: '#1f2937', fontSize: '20px' }}>📝 Add New Log Entry</h2>
+          <h2 style={{ margin: 0, color: '#f1f5f9', fontSize: '20px' }}>📝 Add New Log Entry</h2>
           <button
             onClick={onClose}
             style={{
               background: 'none',
               border: 'none',
-              fontSize: '28px', // ✅ INCREASED: Larger close button
+              fontSize: '28px',
               cursor: 'pointer',
-              color: '#6b7280',
+              color: '#64748b',
               width: '32px',
               height: '32px',
               display: 'flex',
@@ -523,7 +686,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               justifyContent: 'center',
               borderRadius: '6px'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#f3f4f6'}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#334155'}
             onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
           >
             ×
@@ -534,6 +697,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
         <form onSubmit={handleSubmit}>
           <div style={{
             padding: '24px',
+            backgroundColor: '#0f172a',
             maxHeight: '60vh',
             overflowY: 'auto'
           }}>
@@ -554,7 +718,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                   <label style={{
                     fontSize: '14px',
                     fontWeight: '600',
-                    color: '#374151',
+                    color: '#e2e8f0',
                     marginBottom: '4px'
                   }}>
                     {formatColumnName(column.COLUMN_NAME)}
@@ -567,11 +731,11 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                     <div style={{
                       marginTop: '6px',
                       fontSize: '13px',
-                      color: '#ef4444',
+                      color: '#fecaca',
                       padding: '4px 8px',
-                      backgroundColor: '#fef2f2',
+                      backgroundColor: '#7f1d1d',
                       borderRadius: '4px',
-                      border: '1px solid #fecaca'
+                      border: '1px solid #ef4444'
                     }}>
                       {errors[column.COLUMN_NAME]}
                     </div>
@@ -580,12 +744,12 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               ))}
             </div>
 
-            {/* ✅ NEW: Recurrence Section */}
+            {/* Recurrence Section */}
             <div style={{
               marginTop: '32px',
               padding: '20px',
-              backgroundColor: isRecurrence ? '#f0f9ff' : '#f8fafc',
-              border: `2px solid ${isRecurrence ? '#0ea5e9' : '#e2e8f0'}`,
+              backgroundColor: isRecurrence ? '#1e40af' : '#1e293b',
+              border: `2px solid ${isRecurrence ? '#3b82f6' : '#334155'}`,
               borderRadius: '8px',
               transition: 'all 0.3s ease'
             }}>
@@ -600,7 +764,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                 </div>
                 <h4 style={{
                   margin: 0,
-                  color: isRecurrence ? '#0c4a6e' : '#1f2937',
+                  color: isRecurrence ? '#dbeafe' : '#e2e8f0',
                   fontSize: '16px',
                   fontWeight: '600'
                 }}>
@@ -609,7 +773,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                 {isRecurrence && selectedDayOfWeek && (
                   <div style={{
                     padding: '4px 8px',
-                    backgroundColor: '#0ea5e9',
+                    backgroundColor: '#3b82f6',
                     color: 'white',
                     borderRadius: '12px',
                     fontSize: '12px',
@@ -634,7 +798,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                   onChange={(e) => {
                     setIsRecurrence(e.target.checked);
                     if (!e.target.checked) {
-                      setSelectedDayOfWeek(''); // Clear day selection if unchecked
+                      setSelectedDayOfWeek('');
                     }
                   }}
                   style={{
@@ -648,7 +812,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                   style={{
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#374151',
+                    color: '#e2e8f0',
                     cursor: 'pointer'
                   }}
                 >
@@ -656,14 +820,14 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                 </label>
               </div>
               
-              {/* Day of Week Selection - Only show if recurrence is checked */}
+              {/* Day of Week Selection */}
               {isRecurrence && (
                 <div style={{ marginTop: '16px' }}>
                   <label style={{
                     display: 'block',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#374151',
+                    color: '#e2e8f0',
                     marginBottom: '8px'
                   }}>
                     📅 Day of the Week *
@@ -675,10 +839,11 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                       width: '100%',
                       maxWidth: '300px',
                       padding: '12px 16px',
-                      border: `2px solid ${errors.recurrence ? '#ef4444' : '#e5e7eb'}`,
+                      border: `2px solid ${errors.recurrence ? '#ef4444' : '#334155'}`,
                       borderRadius: '8px',
                       fontSize: '14px',
-                      backgroundColor: errors.recurrence ? '#fef2f2' : 'white',
+                      backgroundColor: errors.recurrence ? '#7f1d1d' : '#1e293b',
+                      color: '#e2e8f0',
                       cursor: 'pointer'
                     }}
                   >
@@ -695,7 +860,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                   {errors.recurrence && (
                     <div style={{
                       fontSize: '12px',
-                      color: '#ef4444',
+                      color: '#fecaca',
                       marginTop: '6px',
                       fontStyle: 'italic'
                     }}>
@@ -705,7 +870,7 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
                   
                   <div style={{
                     fontSize: '12px',
-                    color: '#6b7280',
+                    color: '#94a3b8',
                     marginTop: '6px',
                     fontStyle: 'italic'
                   }}>
@@ -714,15 +879,15 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               )}
             </div>
 
-            {/* Existing submit error section */}
+            {/* Submit error section */}
             {errors.submit && (
               <div style={{
                 marginTop: '24px',
                 padding: '16px',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
+                backgroundColor: '#7f1d1d',
+                border: '1px solid #ef4444',
                 borderRadius: '8px',
-                color: '#dc2626',
+                color: '#fecaca',
                 fontSize: '14px'
               }}>
                 <strong>Error:</strong> {errors.submit}
@@ -733,34 +898,34 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
           {/* Modal Footer */}
           <div style={{
             padding: '24px',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid #1e293b',
             display: 'flex',
             gap: '16px',
             justifyContent: 'flex-end',
-            backgroundColor: '#f8fafc'
+            backgroundColor: '#1e293b'
           }}>
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
               style={{
-                padding: '12px 24px', // ✅ INCREASED: Bigger buttons
-                border: '2px solid #d1d5db', // ✅ INCREASED: Thicker border
-                borderRadius: '8px', // ✅ INCREASED: More rounded
-                backgroundColor: 'white',
-                color: '#374151',
+                padding: '12px 24px',
+                border: '2px solid #334155',
+                borderRadius: '8px',
+                backgroundColor: '#0f172a',
+                color: '#e2e8f0',
                 cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: '500',
                 transition: 'all 0.2s ease'
               }}
               onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#f9fafb';
-                e.target.style.borderColor = '#9ca3af';
+                e.target.style.backgroundColor = '#1e293b';
+                e.target.style.borderColor = '#475569';
               }}
               onMouseOut={(e) => {
-                e.target.style.backgroundColor = 'white';
-                e.target.style.borderColor = '#d1d5db';
+                e.target.style.backgroundColor = '#0f172a';
+                e.target.style.borderColor = '#334155';
               }}
             >
               Cancel
@@ -769,10 +934,10 @@ export default function AddEntryModal({ isOpen, onClose, onSave, columns = [], g
               type="submit"
               disabled={isLoading}
               style={{
-                padding: '12px 24px', // ✅ INCREASED: Bigger buttons
+                padding: '12px 24px',
                 border: 'none',
-                borderRadius: '8px', // ✅ INCREASED: More rounded
-                backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
+                borderRadius: '8px',
+                backgroundColor: isLoading ? '#64748b' : '#3b82f6',
                 color: 'white',
                 cursor: isLoading ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
