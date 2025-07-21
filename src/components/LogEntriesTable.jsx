@@ -751,7 +751,7 @@ export default function LogEntriesTable() {
             </div>
             
             <div className="toolbar-container">
-              <ToolbarDropdown
+              <ToolBarDropdown
                 isLoading={isLoading}
                 columnsLength={columns.length}
                 showVirtualEntries={showVirtualEntries}
