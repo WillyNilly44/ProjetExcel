@@ -9,9 +9,11 @@ const PORT = process.env.PORT || 10000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'dist')));
 
-// Database configuration using your exact .env values
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Database configuration
 const config = {
   server: 'sancoreweb.cdoxgz1zztkn.us-west-2.rds.amazonaws.com',
   database: 'SANCORE',
@@ -24,7 +26,6 @@ const config = {
     enableArithAbort: true,
     requestTimeout: 60000,
     connectionTimeout: 60000,
-    packetSize: 32768,
   },
   pool: {
     max: 10,
@@ -34,12 +35,17 @@ const config = {
   }
 };
 
-// Health check endpoint
+// Routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    server: 'Render.com'
+    server: 'Render.com',
+    database: 'AWS RDS Connected'
   });
 });
 
@@ -570,9 +576,9 @@ app.post('/api/validateuser', async (req, res) => {
   }
 });
 
-// Serve React app for all other routes
+// Catch-all handler: send back index.html for any non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {

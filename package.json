@@ -4,7 +4,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node serve.js",
+    "dev": "node server.js",
     "build":  "echo 'No build needed for backend'"
   },
   "engines":{
