@@ -43,83 +43,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 1. LOGIN USER - Convert from LoginUser.js
-app.post('/api/loginuser', async (req, res) => {
-  let pool;
-  
-  try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'Username and password are required'
-      });
-    }
-
-    console.log('🔐 Login attempt for user:', username);
-
-    pool = await sql.connect(config);
-
-    const result = await pool.request()
-      .input('username', sql.VarChar, username)
-      .input('password', sql.VarChar, password)
-      .query(`
-        SELECT 
-          u.id,
-          u.name,
-          u.username,
-          l.level_Name
-        FROM LOG_ENTRIES_USER u
-        LEFT JOIN LOG_ENTRIES_USER_LEVEL ul ON u.id = ul.User_id
-        LEFT JOIN LOG_ENTRIES_LEVELS l ON ul.level_id = l.id
-        WHERE u.username = @username AND u.password = @password
-      `);
-
-    if (result.recordset.length === 0) {
-      console.log('❌ Invalid login attempt for:', username);
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid username or password'
-      });
-    }
-
-    const user = result.recordset[0];
-    
-    // Generate simple token (in production, use JWT)
-    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
-
-    console.log('✅ Login successful for user:', username);
-
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        level_Name: user.level_Name || 'Guest'
-      },
-      token
-    });
-
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error'
-    });
-  } finally {
-    if (pool) {
-      try {
-        await pool.close();
-      } catch (closeError) {
-        console.error('⚠️ Error closing connection:', closeError);
-      }
-    }
-  }
-});
-
-// 2. GET ALL ENTRIES - Convert from DbConnection.js
+// Main database endpoint (replaces your DbConnection.js)
 app.post('/api/dbconnection', async (req, res) => {
   let pool;
   
@@ -131,6 +55,7 @@ app.post('/api/dbconnection', async (req, res) => {
     pool = await sql.connect(config);
     console.log('✅ Connected successfully!');
     
+    // Your exact query from the Netlify function
     const query = `
       SELECT 
         le.*,
@@ -194,7 +119,7 @@ app.post('/api/dbconnection', async (req, res) => {
   }
 });
 
-// 3. ADD ENTRY - Convert from AddEntry.js
+// Add entry endpoint
 app.post('/api/addentry', async (req, res) => {
   let pool;
 
@@ -265,7 +190,7 @@ app.post('/api/addentry', async (req, res) => {
   }
 });
 
-// 4. DELETE ENTRY - Convert from DeleteEntry.js
+// Delete entry endpoint
 app.post('/api/deleteentry', async (req, res) => {
   let pool;
 
@@ -283,12 +208,10 @@ app.post('/api/deleteentry', async (req, res) => {
 
     pool = await sql.connect(config);
 
-    // Delete recurrence record first (if exists)
     await pool.request()
       .input('entryId', id)
       .query('DELETE FROM LOG_ENTRIES_RECURRENCES WHERE log_entry_id = @entryId');
 
-    // Delete the main entry
     const result = await pool.request()
       .input('entryId', id)
       .query('DELETE FROM LOG_ENTRIES WHERE id = @entryId');
@@ -579,13 +502,4 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Ready to connect to AWS RDS database`);
-  console.log(`🔗 API endpoints available:`);
-  console.log(`   - POST /api/loginuser`);
-  console.log(`   - POST /api/dbconnection`);
-  console.log(`   - POST /api/addentry`);
-  console.log(`   - POST /api/deleteentry`);
-  console.log(`   - POST /api/updateentry`);
-  console.log(`   - GET  /api/userlevels`);
-  console.log(`   - GET  /api/users`);
-  console.log(`   - GET  /api/health`);
 });

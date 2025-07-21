@@ -1,4 +1,4 @@
-
+// /.netlify/functions/ValidateUser.js
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
