@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('🔐 Attempting login for:', username);
       
-      // NEW EXPRESS ENDPOINT - Changed from /.netlify/functions/loginuser
       const response = await fetch('/api/loginuser', {
         method: 'POST',
         headers: {
@@ -85,35 +84,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
   };
 
-  const validateToken = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return false;
-
-    try {
-      // NEW EXPRESS ENDPOINT - Changed from /.netlify/functions/validateuser
-      const response = await fetch('/api/validateuser', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const result = await response.json();
-      return result.success;
-    } catch (error) {
-      console.error('Token validation error:', error);
-      return false;
-    }
-  };
-
   const value = {
     user,
     isAuthenticated,
     isLoading,
     login,
-    logout,
-    validateToken
+    logout
   };
 
   return (

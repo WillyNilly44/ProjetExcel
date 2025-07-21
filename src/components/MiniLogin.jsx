@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const MiniLogin = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { user, isAuthenticated, login, logout, isLoading } = useAuth();
 
@@ -18,15 +18,20 @@ const MiniLogin = () => {
       return;
     }
 
-    const result = await login(username.trim(), password);
-    
-    if (result.success) {
-      setIsOpen(false);
-      setUsername('');
-      setPassword('');
-      setError('');
-    } else {
-      setError(result.error);
+    try {
+      const result = await login(username.trim(), password);
+      
+      if (result.success) {
+        setIsOpen(false);
+        setUsername('');
+        setPassword('');
+        setError('');
+      } else {
+        setError(result.error);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Login failed. Please try again.');
     }
   };
 
