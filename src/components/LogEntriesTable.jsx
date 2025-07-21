@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
 import PDFExport from './PDFExport';
-import ToolbarDropdown from './ToolbarDropdown';
+import ToolbarDropdown from './ToolBarDropdown';
 import MiniLogin from './MiniLogin';
 import TabNavigation from './TabNavigation';
 import UserManagement from './UserManagement';
@@ -751,7 +751,7 @@ export default function LogEntriesTable() {
             </div>
             
             <div className="toolbar-container">
-              <ToolBarDropdown
+              <ToolbarDropdown
                 isLoading={isLoading}
                 columnsLength={columns.length}
                 showVirtualEntries={showVirtualEntries}
