@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const response = await fetch('/.netlify/functions/LoginUser', {
+      const response = await fetch('/api/loginuser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

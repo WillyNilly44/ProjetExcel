@@ -17,7 +17,7 @@ const DashboardTab = () => {
     setError(null);
     
     try {
-      const response = await fetch('/.netlify/functions/GetDashboardData', {
+      const response = await fetch('/api/getdashboard', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

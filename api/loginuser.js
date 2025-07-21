@@ -1,4 +1,4 @@
-// /.netlify/functions/LoginUser.js
+
 const sql = require('mssql');
 
 exports.handler = async (event, context) => {

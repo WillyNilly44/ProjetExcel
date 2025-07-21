@@ -27,7 +27,7 @@ const UserManagement = () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch('/.netlify/functions/GetUsers', {
+      const response = await fetch('/api/getusers', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -49,7 +49,7 @@ const UserManagement = () => {
 
   const fetchLevels = async () => {
     try {
-      const response = await fetch('/.netlify/functions/GetUserLevels', {
+      const response = await fetch('/api/getuserlevel', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -76,7 +76,7 @@ const UserManagement = () => {
     setSuccess('');
 
     try {
-      const response = await fetch('/.netlify/functions/AddUser', {
+      const response = await fetch('/api/adduser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -111,7 +111,7 @@ const UserManagement = () => {
     setSuccess('');
 
     try {
-      const response = await fetch('/.netlify/functions/UpdateUser', {
+      const response = await fetch('api/updateuser', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -148,7 +148,7 @@ const UserManagement = () => {
     setSuccess('');
 
     try {
-      const response = await fetch('/.netlify/functions/DeleteUser', {
+      const response = await fetch('/api/deleteuser', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
