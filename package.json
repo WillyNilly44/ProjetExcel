@@ -1,7 +1,9 @@
 {
-  "name": "excel-viewer",
+  "name": "log-viewer",
   "version": "1.0.0",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -28,10 +30,12 @@
     "react-window": "^1.8.11",
     "tippy.js": "^6.3.7",
     "uuid": "^11.1.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^5.0.0"
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.8"
   }
 }

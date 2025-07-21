@@ -40,7 +40,7 @@ export default function LogEntriesTable() {
     
     try {
       
-      const response = await fetch('/.netlify/functions/DbConnection', {
+      const response = await fetch('api/DbConnection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -91,7 +91,7 @@ export default function LogEntriesTable() {
   const handleSaveEntry = async (formData) => {
     try {
       
-      const response = await fetch('/.netlify/functions/AddLogEntryWithRecurrence', {
+      const response = await fetch('/api/addentryrec', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -129,7 +129,7 @@ export default function LogEntriesTable() {
 
     try {
       
-      const response = await fetch('/.netlify/functions/DeleteLogEntry', {
+      const response = await fetch('/api/deleteentry', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
