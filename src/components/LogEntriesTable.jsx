@@ -326,10 +326,6 @@ export default function LogEntriesTable() {
     return displayColumns;
   };
 
-  // Add import at the top:
-  // import ColumnManager from './ColumnManager';
-
-  // Add the column management functions:
   const handleColumnManagerSave = (newVisibleColumns, newColumnOrder) => {
     
     setVisibleColumns(newVisibleColumns);

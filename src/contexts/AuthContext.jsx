@@ -12,79 +12,65 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(false); // ✅ Changed: No loading on startup
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Check for existing session on app load
+  // Check for existing session on mount
   useEffect(() => {
-    checkAuthStatus();
+    const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('token');
+    
+    if (savedUser && savedToken) {
+      try {
+        setUser(JSON.parse(savedUser));
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error parsing saved user data:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
+    }
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
-      
-      if (token && userData) {
-        // For now, just validate the token format (in production, validate with server)
-        try {
-          const decoded = Buffer.from(token, 'base64').toString();
-          const [userId, timestamp] = decoded.split(':');
-          
-          // Check if token is not too old (24 hours)
-          const tokenAge = Date.now() - parseInt(timestamp);
-          if (tokenAge < 24 * 60 * 60 * 1000) {
-            setUser(JSON.parse(userData));
-            setIsAuthenticated(true);
-          } else {
-            clearAuthData();
-          }
-        } catch (e) {
-          clearAuthData();
-        }
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      clearAuthData();
-    }
-  };
-
   const login = async (username, password) => {
+    setIsLoading(true);
+    
     try {
-      setIsLoading(true);
+      console.log('🔐 Attempting login for:', username);
       
+      // NEW EXPRESS ENDPOINT - Changed from /.netlify/functions/loginuser
       const response = await fetch('/api/loginuser', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, password })
       });
 
       const result = await response.json();
-
-      if (response.ok && result.success) {
-        const { user: userData, token } = result;
+      
+      if (result.success && result.user) {
+        console.log('✅ Login successful:', result.user);
         
-        // Store auth data
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('userData', JSON.stringify(userData));
-        
-        setUser(userData);
+        setUser(result.user);
         setIsAuthenticated(true);
         
-        return { success: true, user: userData };
+        // Save to localStorage
+        localStorage.setItem('user', JSON.stringify(result.user));
+        if (result.token) {
+          localStorage.setItem('token', result.token);
+        }
+        
+        return { success: true, user: result.user };
       } else {
-        return { 
-          success: false, 
-          error: result.error || 'Login failed' 
-        };
+        console.log('❌ Login failed:', result.error);
+        return { success: false, error: result.error || 'Login failed' };
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       return { 
         success: false, 
-        error: 'Network error. Please try again.' 
+        error: 'Network error. Please check your connection.' 
       };
     } finally {
       setIsLoading(false);
@@ -92,32 +78,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    clearAuthData();
+    console.log('🚪 User logging out');
     setUser(null);
     setIsAuthenticated(false);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
-  const clearAuthData = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-  };
+  const validateToken = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
 
-  const hasPermission = (requiredLevel) => {
-    if (!user || !user.level_Name) return false;
-    
-    const levels = {
-      'Guest': 1,
-      'Viewer': 2,
-      'Operator': 3,
-      'Manager': 4,
-      'Administrator': 5,
-      'Super Admin': 6
-    };
-    
-    const userLevel = levels[user.level_Name] || 0;
-    const required = levels[requiredLevel] || 999;
-    
-    return userLevel >= required;
+    try {
+      // NEW EXPRESS ENDPOINT - Changed from /.netlify/functions/validateuser
+      const response = await fetch('/api/validateuser', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return false;
+    }
   };
 
   const value = {
@@ -126,8 +113,7 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     logout,
-    hasPermission,
-    checkAuthStatus
+    validateToken
   };
 
   return (

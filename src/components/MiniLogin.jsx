@@ -14,7 +14,7 @@ const MiniLogin = () => {
     setError('');
 
     if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password');
+      setError('Please enter both username and password'); 
       return;
     }
 

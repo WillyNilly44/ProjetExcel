@@ -524,6 +524,53 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+// 11. VALIDATE USER TOKEN - Missing endpoint
+app.post('/api/validateuser', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'No token provided' 
+      });
+    }
+
+    const token = authHeader.split(' ')[1];
+    
+    // Simple token validation (in production, use JWT verification)
+    try {
+      const decoded = Buffer.from(token, 'base64').toString();
+      const [userId, timestamp] = decoded.split(':');
+      
+      // Check if token is not too old (24 hours)
+      const tokenAge = Date.now() - parseInt(timestamp);
+      if (tokenAge > 24 * 60 * 60 * 1000) {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'Token expired' 
+        });
+      }
+
+      console.log('✅ Token validated for user:', userId);
+
+      res.json({ success: true });
+    } catch (e) {
+      console.log('❌ Invalid token format');
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid token' 
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Token validation error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
 // Serve React app for all other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
