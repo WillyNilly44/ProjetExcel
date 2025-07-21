@@ -43,6 +43,82 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// 1. LOGIN USER - Convert from LoginUser.js
+app.post('/api/loginuser', async (req, res) => {
+  let pool;
+  
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Username and password are required'
+      });
+    }
+
+    console.log('🔐 Login attempt for user:', username);
+
+    pool = await sql.connect(config);
+
+    const result = await pool.request()
+      .input('username', sql.VarChar, username)
+      .input('password', sql.VarChar, password)
+      .query(`
+        SELECT 
+          u.id,
+          u.name,
+          u.username,
+          l.level_Name
+        FROM LOG_ENTRIES_USER u
+        LEFT JOIN LOG_ENTRIES_USER_LEVEL ul ON u.id = ul.User_id
+        LEFT JOIN LOG_ENTRIES_LEVELS l ON ul.level_id = l.id
+        WHERE u.username = @username AND u.password = @password
+      `);
+
+    if (result.recordset.length === 0) {
+      console.log('❌ Invalid login attempt for:', username);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid username or password'
+      });
+    }
+
+    const user = result.recordset[0];
+    
+    // Generate simple token (in production, use JWT)
+    const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+
+    console.log('✅ Login successful for user:', username);
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        level_Name: user.level_Name || 'Guest'
+      },
+      token
+    });
+
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  } finally {
+    if (pool) {
+      try {
+        await pool.close();
+      } catch (closeError) {
+        console.error('⚠️ Error closing connection:', closeError);
+      }
+    }
+  }
+});
+
 // Main database endpoint (replaces your DbConnection.js)
 app.post('/api/dbconnection', async (req, res) => {
   let pool;
