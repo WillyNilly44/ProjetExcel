@@ -40,7 +40,7 @@ export default function LogEntriesTable() {
     
     try {
       
-      const response = await fetch('api/DbConnection', {
+      const response = await fetch('/api/dbconnection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
