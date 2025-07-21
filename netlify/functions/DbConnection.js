@@ -1,23 +1,37 @@
 const sql = require('mssql');
 
-const host = process.env.AWS_RDS_HOST.replace(',1433', '');
-
 const config = {
-  server: host,
+  server: process.env.AWS_RDS_HOST?.replace(',1433', '') || 'sancoreweb.cdoxgz1zznntkn.us-west-2.rds.amazonaws.com',
   database: process.env.AWS_RDS_DATABASE,
   user: process.env.AWS_RDS_USER,
-  password: process.env.AWS_RDS_PASSWORD.replace(/"/g, ''),
+  password: process.env.AWS_RDS_PASSWORD?.replace(/"/g, ''),
   port: parseInt(process.env.AWS_RDS_PORT) || 1433,
   options: {
     encrypt: true,
     trustServerCertificate: true,
     enableArithAbort: true,
-    requestTimeout: 30000,
-    connectionTimeout: 30000
+    requestTimeout: 60000, // Increased timeout
+    connectionTimeout: 60000, // Increased timeout
+    packetSize: 32768,
+  },
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+    acquireTimeoutMillis: 60000,
+    createTimeoutMillis: 30000,
+    destroyTimeoutMillis: 5000,
+    reapIntervalMillis: 1000,
+    createRetryIntervalMillis: 200,
   }
 };
 
 exports.handler = async (event, context) => {
+  // Set Lambda timeout
+  context.callbackWaitsForEmptyEventLoop = false;
+  
+  let pool;
+  
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -29,9 +43,11 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    await sql.connect(config);
+    console.log('🔌 Connecting to:', config.server);
     
-    // ✅ FIXED: Order by date DESC (newest first)
+    pool = await sql.connect(config);
+    console.log('✅ Connected successfully');
+    
     const query = `
       SELECT 
         le.*,
@@ -42,10 +58,9 @@ exports.handler = async (event, context) => {
       ORDER BY le.log_date DESC, le.id DESC
     `;
     
-    const result = await sql.query(query);
+    const result = await pool.request().query(query);
     const data = result.recordset;
     
-    // Get column information
     const columnQuery = `
       SELECT 
         COLUMN_NAME, 
@@ -58,7 +73,7 @@ exports.handler = async (event, context) => {
       ORDER BY ORDINAL_POSITION
     `;
     
-    const columnResult = await sql.query(columnQuery);
+    const columnResult = await pool.request().query(columnQuery);
     
     return {
       statusCode: 200,
@@ -75,7 +90,7 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Database query failed:', error);
+    console.error('❌ Database error:', error);
     
     return {
       statusCode: 500,
@@ -84,14 +99,18 @@ exports.handler = async (event, context) => {
         success: false,
         error: error.message,
         code: error.code,
+        originalError: error.originalError?.message,
         timestamp: new Date().toISOString()
       })
     };
   } finally {
-    try {
-      await sql.close();
-    } catch (closeError) {
-      console.error('⚠️ Error closing database connection:', closeError);
+    if (pool) {
+      try {
+        await pool.close();
+        console.log('🔌 Connection closed');
+      } catch (closeError) {
+        console.error('⚠️ Error closing connection:', closeError);
+      }
     }
   }
 };
