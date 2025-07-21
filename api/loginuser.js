@@ -1,4 +1,3 @@
-
 const sql = require('mssql');
 
 exports.handler = async (event, context) => {
