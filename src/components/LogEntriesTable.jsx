@@ -9,11 +9,11 @@ import TabNavigation from './TabNavigation';
 import UserManagement from './UserManagement';
 import DashboardTab from './DashboardTab';
 import EntryDetailModal from './EntryDetailModal';
-import CalendarView from './CalendarView'; // Add this import at the top
+import CalendarView from './CalendarView'; 
 import '../style.css';
 
 export default function LogEntriesTable() {
-  const { hasPermission, user } = useAuth(); // ✅ Added user from AuthContext
+  const { hasPermission, user } = useAuth(); 
   const [activeTab, setActiveTab] = useState('logs');
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -31,10 +31,10 @@ export default function LogEntriesTable() {
     logType: ''
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [showVirtualEntries, setShowVirtualEntries] = useState(true);
+  const [showVirtualEntries, setShowVirtualEntries] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'calendar'
+  const [viewMode, setViewMode] = useState('table');
 
   const fetchLogEntries = async () => {
     setIsLoading(true);
@@ -89,7 +89,6 @@ export default function LogEntriesTable() {
       setIsLoading(false);
     }
   };
-  // Update the handleSaveEntry function to use the new endpoint:
   const handleSaveEntry = async (formData) => {
     try {
       
@@ -108,10 +107,8 @@ export default function LogEntriesTable() {
       }
 
       if (result.success) {        
-        // Show success message (you could add a toast notification here)
         alert(result.message);
         
-        // Refresh data to show new entry
         await fetchLogEntries();
       } else {
         throw new Error(result.error);
@@ -123,7 +120,6 @@ export default function LogEntriesTable() {
     }
   };
 
-  // Add delete function after handleSaveEntry:
   const handleDeleteEntry = async (entryId) => {
     if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
       return;
@@ -158,20 +154,17 @@ export default function LogEntriesTable() {
     }
   };
 
-  // Format column names for display
   const formatColumnName = (columnName) => {
     return columnName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  // Format cell values based on column type
   const formatCellValue = (value, columnName, dataType) => {
     if (value === null || value === undefined) return '-';
     
     const lowerColumnName = columnName.toLowerCase();
     
-    // Handle log_start and log_end specifically
     if (lowerColumnName.includes('log_start') || lowerColumnName.includes('log_end') || 
         lowerColumnName.includes('start_time') || lowerColumnName.includes('end_time')) {
       if (!value) return '-';
@@ -207,7 +200,6 @@ export default function LogEntriesTable() {
       return value;
     }
     
-    // Date formatting
     if ((dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date') || lowerColumnName.includes('created') || lowerColumnName.includes('updated')) && !lowerColumnName.includes('time') && !lowerColumnName.includes('start') && !lowerColumnName.includes('end')) {
       try {
         return new Date(value).toLocaleDateString();
@@ -216,39 +208,32 @@ export default function LogEntriesTable() {
       }
     }
     
-    // Boolean formatting
     if (dataType === 'bit' || typeof value === 'boolean') {
       return value ? '✅' : '❌';
     }
     
-    // ✅ FIXED: Format estimated_time and actual_time as hours (data is already in hours)
     if ((lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) && typeof value === 'number') {
       return `${value.toFixed(2)}h`;
     }
     
-    // Format other numeric time fields
+
     if (lowerColumnName.includes('duration') && typeof value === 'number') {
       return `${value}min`;
     }
-    
-    // ✅ FIXED: Truncate long text values with proper logic
+ 
     const stringValue = value.toString();
-    
-    // Different limits based on column type
+
     let maxLength;
-    if (lowerColumnName.includes('note') || lowerColumnName.includes('description') || lowerColumnName.includes('comment')) {
-      maxLength = 50; // Longer limit for note/description fields
+    if (lowerColumnName.includes('note')) {
+      maxLength = 50; 
     } else if (lowerColumnName.includes('ticket_number')) {
-      maxLength = 15; // ✅ FIXED: Shorter limit for ticket numbers
-    } else if (lowerColumnName.includes('name') || lowerColumnName.includes('title')) {
-      maxLength = 25; // Medium limit for names/titles
-    } else if (lowerColumnName.includes('id') || lowerColumnName.includes('status')) {
-      maxLength = 20; // Shorter limit for IDs/status
+      maxLength = 15; 
+    }  else if (lowerColumnName.includes('id') || lowerColumnName.includes('status')) {
+      maxLength = 20; 
     } else {
-      maxLength = 25; // Default limit for other text fields
+      maxLength = 25; 
     }
     
-    // ✅ FIXED: Apply truncation logic properly
     if (stringValue.length > maxLength) {
       return `${stringValue.substring(0, maxLength)}...`;
     }
@@ -256,7 +241,6 @@ export default function LogEntriesTable() {
     return stringValue;
   };
 
-  // Get column styling based on type
   const getColumnStyle = (columnName, dataType) => {
     const baseStyle = { ...cellStyle };
     
@@ -276,13 +260,10 @@ export default function LogEntriesTable() {
     return baseStyle;
   };
 
-  // Add this useEffect to initialize visible columns when columns are loaded:
   useEffect(() => {
     if (columns.length > 0) {
-      // Get all column names
       const allColumnNames = columns.map(col => col.COLUMN_NAME);
       
-      // Try to load saved preferences
       const savedVisible = localStorage.getItem('logEntries_visibleColumns');
       const savedOrder = localStorage.getItem('logEntries_columnOrder');
       
@@ -291,11 +272,9 @@ export default function LogEntriesTable() {
           const parsedVisible = JSON.parse(savedVisible);
           const parsedOrder = JSON.parse(savedOrder);
           
-          // Validate that all saved columns still exist
           const validVisible = parsedVisible.filter(name => allColumnNames.includes(name));
           const validOrder = parsedOrder.filter(name => allColumnNames.includes(name));
           
-          // Add any new columns that weren't in saved preferences
           const missingColumns = allColumnNames.filter(name => !validOrder.includes(name));
           
           const finalVisible = [...validVisible, ...missingColumns];
@@ -310,14 +289,12 @@ export default function LogEntriesTable() {
           setColumnOrder(allColumnNames);
         }
       } else {
-        // No saved preferences, show all columns
         setVisibleColumns(allColumnNames);
         setColumnOrder(allColumnNames);
       }
     }
-  }, [columns]); // ✅ Only depend on columns
+  }, [columns]);
 
-  // Add function to get filtered and ordered columns:
   const getDisplayColumns = () => {
     const displayColumns = columnOrder
       .filter(columnName => visibleColumns.includes(columnName))
@@ -333,7 +310,6 @@ export default function LogEntriesTable() {
     setVisibleColumns(newVisibleColumns);
     setColumnOrder(newColumnOrder);
     
-    // Save to localStorage for persistence
     try {
       localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
       localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
@@ -342,7 +318,6 @@ export default function LogEntriesTable() {
     }
   };
 
-  // Load saved column preferences on mount:
   useEffect(() => {
     if (columns.length > 0) {
       const savedVisible = localStorage.getItem('logEntries_visibleColumns');
@@ -352,25 +327,19 @@ export default function LogEntriesTable() {
         try {
           const parsedVisible = JSON.parse(savedVisible);
           const parsedOrder = JSON.parse(savedOrder);
-          
-          // Validate that all saved columns still exist
           const currentColumnNames = columns.map(col => col.COLUMN_NAME);
           const validVisible = parsedVisible.filter(name => currentColumnNames.includes(name));
           const validOrder = parsedOrder.filter(name => currentColumnNames.includes(name));
-          
-          // Add any new columns that weren't in saved preferences
           const missingColumns = currentColumnNames.filter(name => !validOrder.includes(name));
           
           setVisibleColumns([...validVisible, ...missingColumns]);
           setColumnOrder([...validOrder, ...missingColumns]);
         } catch (e) {
-          // If parsing fails, use all columns
           const allColumns = columns.map(col => col.COLUMN_NAME);
           setVisibleColumns(allColumns);
           setColumnOrder(allColumns);
         }
       } else {
-        // No saved preferences, show all columns
         const allColumns = columns.map(col => col.COLUMN_NAME);
         setVisibleColumns(allColumns);
         setColumnOrder(allColumns);
@@ -378,16 +347,15 @@ export default function LogEntriesTable() {
     }
   }, [columns]);
 
-  // Auto-load data on component mount
   useEffect(() => {
     fetchLogEntries();
   }, []);
 
-  // Add function to get available years from data:
+
   const getAvailableYears = () => {
     if (!data || data.length === 0) return [];
     
-    // Find date columns (log_date, created_at, etc.)
+
     const dateColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('date') || 
       col.COLUMN_NAME.toLowerCase().includes('created')
@@ -409,12 +377,11 @@ export default function LogEntriesTable() {
       })
       .filter(year => year && !isNaN(year))
       .filter((year, index, array) => array.indexOf(year) === index)
-      .sort((a, b) => b - a); // Most recent first
+      .sort((a, b) => b - a); 
   
     return years;
   };
 
-  // Add function to get weeks in selected month/year:
   const getWeeksInMonth = (year, month) => {
     if (!year || !month) return [];
     
@@ -448,11 +415,9 @@ export default function LogEntriesTable() {
     return weeks;
   };
 
-  // Update the getFilteredData function to respect the toggle:
   const getFilteredData = () => {
     if (!data || data.length === 0) return [];
-    
-    // ✅ Generate recurring entries first, but respect the toggle
+
     const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
     
     if (!dateFilters.year && !dateFilters.month && !dateFilters.week && !dateFilters.logType) {
@@ -469,7 +434,6 @@ export default function LogEntriesTable() {
     );
     
     return expandedData.filter(entry => {
-      // Date filtering
       if (dateColumn) {
         const dateValue = entry[dateColumn.COLUMN_NAME];
         if (dateValue) {
@@ -479,17 +443,14 @@ export default function LogEntriesTable() {
             const entryMonth = entryDate.getMonth() + 1;
             const entryDay = entryDate.getDate();
             
-            // Filter by year
             if (dateFilters.year && entryYear !== parseInt(dateFilters.year)) {
               return false;
             }
             
-            // Filter by month
             if (dateFilters.month && entryMonth !== parseInt(dateFilters.month)) {
               return false;
             }
             
-            // Filter by week
             if (dateFilters.week && dateFilters.year && dateFilters.month) {
               const weeks = getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month));
               const selectedWeek = weeks.find(w => w.number === parseInt(dateFilters.week));
@@ -504,7 +465,6 @@ export default function LogEntriesTable() {
         }
       }
       
-      // Log type filtering
       if (dateFilters.logType && logTypeColumn) {
         const entryLogType = entry[logTypeColumn.COLUMN_NAME];
         if (!entryLogType) return false;
@@ -512,7 +472,6 @@ export default function LogEntriesTable() {
         const normalizedEntryType = entryLogType.toString().toLowerCase().trim();
         const selectedType = dateFilters.logType.toLowerCase();
 
-        // ✅ More flexible matching for log types
         return normalizedEntryType.includes(selectedType);
       }
       
@@ -520,28 +479,24 @@ export default function LogEntriesTable() {
     });
   };
 
-  // Add function to get available log types from data:
   const getAvailableLogTypes = () => {
-    // ✅ Return only the two allowed types instead of pulling from database
     return ['Operational', 'Application'];
   };
 
-  // Update the clearFilters function:
+
   const clearFilters = () => {
     setDateFilters({
       year: '',
       month: '',
       week: '',
-      logType: '' // ✅ Include logType in clear
+      logType: '' 
     });
   };
 
-  // Add function to handle filter changes:
   const handleFilterChange = (filterType, value) => {
     setDateFilters(prev => {
       const newFilters = { ...prev, [filterType]: value };
       
-      // Reset dependent filters
       if (filterType === 'year') {
         newFilters.month = '';
         newFilters.week = '';
@@ -553,7 +508,6 @@ export default function LogEntriesTable() {
     });
   };
 
-  // Update the generateRecurringEntries function:
   const generateRecurringEntries = (data) => {
     if (!data || data.length === 0) {
       return data;
@@ -561,7 +515,7 @@ export default function LogEntriesTable() {
     
     const expandedData = [...data];
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    today.setHours(0, 0, 0, 0);
     
     let recurringFound = 0;
     let virtualCreated = 0;
@@ -580,7 +534,7 @@ export default function LogEntriesTable() {
         const targetDay = dayMapping[entry.recurrence_day.toLowerCase()];
         
         if (targetDay !== undefined) {
-          const weekOffsets = [-2, -1, 1, 2];
+          const weekOffsets = [-1, 1]; 
           
           weekOffsets.forEach(weekOffset => {
             const startOfTargetWeek = new Date(today);
@@ -588,19 +542,19 @@ export default function LogEntriesTable() {
             
             const recurringDate = new Date(startOfTargetWeek);
             recurringDate.setDate(startOfTargetWeek.getDate() + targetDay);
-            recurringDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
+            recurringDate.setHours(0, 0, 0, 0); 
             
             const originalDate = new Date(entry.log_date);
             originalDate.setHours(0, 0, 0, 0);
             
             if (recurringDate.getTime() === originalDate.getTime()) {
-              return; // Skip if this is the original entry date
+              return; 
             }
             
-            // ✅ NEW: Determine completion status based on date
+
             const isFutureDate = recurringDate > today;
             
-            // Find status column (could be 'status', 'completion_status', etc.)
+
             const statusColumn = columns.find(col => 
               col.COLUMN_NAME.toLowerCase().includes('status') ||
               col.COLUMN_NAME.toLowerCase().includes('completion')
@@ -618,14 +572,13 @@ export default function LogEntriesTable() {
               relative_to_current: true
             };
             
-            // ✅ NEW: Set status based on date
             if (statusColumn && isFutureDate) {
               virtualEntry[statusColumn.COLUMN_NAME] = 'Not Completed';
             }
             
-            // ✅ NEW: Also check for common status field names
+
             if (isFutureDate) {
-              // Set various possible status fields to "Not Completed" for future dates
+
               if ('status' in virtualEntry) virtualEntry.status = 'Not Completed';
               if ('completion_status' in virtualEntry) virtualEntry.completion_status = 'Not Completed';
               if ('task_status' in virtualEntry) virtualEntry.task_status = 'Not Completed';
@@ -639,22 +592,19 @@ export default function LogEntriesTable() {
       }
     });    
     
-    // ✅ SIMPLIFIED: Just sort all entries by date (newest first), maintaining mixed log types
     return expandedData.sort((a, b) => {
       const dateA = new Date(a.log_date);
       const dateB = new Date(b.log_date);
       
-      // Sort by date first (newest first)
       const dateDiff = dateB - dateA;
       if (dateDiff !== 0) {
         return dateDiff;
       }
       
-      // If same date, maintain original order by using ID
       const idA = typeof a.id === 'string' ? parseInt(a.original_id || a.id) : a.id;
       const idB = typeof b.id === 'string' ? parseInt(b.original_id || b.id) : b.id;
       
-      return idB - idA; // Higher ID first (newer entries)
+      return idB - idA; 
     });
   };
 
@@ -674,30 +624,27 @@ export default function LogEntriesTable() {
     );
   }
 
-  // ✅ NEW: Handle row click
   const handleRowClick = (entry) => {
     setSelectedEntry(entry);
     setShowDetailModal(true);
   };
 
-  // ✅ NEW: Close detail modal
   const handleCloseDetailModal = () => {
     setShowDetailModal(false);
     setSelectedEntry(null);
   };
 
-  // ✅ Add function to get existing districts
+
   const getExistingDistricts = () => {
     if (!data || data.length === 0) return [];
     
-    // Find district column
+
     const districtColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('district')
     );
     
     if (!districtColumn) return [];
     
-    // Extract unique districts
     const districts = data
       .map(entry => entry[districtColumn.COLUMN_NAME])
       .filter(district => district && typeof district === 'string')
@@ -707,18 +654,18 @@ export default function LogEntriesTable() {
     return districts;
   };
 
-  // ✅ Add function to get existing incidents
+
   const getExistingIncidents = () => {
     if (!data || data.length === 0) return [];
     
-    // Find incident column
+
     const incidentColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('incident')
     );
     
     if (!incidentColumn) return [];
     
-    // Extract unique incidents
+
     const incidents = data
       .map(entry => entry[incidentColumn.COLUMN_NAME])
       .filter(incident => incident && typeof incident === 'string')
@@ -742,7 +689,7 @@ export default function LogEntriesTable() {
           {/* Status Header */}
           <div className="status-header">
             <div>
-              <h2>📊 Log Entries System</h2>
+              <h2> Log Viewing Tool</h2>
               <div className={`status-text ${getConnectionStatusClass()}`}>
                 {connectionStatus}
               </div>
@@ -906,7 +853,7 @@ export default function LogEntriesTable() {
           ) : (
             <div className="table-container">
               <div className="table-header">
-                <h3 className="table-title">📋 LOG ENTRIES</h3>
+                <h3 className="table-title"> LOGS</h3>
               </div>
               
               <div className="table-scroll-container">
@@ -930,7 +877,7 @@ export default function LogEntriesTable() {
                       <tr 
                         key={entry.id || index} 
                         className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'} clickable-row`}
-                        onClick={() => handleRowClick(entry)} // ✅ NEW: Add click handler
+                        onClick={() => handleRowClick(entry)} 
                         title="Click to view details"
                       >
                         {getDisplayColumns().map((column) => {
@@ -960,7 +907,7 @@ export default function LogEntriesTable() {
                         <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
                           <button
                             onClick={(e) => {
-                              e.stopPropagation(); // ✅ NEW: Prevent row click when clicking delete
+                              e.stopPropagation(); 
                               handleDeleteEntry(entry.original_id || entry.id);
                             }}
                             disabled={!entry.id || entry.is_virtual}
@@ -986,8 +933,8 @@ export default function LogEntriesTable() {
               onSave={handleSaveEntry}
               columns={columns}
               getExistingDistricts={getExistingDistricts}
-              getExistingIncidents={getExistingIncidents} // ✅ Add this prop
-              currentUser={user} // ✅ Now properly passing the user
+              getExistingIncidents={getExistingIncidents}
+              currentUser={user} 
             />
           )}
 
@@ -1027,7 +974,7 @@ export default function LogEntriesTable() {
   );
 }
 
-// Keep the getColumnType function at the bottom
+
 function getColumnType(columnName, dataType) {
   const lowerName = columnName.toLowerCase();
   

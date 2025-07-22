@@ -24,20 +24,16 @@ const ExcelExport = ({
   const [showOptions, setShowOptions] = useState(false);
 
   const prepareExportData = () => {
-    // ✅ Use ALL columns from the database, ignoring visibility settings
     const allColumns = getDisplayColumns();
     const exportData = [];
 
-    // Filter data based on current filters and virtual entries option
     const filteredData = data.filter(entry => {
-      // Skip virtual entries if not requested
       if (entry.is_virtual && !exportOptions.includeVirtualEntries) {
         return false;
       }
       return true;
     });
 
-    // Add metadata if requested
     if (exportOptions.includeMetadata) {
       exportData.push({});
       exportData.push({ [allColumns[0]?.COLUMN_NAME]: 'LOG ENTRIES EXPORT' });
@@ -45,7 +41,6 @@ const ExcelExport = ({
       exportData.push({ [allColumns[0]?.COLUMN_NAME]: `Total Records: ${filteredData.length}` });
       exportData.push({ [allColumns[0]?.COLUMN_NAME]: `Total Columns: ${allColumns.length}` });
       
-      // Add filter information
       if (exportOptions.includeFilters && filters) {
         const activeFilters = Object.entries(filters).filter(([key, value]) => value && value !== '');
         if (activeFilters.length > 0) {
@@ -86,30 +81,25 @@ const ExcelExport = ({
       exportData.push({});
     }
 
-    // Add headers using ALL columns
     const headers = {};
     allColumns.forEach(column => {
       headers[column.COLUMN_NAME] = formatColumnName(column.COLUMN_NAME);
     });
     
-    // Add Entry Type column if including virtual entries
     if (exportOptions.includeVirtualEntries) {
       headers['Entry_Type'] = 'Entry Type';
     }
     
     exportData.push(headers);
 
-    // Add data rows using ALL columns
     filteredData.forEach(entry => {
       const row = {};
       
-      // Add data for ALL columns
       allColumns.forEach(column => {
         const value = entry[column.COLUMN_NAME];
         row[column.COLUMN_NAME] = formatCellValue(value, column.COLUMN_NAME, column.DATA_TYPE);
       });
       
-      // Add entry type indicator if including virtual entries
       if (exportOptions.includeVirtualEntries) {
         row['Entry_Type'] = entry.is_virtual ? 'Recurring' : 'Original';
       }
@@ -137,25 +127,24 @@ const ExcelExport = ({
     try {
       const exportData = prepareExportData();
       
-      // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(exportData);
 
-      // Set column widths based on ALL columns
+
       const columnWidths = allColumns.map(column => {
         const columnName = formatColumnName(column.COLUMN_NAME);
         
-        // Calculate width based on column content
+
         let maxWidth = columnName.length;
         
-        // Sample a few rows to determine optimal width
+
         const sampleSize = Math.min(data.length, 10);
         for (let i = 0; i < sampleSize; i++) {
           const entry = data[i];
           if (entry) {
             const value = String(formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE) || '');
             if (value.length > maxWidth) {
-              maxWidth = Math.min(value.length, 50); // Cap at 50 characters
+              maxWidth = Math.min(value.length, 50); 
             }
           }
         }
@@ -163,27 +152,24 @@ const ExcelExport = ({
         return { width: Math.max(10, maxWidth + 2) };
       });
 
-      // Add width for Entry_Type column if including virtual entries
       if (exportOptions.includeVirtualEntries) {
         columnWidths.push({ width: 15 });
       }
 
       ws['!cols'] = columnWidths;
 
-      // Add worksheet to workbook
       XLSX.utils.book_append_sheet(wb, ws, exportOptions.sheetName);
 
-      // Generate Excel file
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const file = new Blob([excelBuffer], { 
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
       });
 
-      // Generate filename with timestamp and filter info
+
       const timestamp = new Date().toISOString().split('T')[0];
       let finalFilename = `${filename}_${timestamp}`;
       
-      // Add filter info to filename if filters are applied
+
       if (filters) {
         const activeFilters = Object.entries(filters).filter(([key, value]) => value && value !== '');
         if (activeFilters.length > 0) {
@@ -194,12 +180,10 @@ const ExcelExport = ({
       
       finalFilename += '.xlsx';
 
-      // Save file
       saveAs(file, finalFilename);
 
       console.log(`Excel export completed: ${finalFilename}`);
       
-      // Show success message
       const filteredCount = data.filter(entry => !entry.is_virtual || exportOptions.includeVirtualEntries).length;
       alert(`Excel export completed successfully!\n\nExported ${filteredCount} records with ${allColumns.length} columns to ${finalFilename}`);
       

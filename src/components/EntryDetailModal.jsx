@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import '../style.css';
 
 const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, formatCellValue, onSave }) => {
-  const { hasPermission } = useAuth(); // ✅ Use existing auth context
+  const { hasPermission } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editedEntry, setEditedEntry] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -19,10 +19,8 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
 
   if (!isOpen || !entry) return null;
 
-  // ✅ SIMPLIFIED: Check admin permission directly
   const canEdit = hasPermission('Administrator') && !entry.is_virtual;
 
-  // Group columns by type for better organization
   const getColumnGroups = () => {
     const groups = {
       basic: [],
@@ -99,7 +97,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
     const dataType = column.DATA_TYPE.toLowerCase();
     const lowerColumnName = columnName.toLowerCase();
 
-    // Don't allow editing of certain fields
     if (lowerColumnName.includes('id') || 
         lowerColumnName.includes('created') || 
         lowerColumnName.includes('updated') ||
@@ -117,7 +114,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Boolean/bit fields
     if (dataType === 'bit' || typeof value === 'boolean') {
       return (
         <select
@@ -131,7 +127,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Status fields (predefined options)
     if (lowerColumnName.includes('status') || lowerColumnName.includes('completion')) {
       return (
         <select
@@ -150,7 +145,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Log type fields
     if (lowerColumnName.includes('log_type')) {
       return (
         <select
@@ -165,7 +159,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Date fields
     if (dataType.includes('date') || dataType.includes('datetime') || lowerColumnName.includes('date')) {
       let dateValue = '';
       if (value) {
@@ -187,7 +180,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Time fields
     if (lowerColumnName.includes('time') && !lowerColumnName.includes('estimated') && !lowerColumnName.includes('actual')) {
       return (
         <input
@@ -199,7 +191,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Numeric fields (estimated_time, actual_time)
     if ((lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) && dataType.includes('decimal')) {
       return (
         <input
@@ -214,7 +205,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Other numeric fields
     if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
       return (
         <input
@@ -226,7 +216,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Text area for notes/descriptions
     if (lowerColumnName.includes('note') || lowerColumnName.includes('description') || lowerColumnName.includes('comment')) {
       return (
         <textarea
@@ -240,7 +229,6 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
       );
     }
 
-    // Default text input
     return (
       <input
         type="text"

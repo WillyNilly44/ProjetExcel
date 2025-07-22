@@ -39,8 +39,7 @@ exports.handler = async (event, context) => {
   try {
     const { isRecurrence, day_of_the_week, ...formData } = JSON.parse(event.body);
     
-    // ✅ Remove fields that shouldn't be in LOG_ENTRIES
-    delete formData.dayOfWeek; // Remove if present
+    delete formData.dayOfWeek; 
     
     
     await sql.connect(config);
@@ -49,7 +48,6 @@ exports.handler = async (event, context) => {
     await transaction.begin();
     
     try {
-      // 1. Insert into LOG_ENTRIES
       const columns = Object.keys(formData).join(', ');
       const placeholders = Object.keys(formData).map((_, index) => `@param${index}`).join(', ');
       
@@ -61,7 +59,6 @@ exports.handler = async (event, context) => {
       
       const request = new sql.Request(transaction);
       
-      // Add parameters with proper types
       Object.values(formData).forEach((value, index) => {
         request.input(`param${index}`, value);
       });
@@ -71,7 +68,6 @@ exports.handler = async (event, context) => {
       
 
       
-      // 2. Insert recurrence if enabled
       if (isRecurrence && day_of_the_week && insertedId) {
         const recurrenceQuery = `
           INSERT INTO LOG_ENTRIES_RECURRENCES (log_entry_id, day_of_the_week)

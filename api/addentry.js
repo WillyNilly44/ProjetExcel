@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
       throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
     }
 
-    // Parse request body
+
     const requestData = JSON.parse(event.body);
 
     const host = process.env.AWS_RDS_HOST.replace(',1433', '');
@@ -51,7 +51,7 @@ exports.handler = async (event, context) => {
 
     const pool = await sql.connect(config);
 
-    // Build INSERT query dynamically
+   
     const columns = Object.keys(requestData).filter(key => requestData[key] !== undefined && requestData[key] !== '');
     const columnNames = columns.map(col => `[${col}]`).join(', ');
     const placeholders = columns.map((_, index) => `@param${index}`).join(', ');
@@ -63,33 +63,28 @@ exports.handler = async (event, context) => {
     `;
 
     
-    // Create request and add parameters
     const request = pool.request();
     columns.forEach((column, index) => {
       let value = requestData[column];
       const columnName = column.toLowerCase();
       
       
-      // Handle different data types
+  
       if (typeof value === 'boolean') {
         request.input(`param${index}`, sql.Bit, value);
       } else if (typeof value === 'number' || (!isNaN(parseFloat(value)) && isFinite(value))) {
         request.input(`param${index}`, sql.Int, parseInt(value));
       } else if (typeof value === 'string') {
-        // Handle datetime strings (date + time)
         if (value.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)) {
           request.input(`param${index}`, sql.DateTime, new Date(value));
         }
-        // Handle date-only strings
         else if (value.match(/^\d{4}-\d{2}-\d{2}$/)) {
           request.input(`param${index}`, sql.Date, new Date(value + 'T00:00:00'));
         }
-        // Handle time-only strings (for pure time fields)
         else if (value.match(/^\d{2}:\d{2}(:\d{2})?$/) && 
                  (columnName.includes('start_time') || columnName.includes('end_time'))) {
           request.input(`param${index}`, sql.Time, value);
         }
-        // Handle regular strings
         else {
           request.input(`param${index}`, sql.NVarChar, value);
         }

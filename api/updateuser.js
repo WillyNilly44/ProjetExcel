@@ -37,7 +37,6 @@ const config = {
 
     await sql.connect(config);
 
-    // Check if username already exists for other users
     const checkUser = await sql.query`
       SELECT id FROM LOG_ENTRIES_USER 
       WHERE username = ${username} AND id != ${id}
@@ -53,7 +52,6 @@ const config = {
       };
     }
 
-    // Update user
     if (password) {
       await sql.query`
         UPDATE LOG_ENTRIES_USER 
@@ -68,7 +66,6 @@ const config = {
       `;
     }
 
-    // Update user level
     await sql.query`
       UPDATE LOG_ENTRIES_USER_LEVEL 
       SET level_id = ${level_id}

@@ -62,7 +62,7 @@ const DashboardTab = () => {
     
     const lowerColumnName = columnName.toLowerCase();
     
-    // Date formatting
+
     if (dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date')) {
       try {
         return new Date(value).toLocaleDateString();
@@ -71,12 +71,10 @@ const DashboardTab = () => {
       }
     }
     
-    // Boolean formatting
     if (dataType === 'bit' || typeof value === 'boolean') {
       return value ? '✅' : '❌';
     }
-    
-    // Number formatting
+  
     if (typeof value === 'number') {
       if (lowerColumnName.includes('count') || lowerColumnName.includes('total')) {
         return value.toLocaleString();
@@ -106,7 +104,6 @@ const DashboardTab = () => {
       category: '',
       status: ''
     });
-    // Auto-refresh after clearing
     setTimeout(() => {
       fetchDashboardData();
     }, 100);
@@ -237,7 +234,6 @@ const DashboardTab = () => {
   );
 };
 
-// Helper function for dashboard-specific column styling
 function getDashboardColumnType(columnName, dataType) {
   const lowerName = columnName.toLowerCase();
   

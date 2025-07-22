@@ -17,7 +17,7 @@ const UserManagement = () => {
     level_id: ''
   });
 
-  // Load users and levels on component mount
+ 
   useEffect(() => {
     fetchUsers();
     fetchLevels();

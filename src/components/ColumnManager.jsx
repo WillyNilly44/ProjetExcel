@@ -11,7 +11,6 @@ export default function ColumnManager({
   const [localVisible, setLocalVisible] = useState([]);
   const [localOrder, setLocalOrder] = useState([]);
 
-  // ✅ FIX: Sync local state with props when modal opens
   useEffect(() => {
     if (isOpen) {
       setLocalVisible([...visibleColumns]);
@@ -21,7 +20,6 @@ export default function ColumnManager({
 
   if (!isOpen) return null;
 
-  // ✅ FIX: Handle cases where columns might be empty
   if (!columns || columns.length === 0) {
     return (
       <div style={{
@@ -95,7 +93,6 @@ export default function ColumnManager({
   };
 
   const handleClose = () => {
-    // Reset to original values when closing without saving
     setLocalVisible([...visibleColumns]);
     setLocalOrder([...columnOrder]);
     onClose();
@@ -137,7 +134,7 @@ export default function ColumnManager({
             ⚙️ Manage Columns
           </h2>
           <button
-            onClick={handleClose} // ✅ Use handleClose instead of onClose
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',
@@ -310,7 +307,7 @@ export default function ColumnManager({
           backgroundColor: '#f8fafc'
         }}>
           <button
-            onClick={handleClose} // ✅ Use handleClose instead of onClose
+            onClick={handleClose} 
             style={{
               padding: '12px 24px',
               border: '2px solid #d1d5db',

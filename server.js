@@ -1,4 +1,3 @@
-// Load environment variables first
 require('dotenv').config();
 
 const express = require('express');
@@ -9,12 +8,12 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Middleware
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// Database configuration using environment variables
+
 const config = {
   server: process.env.AWS_RDS_HOST,
   database: process.env.AWS_RDS_DATABASE,
@@ -36,15 +35,12 @@ const config = {
   }
 };
 
-// Validate required environment variables
 if (!config.server || !config.database || !config.user || !config.password) {
   console.error('❌ Missing required database environment variables!');
   console.error('Required: AWS_RDS_HOST, AWS_RDS_DATABASE, AWS_RDS_USER, AWS_RDS_PASSWORD');
   process.exit(1);
 }
 
-
-// Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
@@ -59,7 +55,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Import and use your API handlers
 const loginHandler = require('./api/loginuser');
 const dbConnectionHandler = require('./api/dbconnection');
 const addEntryHandler = require('./api/addentryrec');
@@ -73,7 +68,6 @@ const deleteUserHandler = require('./api/deleteuser');
 const validateUserHandler = require('./api/validateuser');
 const getDashboardHandler = require('./api/getdashboard');
 
-// Convert your serverless functions to Express routes
 app.post('/api/loginuser', async (req, res) => {
   const event = {
     httpMethod: 'POST',
@@ -192,7 +186,6 @@ app.post('/api/getdashboard', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
-// Catch-all handler: send back index.html for any non-API routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

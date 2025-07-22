@@ -1,4 +1,4 @@
-// /.netlify/functions/ValidateUser.js
+
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
@@ -15,12 +15,10 @@ exports.handler = async (event, context) => {
 
     const token = authHeader.split(' ')[1];
     
-    // Simple token validation (in production, use JWT verification)
     try {
       const decoded = Buffer.from(token, 'base64').toString();
       const [userId, timestamp] = decoded.split(':');
       
-      // Check if token is not too old (24 hours)
       const tokenAge = Date.now() - parseInt(timestamp);
       if (tokenAge > 24 * 60 * 60 * 1000) {
         return {

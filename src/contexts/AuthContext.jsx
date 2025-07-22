@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
     console.log('User logged out');
   };
 
-  // Add permission checking function
+
   const hasPermission = (requiredLevel) => {
     if (!user || !user.level_Name) return false;
     

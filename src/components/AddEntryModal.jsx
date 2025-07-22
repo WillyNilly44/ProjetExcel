@@ -6,7 +6,7 @@ export default function AddEntryModal({
   onSave, 
   columns = [], 
   getExistingDistricts, 
-  getExistingIncidents, // ✅ Added missing prop
+  getExistingIncidents,
   currentUser 
 }) {
   const [formData, setFormData] = useState({});
@@ -14,12 +14,11 @@ export default function AddEntryModal({
   const [errors, setErrors] = useState({});
   const [districtSuggestions, setDistrictSuggestions] = useState([]);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
-  const [incidentSuggestions, setIncidentSuggestions] = useState([]); // ✅ Added for incidents
-  const [showIncidentSuggestions, setShowIncidentSuggestions] = useState(false); // ✅ Added for incidents
+  const [incidentSuggestions, setIncidentSuggestions] = useState([]); 
+  const [showIncidentSuggestions, setShowIncidentSuggestions] = useState(false); 
   const [isRecurrence, setIsRecurrence] = useState(false);
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
 
-  // Initialize form data when modal opens
   useEffect(() => {
     if (isOpen && columns.length > 0) {
       const initialData = {};
@@ -27,11 +26,10 @@ export default function AddEntryModal({
         if (!['id', 'created_at', 'updated_at'].includes(column.COLUMN_NAME.toLowerCase())) {
           let defaultValue = getDefaultValue(column);
           
-          // Convert stored minutes to hours for display
           if ((column.COLUMN_NAME.toLowerCase().includes('estimated_time') || 
                column.COLUMN_NAME.toLowerCase().includes('actual_time')) && 
               defaultValue && typeof defaultValue === 'number') {
-            defaultValue = (defaultValue / 60).toString(); // Convert minutes to hours
+            defaultValue = (defaultValue / 60).toString(); 
           }
           
           initialData[column.COLUMN_NAME] = defaultValue;
@@ -42,7 +40,6 @@ export default function AddEntryModal({
     }
   }, [isOpen, columns, currentUser]);
 
-  // Get default value based on column type
   const getDefaultValue = (column) => {
     const dataType = column.DATA_TYPE.toLowerCase();
     const columnName = column.COLUMN_NAME.toLowerCase();
@@ -50,13 +47,13 @@ export default function AddEntryModal({
     if (dataType.includes('bit') || dataType.includes('boolean')) {
       return false;
     } else if (dataType.includes('date')) {
-      return new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+      return new Date().toISOString().split('T')[0];
     } else if (dataType.includes('time')) {
-      return '08:00'; // Default time
+      return '08:00'; 
     } else if (columnName === 'log_status') {
-      return 'Scheduled'; // Default status
+      return 'Scheduled'; 
     } else if (columnName === 'log_type') {
-      return 'Operational'; // Default type
+      return 'Operational'; 
     } else if (columnName === 'uploader') {
       return currentUser?.username || 'Unknown User';
     } else {
@@ -64,14 +61,12 @@ export default function AddEntryModal({
     }
   };
 
-  // Handle form input changes
   const handleInputChange = (columnName, value) => {
     setFormData(prev => ({
       ...prev,
       [columnName]: value
     }));
     
-    // Clear error for this field
     if (errors[columnName]) {
       setErrors(prev => ({
         ...prev,
@@ -80,7 +75,6 @@ export default function AddEntryModal({
     }
   };
 
-  // Update the handleSubmit function to match DB column names:
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -91,13 +85,12 @@ export default function AddEntryModal({
     setIsLoading(true);
     
     try {
-      // Convert form data to match database schema
       const submissionData = {
         ...formData,
-        // Ensure uploader is always set to current user
+
         uploader: currentUser?.username || 'Unknown User',
         isRecurrence,
-        day_of_the_week: isRecurrence ? selectedDayOfWeek : null // Match DB column name
+        day_of_the_week: isRecurrence ? selectedDayOfWeek : null 
       };
       
       await onSave(submissionData);
@@ -111,11 +104,9 @@ export default function AddEntryModal({
     }
   };
 
-  // Add validation for required fields based on your DB schema:
   const validateForm = () => {
     const newErrors = {};
     
-    // Validate required fields based on your DB schema
     const requiredFields = {
       'incident': 'Incident',
       'district': 'District', 
@@ -130,12 +121,11 @@ export default function AddEntryModal({
     
     Object.entries(requiredFields).forEach(([fieldName, displayName]) => {
       const value = formData[fieldName];
-      if (!value && value !== false && value !== 0) { // Allow false/0 for boolean/numeric fields
+      if (!value && value !== false && value !== 0) {
         newErrors[fieldName] = `${displayName} is required`;
       }
     });
     
-    // District-specific validation
     if (formData.district) {
       if (formData.district.length !== 3) {
         newErrors.district = 'District must be exactly 3 characters';
@@ -144,14 +134,12 @@ export default function AddEntryModal({
       }
     }
     
-    // Time validation (log_end > log_start)
     if (formData.log_start && formData.log_end) {
       if (formData.log_end <= formData.log_start) {
         newErrors.log_end = 'End time must be after start time';
       }
     }
     
-    // Recurrence validation
     if (isRecurrence && !selectedDayOfWeek) {
       newErrors.recurrence = 'Please select a day of the week for recurrence';
     }
@@ -160,17 +148,14 @@ export default function AddEntryModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Format column name for display
   const formatColumnName = (columnName) => {
     return columnName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  // ✅ Add useEffect to get existing incidents and districts when form opens:
   useEffect(() => {
     if (isOpen) {
-      // Get existing districts
       if (getExistingDistricts) {
         try {
           const existingDistricts = getExistingDistricts();
@@ -183,7 +168,6 @@ export default function AddEntryModal({
         setDistrictSuggestions([]);
       }
 
-      // ✅ Get existing incidents
       if (getExistingIncidents) {
         try {
           const existingIncidents = getExistingIncidents();
@@ -199,9 +183,8 @@ export default function AddEntryModal({
       setDistrictSuggestions([]);
       setIncidentSuggestions([]);
     }
-  }, [isOpen, getExistingDistricts, getExistingIncidents]); // ✅ Added getExistingIncidents to dependencies
+  }, [isOpen, getExistingDistricts, getExistingIncidents]);
 
-  // Add function to filter district suggestions:
   const getFilteredDistrictSuggestions = (inputValue) => {
     if (!districtSuggestions || districtSuggestions.length === 0) {
       return [];
@@ -216,7 +199,6 @@ export default function AddEntryModal({
     );
   };
 
-  // ✅ Add function to filter incident suggestions:
   const getFilteredIncidentSuggestions = (inputValue) => {
     if (!incidentSuggestions || incidentSuggestions.length === 0) {
       return [];
@@ -230,8 +212,6 @@ export default function AddEntryModal({
       incident && incident.toLowerCase().includes(inputValue.toLowerCase())
     );
   };
-
-  // Render input field based on column type
   const renderInput = (column) => {
     const columnName = column.COLUMN_NAME;
     const dataType = column.DATA_TYPE.toLowerCase();
@@ -250,13 +230,10 @@ export default function AddEntryModal({
       outline: 'none'
     };
 
-    // Focus styles
     const focusStyle = {
       borderColor: '#60a5fa',
       boxShadow: '0 0 0 3px rgba(96, 165, 250, 0.1)'
     };
-
-    // Special handling for uploader field - make it readonly and show current user
     if (columnName.toLowerCase().includes('uploader')) {
       const uploaderValue = currentUser?.username || 'Unknown User';
       
@@ -286,7 +263,6 @@ export default function AddEntryModal({
       );
     }
     
-    // ✅ Special handling for incident field - show existing incidents with autocomplete
     else if (columnName.toLowerCase().includes('incident')) {
       const filteredSuggestions = getFilteredIncidentSuggestions(value);
       
@@ -305,7 +281,6 @@ export default function AddEntryModal({
               setShowIncidentSuggestions(filteredSuggestions.length > 0);
             }}
             onBlur={() => {
-              // Delay hiding suggestions to allow clicks
               setTimeout(() => setShowIncidentSuggestions(false), 200);
             }}
             style={{
@@ -389,7 +364,6 @@ export default function AddEntryModal({
       );
     }
     
-    // Special handling for log_type field - restrict to Operational and Application only
     else if (columnName.toLowerCase() === 'log_type') {
       return (
         <select
@@ -409,7 +383,6 @@ export default function AddEntryModal({
       );
     }
     
-    // Special handling for log_status field - restrict to Completed and Scheduled only
     else if (columnName.toLowerCase() === 'log_status') {
       return (
         <select
@@ -429,7 +402,6 @@ export default function AddEntryModal({
       );
     }
     
-    // Special handling for district field
     else if (columnName.toLowerCase().includes('district')) {
       const filteredSuggestions = getFilteredDistrictSuggestions(value);
       
@@ -439,28 +411,22 @@ export default function AddEntryModal({
             type="text"
             value={value}
             onChange={(e) => {
-              let inputValue = e.target.value.toUpperCase(); // Convert to uppercase
+              let inputValue = e.target.value.toUpperCase(); 
               
-              // Limit to 3 characters
               if (inputValue.length > 3) {
                 inputValue = inputValue.slice(0, 3);
               }
-              
-              // Only allow letters
               inputValue = inputValue.replace(/[^A-Z]/g, '');
               
               handleInputChange(columnName, inputValue);
-              // ✅ Show suggestions even when input is empty or when filtering returns results
               const currentFilteredSuggestions = getFilteredDistrictSuggestions(inputValue);
               setShowDistrictSuggestions(currentFilteredSuggestions.length > 0);
             }}
             onFocus={() => {
-              // ✅ Always show suggestions on focus, regardless of input value
               const currentFilteredSuggestions = getFilteredDistrictSuggestions(value);
               setShowDistrictSuggestions(currentFilteredSuggestions.length > 0);
             }}
             onBlur={() => {
-              // Delay hiding suggestions to allow clicks
               setTimeout(() => setShowDistrictSuggestions(false), 200);
             }}
             maxLength={3}
@@ -530,7 +496,6 @@ export default function AddEntryModal({
                 </div>
               )}
               
-              {/* Show "Type to add new" hint */}
               <div style={{
                 padding: '8px 12px',
                 fontSize: '12px',
@@ -547,9 +512,7 @@ export default function AddEntryModal({
         </div>
       );
     } 
-    // Handle estimated_time and actual_time fields in hours
     else if (columnName.toLowerCase().includes('estimated_time') || columnName.toLowerCase().includes('actual_time')) {
-      // Convert stored minutes to hours for display
       const displayValue = value ? (parseFloat(value) / 60).toString() : '';
       
       return (
@@ -559,12 +522,11 @@ export default function AddEntryModal({
             value={displayValue}
             onChange={(e) => {
               const hours = parseFloat(e.target.value);
-              // Convert hours to minutes for storage
               const minutes = hours ? Math.round(hours * 60) : '';
               handleInputChange(columnName, minutes);
             }}
             placeholder="Enter hours (e.g., 2.5)"
-            step="0.25" // Allow quarter-hour increments
+            step="0.25" 
             min="0"
             style={baseStyle}
             onFocus={(e) => Object.assign(e.target.style, focusStyle)}
@@ -582,7 +544,6 @@ export default function AddEntryModal({
       );
     }
     
-    // Handle other time fields (generic)
     else if (dataType.includes('time') || columnName.toLowerCase().includes('time') && !columnName.toLowerCase().includes('expected_down_time')) {
       return (
         <input

@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
       throw new Error(`Missing environment variables: ${missingVars.join(', ')}`);
     }
 
-    // Parse request body
+    
     const requestData = JSON.parse(event.body);
     const entryId = requestData.id;
 
@@ -57,7 +57,7 @@ exports.handler = async (event, context) => {
 
     const pool = await sql.connect(config);
 
-    // First, check if entry exists
+  
     const checkQuery = 'SELECT id FROM LOG_ENTRIES WHERE id = @entryId';
     const checkRequest = pool.request();
     checkRequest.input('entryId', sql.Int, entryId);

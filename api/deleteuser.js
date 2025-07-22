@@ -37,7 +37,7 @@ const config = {
 
     await sql.connect(config);
 
-    // Delete user (user_level will be deleted automatically due to CASCADE)
+
     const result = await sql.query`
       DELETE FROM LOG_ENTRIES_USER WHERE id = ${id}
     `;

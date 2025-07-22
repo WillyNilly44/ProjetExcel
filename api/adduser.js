@@ -37,7 +37,6 @@ const config = {
 
     await sql.connect(config);
 
-    // Check if username already exists
     const checkUser = await sql.query`
       SELECT id FROM LOG_ENTRIES_USER WHERE username = ${username}
     `;
@@ -52,7 +51,6 @@ const config = {
       };
     }
 
-    // Insert user
     const insertUser = await sql.query`
       INSERT INTO LOG_ENTRIES_USER (name, username, password)
       OUTPUT INSERTED.id
@@ -61,7 +59,6 @@ const config = {
 
     const userId = insertUser.recordset[0].id;
 
-    // Insert user level
     await sql.query`
       INSERT INTO LOG_ENTRIES_USER_LEVEL (User_id, level_id)
       VALUES (${userId}, ${level_id})

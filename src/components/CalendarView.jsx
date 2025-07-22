@@ -13,7 +13,6 @@ const CalendarView = ({
 }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
 
-  // Format time for calendar - Define this FIRST
   const formatTimeForCalendar = (timeValue) => {
     if (!timeValue) return '00:00:00';
     const timeStr = String(timeValue);
@@ -22,14 +21,12 @@ const CalendarView = ({
     return '00:00:00';
   };
 
-  // Convert log entries to calendar events
   const calendarEvents = useMemo(() => {
     console.log('📅 Starting calendar conversion...', { 
       dataLength: data?.length || 0, 
       columnsLength: columns?.length || 0 
     });
 
-    // Early validation
     if (!data || !Array.isArray(data) || data.length === 0) {
       console.log('📅 No data available');
       return [];
@@ -41,7 +38,6 @@ const CalendarView = ({
     }
 
     try {
-      // Find columns safely
       const dateColumn = columns.find(col => {
         if (!col || !col.COLUMN_NAME) return false;
         const name = col.COLUMN_NAME.toLowerCase();
@@ -77,32 +73,28 @@ const CalendarView = ({
         logType: logTypeColumn?.COLUMN_NAME
       });
 
-      // Process each entry
       const events = [];
       
       for (let i = 0; i < data.length; i++) {
         const entry = data[i];
         
         try {
-          // Skip invalid entries
           if (!entry || typeof entry !== 'object') {
             console.warn('📅 Invalid entry at index', i);
             continue;
           }
 
-          // Check virtual entries filter
           if (!showVirtualEntries && entry.is_virtual) {
             continue;
           }
 
-          // Get date
           const dateValue = entry[dateColumn.COLUMN_NAME];
           if (!dateValue) {
             console.warn('📅 No date value for entry', entry.id || i);
             continue;
           }
 
-          // Format date safely
+
           let eventDate;
           try {
             const parsedDate = new Date(dateValue);
@@ -116,7 +108,6 @@ const CalendarView = ({
             continue;
           }
 
-          // Get title
           let title = 'Log Entry';
           if (titleColumn && entry[titleColumn.COLUMN_NAME]) {
             const titleValue = entry[titleColumn.COLUMN_NAME];
@@ -131,41 +122,38 @@ const CalendarView = ({
             title = `Entry ${i + 1}`;
           }
 
-          // Determine colors
-          let backgroundColor = '#3788d8'; // Default blue
+          let backgroundColor = '#3788d8'; 
           let borderColor = '#3788d8';
 
-          // Color by log type
+
           if (logTypeColumn && entry[logTypeColumn.COLUMN_NAME]) {
             const logType = String(entry[logTypeColumn.COLUMN_NAME]).toLowerCase();
             if (logType.includes('operational')) {
-              backgroundColor = '#28a745'; // Green
+              backgroundColor = '#28a745';
               borderColor = '#28a745';
             } else if (logType.includes('application')) {
-              backgroundColor = '#dc3545'; // Red
+              backgroundColor = '#dc3545'; 
               borderColor = '#dc3545';
             }
           }
 
-          // Color for virtual entries
           if (entry.is_virtual) {
-            backgroundColor = '#6c757d'; // Gray
+            backgroundColor = '#6c757d';
             borderColor = '#6c757d';
           }
 
-          // Color by status
+
           if (statusColumn && entry[statusColumn.COLUMN_NAME]) {
             const status = String(entry[statusColumn.COLUMN_NAME]).toLowerCase();
             if (status.includes('completed')) {
-              backgroundColor = '#20c997'; // Success green
+              backgroundColor = '#20c997'; 
               borderColor = '#20c997';
             } else if (status.includes('not completed')) {
-              backgroundColor = '#ffc107'; // Warning yellow
+              backgroundColor = '#ffc107'; 
               borderColor = '#ffc107';
             }
           }
 
-          // Create event object
           const event = {
             id: entry.id ? String(entry.id) : `entry-${i}`,
             title: entry.is_virtual ? `🔄 ${title}` : String(title),
@@ -197,7 +185,6 @@ const CalendarView = ({
     }
   }, [data, columns, showVirtualEntries, formatCellValue]);
 
-  // Handle event click
   const handleEventClick = (clickInfo) => {
     try {
       const entry = clickInfo.event.extendedProps?.entry;

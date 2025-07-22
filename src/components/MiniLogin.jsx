@@ -41,7 +41,6 @@ const MiniLogin = () => {
   };
 
   if (isAuthenticated) {
-    // Show user info when logged in
     return (
       <div className="mini-login">
         <div 
@@ -73,7 +72,6 @@ const MiniLogin = () => {
     );
   }
 
-  // Show login form when not authenticated
   return (
     <div className="mini-login">
       <button 

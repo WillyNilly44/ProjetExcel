@@ -30,7 +30,7 @@ exports.handler = async (event, context) => {
 
     await sql.connect(config);
 
-    // Get table structure
+    
     const columnsResult = await sql.query`
       SELECT 
         COLUMN_NAME,
@@ -43,25 +43,25 @@ exports.handler = async (event, context) => {
       ORDER BY ORDINAL_POSITION
     `;
 
-    // Build dynamic WHERE clause based on filters
+ 
     let whereClause = '';
     const queryParams = [];
 
-    // Filter by month
+
     if (filters.month) {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
       whereClause += 'month = @month';
       queryParams.push({ name: 'month', type: sql.VarChar, value: filters.month });
     }
 
-    // Filter by week
+  
     if (filters.week) {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
       whereClause += 'week = @week';
       queryParams.push({ name: 'week', type: sql.VarChar, value: filters.week });
     }
 
-    // Filter by maintenance count range
+
     if (filters.maintenanceMin !== undefined && filters.maintenanceMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
       whereClause += 'maintenance >= @maintenanceMin';
@@ -74,7 +74,7 @@ exports.handler = async (event, context) => {
       queryParams.push({ name: 'maintenanceMax', type: sql.Int, value: parseInt(filters.maintenanceMax) });
     }
 
-    // Filter by incidents count range
+
     if (filters.incidentsMin !== undefined && filters.incidentsMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
       whereClause += 'incidents >= @incidentsMin';
@@ -87,7 +87,7 @@ exports.handler = async (event, context) => {
       queryParams.push({ name: 'incidentsMax', type: sql.Int, value: parseInt(filters.incidentsMax) });
     }
 
-    // Filter by business impact range
+
     if (filters.businessImpactMin !== undefined && filters.businessImpactMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
       whereClause += 'business_impacted >= @businessImpactMin';
@@ -100,7 +100,6 @@ exports.handler = async (event, context) => {
       queryParams.push({ name: 'businessImpactMax', type: sql.Int, value: parseInt(filters.businessImpactMax) });
     }
 
-    // Build and execute main query
     const query = `
       SELECT * 
       FROM LOG_ENTRIES_DASHBOARD 
@@ -115,7 +114,6 @@ exports.handler = async (event, context) => {
 
     const result = await request.query(query);
 
-    // Calculate summary statistics
     const summaryStats = {
       totalRecords: result.recordset.length,
       totalMaintenance: result.recordset.reduce((sum, row) => sum + (row.maintenance || 0), 0),
@@ -147,7 +145,6 @@ exports.handler = async (event, context) => {
   } catch (error) {
     console.error('Dashboard data fetch error:', error);
     
-    // Handle specific error cases
     let errorMessage = 'Failed to fetch dashboard data';
     
     if (error.message.includes('Invalid object name')) {

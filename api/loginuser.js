@@ -52,7 +52,6 @@ const config = {
 
     const user = result.recordset[0];
     
-    // Generate simple token (in production, use JWT)
     const token = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
 
     return {

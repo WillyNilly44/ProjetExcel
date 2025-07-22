@@ -10,8 +10,8 @@ const config = {
     encrypt: true,
     trustServerCertificate: true,
     enableArithAbort: true,
-    requestTimeout: 60000, // Increased timeout
-    connectionTimeout: 60000, // Increased timeout
+    requestTimeout: 60000,
+    connectionTimeout: 60000, 
     packetSize: 32768,
   },
   pool: {
@@ -27,7 +27,7 @@ const config = {
 };
 
 exports.handler = async (event, context) => {
-  // Set Lambda timeout
+
   context.callbackWaitsForEmptyEventLoop = false;
   
   let pool;

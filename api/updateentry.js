@@ -44,11 +44,11 @@ exports.handler = async (event, context) => {
 
     await sql.connect(config);
 
-    // Build dynamic UPDATE query
+
     const updateFields = [];
     const params = [];
     
-    // Exclude certain fields from updates
+ 
     const excludeFields = ['id', 'created_at', 'updated_at', 'is_virtual', 'original_id'];
     
     Object.keys(entryData).forEach((key, index) => {
@@ -69,7 +69,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Add updated_at field if it exists
     updateFields.push(`updated_at = GETDATE()`);
 
     const query = `
@@ -82,7 +81,6 @@ exports.handler = async (event, context) => {
     request.input('entryId', sql.Int, entryId);
     
     params.forEach(param => {
-      // Determine SQL type based on value
       let sqlType = sql.NVarChar;
       if (typeof param.value === 'number') {
         sqlType = Number.isInteger(param.value) ? sql.Int : sql.Decimal;
