@@ -9,6 +9,7 @@ import TabNavigation from './TabNavigation';
 import UserManagement from './UserManagement';
 import DashboardTab from './DashboardTab';
 import EntryDetailModal from './EntryDetailModal';
+import CalendarView from './CalendarView'; // Add this import at the top
 import '../style.css';
 
 export default function LogEntriesTable() {
@@ -33,6 +34,7 @@ export default function LogEntriesTable() {
   const [showVirtualEntries, setShowVirtualEntries] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [viewMode, setViewMode] = useState('table'); // 'table' or 'calendar'
 
   const fetchLogEntries = async () => {
     setIsLoading(true);
@@ -747,6 +749,24 @@ export default function LogEntriesTable() {
             </div>
             
             <div className="toolbar-container">
+              {/* Add View Toggle Buttons */}
+              <div className="view-toggle">
+                <button
+                  className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Table View"
+                >
+                  📋 Table
+                </button>
+                <button
+                  className={`view-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
+                  onClick={() => setViewMode('calendar')}
+                  title="Calendar View"
+                >
+                  📅 Calendar
+                </button>
+              </div>
+
               <ToolbarDropdown
                 isLoading={isLoading}
                 columnsLength={columns.length}
@@ -870,11 +890,19 @@ export default function LogEntriesTable() {
             </div>
           )}
 
-          {/* Data Table */}
+          {/* Data Display - Table or Calendar */}
           {!data || data.length === 0 ? (
             <div className="no-data">
               <div className="no-data-text">📝 No log entries found</div>
             </div>
+          ) : viewMode === 'calendar' ? (
+            <CalendarView
+              data={getFilteredData()}
+              columns={columns}
+              formatCellValue={formatCellValue}
+              onEventClick={handleRowClick}
+              showVirtualEntries={showVirtualEntries}
+            />
           ) : (
             <div className="table-container">
               <div className="table-header">
