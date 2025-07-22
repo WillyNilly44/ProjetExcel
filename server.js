@@ -67,6 +67,7 @@ const updateUserHandler = require('./api/updateuser');
 const deleteUserHandler = require('./api/deleteuser');
 const validateUserHandler = require('./api/validateuser');
 const getDashboardHandler = require('./api/getdashboard');
+const thresholdRoutes = require('./api/thresholds');
 
 app.post('/api/loginuser', async (req, res) => {
   const event = {
@@ -184,6 +185,145 @@ app.post('/api/getdashboard', async (req, res) => {
   };
   const result = await getDashboardHandler.handler(event, {});
   res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+// Add these routes to your existing API file (e.g., server.js or routes.js)
+
+// GET /api/getthresholds - Fetch thresholds from database
+app.get('/api/getthresholds', async (req, res) => {
+  try {
+    console.log('📊 Fetching thresholds from database...');
+
+    // Ensure we're connected to the database
+    if (!sql.connected) {
+      await sql.connect(config);
+    }
+
+    const request = new sql.Request();
+    
+    const query = `
+      SELECT 
+        id,
+        maintenance_yellow,
+        maintenance_red,
+        incident_yellow,
+        incident_red,
+        impact
+      FROM LOG_ENTRIES_THRESHOLDS
+      ORDER BY id DESC
+    `;
+
+    const result = await request.query(query);
+
+    console.log(`✅ Found ${result.recordset.length} threshold records`);
+
+    res.json({
+      success: true,
+      data: result.recordset,
+      message: result.recordset.length > 0 
+        ? 'Thresholds loaded successfully' 
+        : 'No thresholds found - using defaults'
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching thresholds:', error);
+    res.status(500).json({
+      success: false,
+      error: `Database error: ${error.message}`
+    });
+  }
+});
+
+// POST /api/savethresholds - Save thresholds to database
+app.post('/api/savethresholds', async (req, res) => {
+  try {
+    console.log('💾 Saving thresholds to database...');
+    console.log('📊 Threshold data:', req.body);
+
+    const { 
+      maintenance_yellow, 
+      maintenance_red, 
+      incident_yellow, 
+      incident_red, 
+      impact 
+    } = req.body;
+
+    // Validate required fields
+    if (
+      maintenance_yellow === undefined || 
+      maintenance_red === undefined || 
+      incident_yellow === undefined || 
+      incident_red === undefined || 
+      impact === undefined
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required threshold values'
+      });
+    }
+
+    // Ensure we're connected to the database
+    if (!sql.connected) {
+      await sql.connect(config);
+    }
+
+    const request = new sql.Request();
+
+    // Check if any thresholds exist
+    const checkQuery = 'SELECT COUNT(*) as count FROM LOG_ENTRIES_THRESHOLDS';
+    const checkResult = await request.query(checkQuery);
+    const hasExistingThresholds = checkResult.recordset[0].count > 0;
+
+    // Create a new request for the main operation
+    const mainRequest = new sql.Request();
+
+    let query;
+    if (hasExistingThresholds) {
+      // Update existing record (assuming single row)
+      query = `
+        UPDATE LOG_ENTRIES_THRESHOLDS 
+        SET 
+          maintenance_yellow = @maintenance_yellow,
+          maintenance_red = @maintenance_red,
+          incident_yellow = @incident_yellow,
+          incident_red = @incident_red,
+          impact = @impact
+        WHERE id = (SELECT TOP 1 id FROM LOG_ENTRIES_THRESHOLDS ORDER BY id DESC)
+      `;
+    } else {
+      // Insert new record
+      query = `
+        INSERT INTO LOG_ENTRIES_THRESHOLDS 
+        (maintenance_yellow, maintenance_red, incident_yellow, incident_red, impact)
+        VALUES 
+        (@maintenance_yellow, @maintenance_red, @incident_yellow, @incident_red, @impact)
+      `;
+    }
+
+    // Add parameters to the main request
+    mainRequest.input('maintenance_yellow', sql.Int, parseInt(maintenance_yellow) || 0);
+    mainRequest.input('maintenance_red', sql.Int, parseInt(maintenance_red) || 0);
+    mainRequest.input('incident_yellow', sql.Int, parseInt(incident_yellow) || 0);
+    mainRequest.input('incident_red', sql.Int, parseInt(incident_red) || 0);
+    mainRequest.input('impact', sql.Int, parseInt(impact) || 0);
+
+    const result = await mainRequest.query(query);
+
+    console.log(`✅ Thresholds ${hasExistingThresholds ? 'updated' : 'inserted'} successfully`);
+
+    res.json({
+      success: true,
+      message: `Thresholds ${hasExistingThresholds ? 'updated' : 'saved'} successfully`,
+      rowsAffected: result.rowsAffected[0]
+    });
+
+  } catch (error) {
+    console.error('❌ Error saving thresholds:', error);
+    res.status(500).json({
+      success: false,
+      error: `Database error: ${error.message}`
+    });
+  }
 });
 
 app.get('*', (req, res) => {
