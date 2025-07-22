@@ -26,12 +26,6 @@ export default function AddEntryModal({
         if (!['id', 'created_at', 'updated_at'].includes(column.COLUMN_NAME.toLowerCase())) {
           let defaultValue = getDefaultValue(column);
           
-          if ((column.COLUMN_NAME.toLowerCase().includes('estimated_time') || 
-               column.COLUMN_NAME.toLowerCase().includes('actual_time')) && 
-              defaultValue && typeof defaultValue === 'number') {
-            defaultValue = (defaultValue / 60).toString(); 
-          }
-          
           initialData[column.COLUMN_NAME] = defaultValue;
         }
       });
@@ -513,17 +507,15 @@ export default function AddEntryModal({
       );
     } 
     else if (columnName.toLowerCase().includes('estimated_time') || columnName.toLowerCase().includes('actual_time')) {
-      const displayValue = value ? (parseFloat(value) / 60).toString() : '';
-      
       return (
         <div style={{ position: 'relative' }}>
           <input
             type="number"
-            value={displayValue}
+            value={value} // Use value directly as hours
             onChange={(e) => {
-              const hours = parseFloat(e.target.value);
-              const minutes = hours ? Math.round(hours * 60) : '';
-              handleInputChange(columnName, minutes);
+              // Store the value directly as hours (decimal)
+              const hours = parseFloat(e.target.value) || '';
+              handleInputChange(columnName, hours);
             }}
             placeholder="Enter hours (e.g., 2.5)"
             step="0.25" 
@@ -538,7 +530,7 @@ export default function AddEntryModal({
             marginTop: '4px',
             fontStyle: 'italic'
           }}>
-            {displayValue && ` = ${Math.round(parseFloat(displayValue) * 60)} minutes`}
+            {value && `= ${Math.round(parseFloat(value) * 60)} minutes`}
           </div>
         </div>
       );
