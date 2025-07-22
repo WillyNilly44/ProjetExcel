@@ -206,9 +206,6 @@ export default function ColumnManager({
           maxHeight: '400px',
           overflowY: 'auto'
         }}>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '12px' }}>
-            💡 Check to show column, use arrows to reorder
-          </div>
           
           {localOrder.map((columnName, index) => {
             const column = columns.find(col => col.COLUMN_NAME === columnName);

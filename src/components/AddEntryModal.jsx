@@ -119,14 +119,7 @@ export default function AddEntryModal({
         newErrors[fieldName] = `${displayName} is required`;
       }
     });
-    
-    if (formData.district) {
-      if (formData.district.length !== 3) {
-        newErrors.district = 'District must be exactly 3 characters';
-      } else if (!/^[A-Z]{3}$/.test(formData.district)) {
-        newErrors.district = 'District must contain only uppercase letters';
-      }
-    }
+  
     
     if (formData.log_start && formData.log_end) {
       if (formData.log_end <= formData.log_start) {
