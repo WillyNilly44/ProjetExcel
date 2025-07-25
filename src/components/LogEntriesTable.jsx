@@ -28,20 +28,76 @@ export default function LogEntriesTable() {
     year: '',
     month: '',
     week: '',
-    logType: ''
+    logType: '',
+    district: '',
+    incident: '',
+    assigned: '',
+    uploader: ''
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showVirtualEntries, setShowVirtualEntries] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [viewMode, setViewMode] = useState('table');
+  const [filterOptions, setFilterOptions] = useState({
+    districts: [],
+    incidents: [],
+    assignees: [],
+    uploaders: []
+  });
+
+  // CONSOLIDATED useEffect - This fixes the hook rule violation
+  useEffect(() => {
+    // Initial data fetch
+    fetchLogEntries();
+  }, []); // Only run once on mount
+
+  // CONSOLIDATED useEffect for column management
+  useEffect(() => {
+    if (columns.length > 0) {
+      const allColumnNames = columns.map(col => col.COLUMN_NAME);
+      
+      const savedVisible = localStorage.getItem('logEntries_visibleColumns');
+      const savedOrder = localStorage.getItem('logEntries_columnOrder');
+      
+      if (savedVisible && savedOrder) {
+        try {
+          const parsedVisible = JSON.parse(savedVisible);
+          const parsedOrder = JSON.parse(savedOrder);
+          
+          const validVisible = parsedVisible.filter(name => allColumnNames.includes(name));
+          const validOrder = parsedOrder.filter(name => allColumnNames.includes(name));
+          
+          const missingColumns = allColumnNames.filter(name => !validOrder.includes(name));
+          
+          const finalVisible = [...validVisible, ...missingColumns];
+          const finalOrder = [...validOrder, ...missingColumns];
+          
+          setVisibleColumns(finalVisible);
+          setColumnOrder(finalOrder);
+          
+        } catch (e) {
+          console.warn('⚠️ Failed to parse saved column preferences, using defaults');
+          setVisibleColumns(allColumnNames);
+          setColumnOrder(allColumnNames);
+        }
+      } else {
+        setVisibleColumns(allColumnNames);
+        setColumnOrder(allColumnNames);
+      }
+
+      // Load filter options when data and columns are available
+      if (data && data.length > 0) {
+        loadFilterOptions();
+      }
+    }
+  }, [columns, data]); // Run when columns or data change
 
   const fetchLogEntries = async () => {
     setIsLoading(true);
     setConnectionStatus('Loading log entries...');
     
     try {
-      
       const response = await fetch('/api/dbconnection', {
         method: 'POST',
         headers: {
@@ -89,9 +145,59 @@ export default function LogEntriesTable() {
       setIsLoading(false);
     }
   };
+
+  const loadFilterOptions = () => {
+    if (!data || !columns || data.length === 0) return;
+
+    const options = {
+      districts: [],
+      incidents: [],
+      assignees: [],
+      uploaders: []
+    };
+
+    // Get distinct values for each filter type
+    const districtColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('district'));
+    const incidentColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('incident'));
+    const assignedColumn = columns.find(col => 
+      col.COLUMN_NAME.toLowerCase().includes('assigned') || 
+      col.COLUMN_NAME.toLowerCase().includes('assignee')
+    );
+    const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
+
+    if (districtColumn) {
+      options.districts = [...new Set(data
+        .map(entry => entry[districtColumn.COLUMN_NAME])
+        .filter(value => value && value.toString().trim())
+      )].sort();
+    }
+
+    if (incidentColumn) {
+      options.incidents = [...new Set(data
+        .map(entry => entry[incidentColumn.COLUMN_NAME])
+        .filter(value => value && value.toString().trim())
+      )].sort();
+    }
+
+    if (assignedColumn) {
+      options.assignees = [...new Set(data
+        .map(entry => entry[assignedColumn.COLUMN_NAME])
+        .filter(value => value && value.toString().trim())
+      )].sort();
+    }
+
+    if (uploaderColumn) {
+      options.uploaders = [...new Set(data
+        .map(entry => entry[uploaderColumn.COLUMN_NAME])
+        .filter(value => value && value.toString().trim())
+      )].sort();
+    }
+
+    setFilterOptions(options);
+  };
+
   const handleSaveEntry = async (formData) => {
     try {
-      
       const response = await fetch('/api/addentryrec', {
         method: 'POST',
         headers: {
@@ -108,7 +214,6 @@ export default function LogEntriesTable() {
 
       if (result.success) {        
         alert(result.message);
-        
         await fetchLogEntries();
       } else {
         throw new Error(result.error);
@@ -126,7 +231,6 @@ export default function LogEntriesTable() {
     }
 
     try {
-      
       const response = await fetch('/api/deleteentry', {
         method: 'DELETE',
         headers: {
@@ -216,7 +320,6 @@ export default function LogEntriesTable() {
       return `${value.toFixed(2)}h`;
     }
     
-
     if (lowerColumnName.includes('duration') && typeof value === 'number') {
       return `${value}min`;
     }
@@ -260,53 +363,16 @@ export default function LogEntriesTable() {
     return baseStyle;
   };
 
-  useEffect(() => {
-    if (columns.length > 0) {
-      const allColumnNames = columns.map(col => col.COLUMN_NAME);
-      
-      const savedVisible = localStorage.getItem('logEntries_visibleColumns');
-      const savedOrder = localStorage.getItem('logEntries_columnOrder');
-      
-      if (savedVisible && savedOrder) {
-        try {
-          const parsedVisible = JSON.parse(savedVisible);
-          const parsedOrder = JSON.parse(savedOrder);
-          
-          const validVisible = parsedVisible.filter(name => allColumnNames.includes(name));
-          const validOrder = parsedOrder.filter(name => allColumnNames.includes(name));
-          
-          const missingColumns = allColumnNames.filter(name => !validOrder.includes(name));
-          
-          const finalVisible = [...validVisible, ...missingColumns];
-          const finalOrder = [...validOrder, ...missingColumns];
-          
-          setVisibleColumns(finalVisible);
-          setColumnOrder(finalOrder);
-          
-        } catch (e) {
-          console.warn('⚠️ Failed to parse saved column preferences, using defaults');
-          setVisibleColumns(allColumnNames);
-          setColumnOrder(allColumnNames);
-        }
-      } else {
-        setVisibleColumns(allColumnNames);
-        setColumnOrder(allColumnNames);
-      }
-    }
-  }, [columns]);
-
   const getDisplayColumns = () => {
     const displayColumns = columnOrder
       .filter(columnName => visibleColumns.includes(columnName))
       .map(columnName => columns.find(col => col.COLUMN_NAME === columnName))
       .filter(Boolean);
     
-    
     return displayColumns;
   };
 
   const handleColumnManagerSave = (newVisibleColumns, newColumnOrder) => {
-    
     setVisibleColumns(newVisibleColumns);
     setColumnOrder(newColumnOrder);
     
@@ -318,44 +384,9 @@ export default function LogEntriesTable() {
     }
   };
 
-  useEffect(() => {
-    if (columns.length > 0) {
-      const savedVisible = localStorage.getItem('logEntries_visibleColumns');
-      const savedOrder = localStorage.getItem('logEntries_columnOrder');
-      
-      if (savedVisible && savedOrder) {
-        try {
-          const parsedVisible = JSON.parse(savedVisible);
-          const parsedOrder = JSON.parse(savedOrder);
-          const currentColumnNames = columns.map(col => col.COLUMN_NAME);
-          const validVisible = parsedVisible.filter(name => currentColumnNames.includes(name));
-          const validOrder = parsedOrder.filter(name => currentColumnNames.includes(name));
-          const missingColumns = currentColumnNames.filter(name => !validOrder.includes(name));
-          
-          setVisibleColumns([...validVisible, ...missingColumns]);
-          setColumnOrder([...validOrder, ...missingColumns]);
-        } catch (e) {
-          const allColumns = columns.map(col => col.COLUMN_NAME);
-          setVisibleColumns(allColumns);
-          setColumnOrder(allColumns);
-        }
-      } else {
-        const allColumns = columns.map(col => col.COLUMN_NAME);
-        setVisibleColumns(allColumns);
-        setColumnOrder(allColumns);
-      }
-    }
-  }, [columns]);
-
-  useEffect(() => {
-    fetchLogEntries();
-  }, []);
-
-
   const getAvailableYears = () => {
     if (!data || data.length === 0) return [];
     
-
     const dateColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('date') || 
       col.COLUMN_NAME.toLowerCase().includes('created')
@@ -420,7 +451,9 @@ export default function LogEntriesTable() {
 
     const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
     
-    if (!dateFilters.year && !dateFilters.month && !dateFilters.week && !dateFilters.logType) {
+    // If no filters are applied, return all data
+    const hasFilters = Object.values(dateFilters).some(value => value && value !== '');
+    if (!hasFilters) {
       return expandedData;
     }
     
@@ -432,8 +465,17 @@ export default function LogEntriesTable() {
     const logTypeColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('log_type')
     );
+
+    const districtColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('district'));
+    const incidentColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('incident'));
+    const assignedColumn = columns.find(col => 
+      col.COLUMN_NAME.toLowerCase().includes('assigned') || 
+      col.COLUMN_NAME.toLowerCase().includes('assignee')
+    );
+    const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
     
     return expandedData.filter(entry => {
+      // Date filters (existing logic - keeping year, month, week)
       if (dateColumn) {
         const dateValue = entry[dateColumn.COLUMN_NAME];
         if (dateValue) {
@@ -465,6 +507,7 @@ export default function LogEntriesTable() {
         }
       }
       
+      // Log type filter (existing logic)
       if (dateFilters.logType && logTypeColumn) {
         const entryLogType = entry[logTypeColumn.COLUMN_NAME];
         if (!entryLogType) return false;
@@ -472,24 +515,58 @@ export default function LogEntriesTable() {
         const normalizedEntryType = entryLogType.toString().toLowerCase().trim();
         const selectedType = dateFilters.logType.toLowerCase();
 
-        return normalizedEntryType.includes(selectedType);
+        if (!normalizedEntryType.includes(selectedType)) {
+          return false;
+        }
+      }
+
+      // CONTENT FILTERS (keeping these)
+      // District filter
+      if (dateFilters.district && districtColumn) {
+        const entryDistrict = entry[districtColumn.COLUMN_NAME];
+        if (!entryDistrict || entryDistrict.toString().toLowerCase() !== dateFilters.district.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Incident filter (partial match)
+      if (dateFilters.incident && incidentColumn) {
+        const entryIncident = entry[incidentColumn.COLUMN_NAME];
+        if (!entryIncident || !entryIncident.toString().toLowerCase().includes(dateFilters.incident.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // Assigned filter
+      if (dateFilters.assigned && assignedColumn) {
+        const entryAssigned = entry[assignedColumn.COLUMN_NAME];
+        if (!entryAssigned || entryAssigned.toString().toLowerCase() !== dateFilters.assigned.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Uploader filter
+      if (dateFilters.uploader && uploaderColumn) {
+        const entryUploader = entry[uploaderColumn.COLUMN_NAME];
+        if (!entryUploader || entryUploader.toString().toLowerCase() !== dateFilters.uploader.toLowerCase()) {
+          return false;
+        }
       }
       
       return true;
     });
   };
 
-  const getAvailableLogTypes = () => {
-    return ['Operational', 'Application'];
-  };
-
-
   const clearFilters = () => {
     setDateFilters({
       year: '',
       month: '',
       week: '',
-      logType: '' 
+      logType: '',
+      district: '',
+      incident: '',
+      assigned: '',
+      uploader: ''
     });
   };
 
@@ -551,10 +628,8 @@ export default function LogEntriesTable() {
               return; 
             }
             
-
             const isFutureDate = recurringDate > today;
             
-
             const statusColumn = columns.find(col => 
               col.COLUMN_NAME.toLowerCase().includes('status') ||
               col.COLUMN_NAME.toLowerCase().includes('completion')
@@ -576,9 +651,7 @@ export default function LogEntriesTable() {
               virtualEntry[statusColumn.COLUMN_NAME] = 'Not Completed';
             }
             
-
             if (isFutureDate) {
-
               if ('status' in virtualEntry) virtualEntry.status = 'Not Completed';
               if ('completion_status' in virtualEntry) virtualEntry.completion_status = 'Not Completed';
               if ('task_status' in virtualEntry) virtualEntry.task_status = 'Not Completed';
@@ -614,16 +687,6 @@ export default function LogEntriesTable() {
     return 'neutral';
   };
 
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-text">
-          ⏳ Loading log entries...
-        </div>
-      </div>
-    );
-  }
-
   const handleRowClick = (entry) => {
     setSelectedEntry(entry);
     setShowDetailModal(true);
@@ -634,11 +697,9 @@ export default function LogEntriesTable() {
     setSelectedEntry(null);
   };
 
-
   const getExistingDistricts = () => {
     if (!data || data.length === 0) return [];
     
-
     const districtColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('district')
     );
@@ -654,18 +715,15 @@ export default function LogEntriesTable() {
     return districts;
   };
 
-
   const getExistingIncidents = () => {
     if (!data || data.length === 0) return [];
     
-
     const incidentColumn = columns.find(col => 
       col.COLUMN_NAME.toLowerCase().includes('incident')
     );
     
     if (!incidentColumn) return [];
     
-
     const incidents = data
       .map(entry => entry[incidentColumn.COLUMN_NAME])
       .filter(incident => incident && typeof incident === 'string')
@@ -674,6 +732,21 @@ export default function LogEntriesTable() {
     
     return incidents;
   };
+
+  const getActiveFilterCount = () => {
+    return Object.values(dateFilters).filter(value => value && value !== '').length;
+  };
+
+  // Early return for loading state
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-text">
+          ⏳ Loading log entries...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="log-entries-container">
@@ -753,86 +826,167 @@ export default function LogEntriesTable() {
           {showFilters && (
             <div className="filter-panel">
               <div className="filter-header">
-                <h3 className="filter-title">📅 Filters</h3>
-                <button onClick={clearFilters} className="filter-clear-btn">
-                  🗑 Clear All
-                </button>
+                <h3 className="filter-title">🔍 Filters</h3>
+                <div className="filter-actions">
+                  {getActiveFilterCount() > 0 && (
+                    <span className="active-filter-count">
+                      {getActiveFilterCount()} filter{getActiveFilterCount() > 1 ? 's' : ''} active
+                    </span>
+                  )}
+                  <button onClick={clearFilters} className="filter-clear-btn">
+                    🗑 Clear All
+                  </button>
+                </div>
               </div>
               
               <div className="filter-grid">
-                {/* Log Type Filter */}
-                <div className="filter-group">
-                  <label>🏷️ Log Type</label>
-                  <select
-                    value={dateFilters.logType}
-                    onChange={(e) => handleFilterChange('logType', e.target.value)}
-                    className="filter-select"
-                  >
-                    <option value="">All Types</option>
-                    <option value="operational">Operational</option>
-                    <option value="application">Application</option>
-                  </select>
+                {/* Date Filters Row */}
+                <div className="filter-section">
+                  <h4 className="filter-section-title">📅 Date Filters</h4>
+                  <div className="filter-row">
+                    {/* Log Type Filter */}
+                    <div className="filter-group">
+                      <label>🏷️ Log Type</label>
+                      <select
+                        value={dateFilters.logType}
+                        onChange={(e) => handleFilterChange('logType', e.target.value)}
+                        className="filter-select"
+                      >
+                        <option value="">All Types</option>
+                        <option value="operational">Operational</option>
+                        <option value="application">Application</option>
+                      </select>
+                    </div>
+                    
+                    {/* Year Filter */}
+                    <div className="filter-group">
+                      <label>📅 Year</label>
+                      <select
+                        value={dateFilters.year}
+                        onChange={(e) => handleFilterChange('year', e.target.value)}
+                        className="filter-select"
+                      >
+                        <option value="">All Years</option>
+                        {getAvailableYears().map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Month Filter */}
+                    <div className="filter-group">
+                      <label>📊 Month</label>
+                      <select
+                        value={dateFilters.month}
+                        onChange={(e) => handleFilterChange('month', e.target.value)}
+                        disabled={!dateFilters.year}
+                        className="filter-select"
+                      >
+                        <option value="">All Months</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+                    
+                    {/* Week Filter */}
+                    <div className="filter-group">
+                      <label>📍 Week</label>
+                      <select
+                        value={dateFilters.week}
+                        onChange={(e) => handleFilterChange('week', e.target.value)}
+                        disabled={!dateFilters.year || !dateFilters.month}
+                        className="filter-select"
+                      >
+                        <option value="">All Weeks</option>
+                        {dateFilters.year && dateFilters.month && 
+                          getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
+                            <option key={week.number} value={week.number}>
+                              {week.label}
+                            </option>
+                          ))
+                        }
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                
-                {/* Year Filter */}
-                <div className="filter-group">
-                  <label>📅 Year</label>
-                  <select
-                    value={dateFilters.year}
-                    onChange={(e) => handleFilterChange('year', e.target.value)}
-                    className="filter-select"
-                  >
-                    <option value="">All Years</option>
-                    {getAvailableYears().map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
+
+                {/* Content Filters Row */}
+                <div className="filter-section">
+                  <h4 className="filter-section-title">📋 Content Filters</h4>
+                  <div className="filter-row">
+                    {/* District Filter */}
+                    <div className="filter-group">
+                      <label>🏢 District</label>
+                      <select
+                        value={dateFilters.district}
+                        onChange={(e) => handleFilterChange('district', e.target.value)}
+                        className="filter-select"
+                      >
+                        <option value="">All Districts</option>
+                        {filterOptions.districts.map(district => (
+                          <option key={district} value={district}>{district}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Incident Filter */}
+                    <div className="filter-group">
+                      <label>🚨 Incident</label>
+                      <select
+                        value={dateFilters.incident}
+                        onChange={(e) => handleFilterChange('incident', e.target.value)}
+                        className="filter-select"
+                      >
+                        <option value="">All Incidents</option>
+                        {filterOptions.incidents.map(incident => (
+                          <option key={incident} value={incident}>
+                            {incident.length > 30 ? `${incident.substring(0, 30)}...` : incident}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Assigned Filter */}
+                    <div className="filter-group">
+                      <label>👤 Assigned To</label>
+                      <select
+                        value={dateFilters.assigned}
+                        onChange={(e) => handleFilterChange('assigned', e.target.value)}
+                        className="filter-select"
+                      >
+                        <option value="">All Assignees</option>
+                        {filterOptions.assignees.map(assignee => (
+                          <option key={assignee} value={assignee}>{assignee}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Uploader Filter */}
+                    <div className="filter-group">
+                      <label>📝 Uploader</label>
+                      <select
+                        value={dateFilters.uploader}
+                        onChange={(e) => handleFilterChange('uploader', e.target.value)}
+                        className="filter-select"
+                      >
+                        <option value="">All Uploaders</option>
+                        {filterOptions.uploaders.map(uploader => (
+                          <option key={uploader} value={uploader}>{uploader}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                
-                {/* Month Filter */}
-                <div className="filter-group">
-                  <label>📊 Month</label>
-                  <select
-                    value={dateFilters.month}
-                    onChange={(e) => handleFilterChange('month', e.target.value)}
-                    disabled={!dateFilters.year}
-                    className="filter-select"
-                  >
-                    <option value="">All Months</option>
-                    <option value="1">January</option>
-                    <option value="2">February</option>
-                    <option value="3">March</option>
-                    <option value="4">April</option>
-                    <option value="5">May</option>
-                    <option value="6">June</option>
-                    <option value="7">July</option>
-                    <option value="8">August</option>
-                    <option value="9">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                  </select>
-                </div>
-                
-                {/* Week Filter */}
-                <div className="filter-group">
-                  <label>📍 Week</label>
-                  <select
-                    value={dateFilters.week}
-                    onChange={(e) => handleFilterChange('week', e.target.value)}
-                    disabled={!dateFilters.year || !dateFilters.month}
-                    className="filter-select"
-                  >
-                    <option value="">All Weeks</option>
-                    {dateFilters.year && dateFilters.month && 
-                      getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
-                        <option key={week.number} value={week.number}>
-                          {week.label}
-                        </option>
-                      ))
-                    }
-                  </select>
-                </div>      
               </div>
             </div>
           )}
@@ -869,7 +1023,10 @@ export default function LogEntriesTable() {
                           {formatColumnName(column.COLUMN_NAME)}
                         </th>
                       ))}
-                      <th className="table-header-cell table-header-actions">Actions</th>
+                      {/* Only show Actions column for Administrators */}
+                      {hasPermission('Administrator') && (
+                        <th className="table-header-cell table-header-actions">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -904,19 +1061,23 @@ export default function LogEntriesTable() {
                             </td>
                           );
                         })}
-                        <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); 
-                              handleDeleteEntry(entry.original_id || entry.id);
-                            }}
-                            disabled={!entry.id || entry.is_virtual}
-                            className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
-                            title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
-                          >
-                            {entry.is_virtual ? '🔄' : '🗑'} {entry.is_virtual ? 'Recu.' : 'Delete'}
-                          </button>
-                        </td>
+                        
+                        {/* Only show Actions cell for Administrators */}
+                        {hasPermission('Administrator') && (
+                          <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation(); 
+                                handleDeleteEntry(entry.original_id || entry.id);
+                              }}
+                              disabled={!entry.id || entry.is_virtual}
+                              className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
+                              title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
+                            >
+                              {entry.is_virtual ? '🔄' : '🗑'} {entry.is_virtual ? 'Recu.' : 'Delete'}
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

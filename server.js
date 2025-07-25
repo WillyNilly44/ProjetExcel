@@ -99,14 +99,101 @@ app.post('/api/addentryrec', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
+// Update the delete entry endpoint
 app.delete('/api/deleteentry', async (req, res) => {
-  const event = {
-    httpMethod: 'DELETE',
-    body: JSON.stringify(req.body),
-    headers: req.headers
-  };
-  const result = await deleteEntryHandler.handler(event, {});
-  res.status(result.statusCode).json(JSON.parse(result.body));
+  try {
+    const { id, user } = req.body;
+    
+    // Verify user information
+    if (!user || !user.email) {
+      return res.status(401).json({
+        success: false,
+        error: 'User authentication required'
+      });
+    }
+
+    // Check if user has Administrator privileges
+    if (!sql.connected) {
+      await sql.connect(config);
+    }
+
+    const userRequest = new sql.Request();
+    userRequest.input('email', sql.NVarChar(255), user.email);
+    
+    const userResult = await userRequest.query(`
+      SELECT u.*, l.level_Name 
+      FROM users u 
+      LEFT JOIN access_levels l ON u.level_id = l.id 
+      WHERE u.username = @email
+    `);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'User not found in database'
+      });
+    }
+
+    const dbUser = userResult.recordset[0];
+    const userLevel = dbUser.level_Name;
+
+    // Check if user is Administrator
+    if (userLevel !== 'Administrator') {
+      console.log(`❌ Delete attempt denied for ${user.name} (${user.email}) - Level: ${userLevel}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Administrator privileges required to delete entries'
+      });
+    }
+
+    // Proceed with deletion
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Entry ID is required'
+      });
+    }
+
+    const deleteRequest = new sql.Request();
+    deleteRequest.input('id', sql.Int, parseInt(id));
+    
+    // First check if entry exists
+    const checkResult = await deleteRequest.query('SELECT * FROM LOG_ENTRIES WHERE id = @id');
+    
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Entry not found'
+      });
+    }
+
+    const entryToDelete = checkResult.recordset[0];
+    
+    // Delete the entry
+    await deleteRequest.query('DELETE FROM LOG_ENTRIES WHERE id = @id');
+    
+    console.log(`✅ Entry ${id} deleted successfully by Administrator ${user.name} (${user.email})`);
+    console.log(`📋 Deleted entry details:`, {
+      id: entryToDelete.id,
+      incident: entryToDelete.incident,
+      district: entryToDelete.district,
+      log_date: entryToDelete.log_date
+    });
+
+    res.json({
+      success: true,
+      message: `Entry ${id} deleted successfully`,
+      deleted_by: user.name,
+      deleted_at: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Delete entry error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 app.post('/api/updateentry', async (req, res) => {
