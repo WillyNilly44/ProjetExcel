@@ -326,6 +326,130 @@ app.post('/api/savethresholds', async (req, res) => {
   }
 });
 
+// SSO Authentication endpoint
+app.post('/api/sso-auth', async (req, res) => {
+  try {
+    const { ssoId, email, name, department, jobTitle } = req.body;
+
+    if (!sql.connected) {
+      await sql.connect(config);
+    }
+
+    const request = new sql.Request();
+
+    // First, try to find user by SSO ID or email
+    const checkQuery = `
+      SELECT u.id, u.name, u.username, u.email, u.sso_id, u.department, u.job_title,
+             l.level_Name
+      FROM LOG_ENTRIES_USER u
+      LEFT JOIN LOG_ENTRIES_USER_LEVEL ul ON u.id = ul.User_id
+      LEFT JOIN LOG_ENTRIES_LEVEL l ON ul.level_id = l.id
+      WHERE u.sso_id = @ssoId OR u.email = @email
+    `;
+    
+    request.input('ssoId', sql.NVarChar(255), ssoId);
+    request.input('email', sql.NVarChar(255), email);
+    
+    const existingUser = await request.query(checkQuery);
+
+    if (existingUser.recordset.length === 0) {
+      // User doesn't exist - create with default 'Viewer' permissions
+      const insertRequest = new sql.Request();
+      
+      // First insert into LOG_ENTRIES_USER
+      const insertUserQuery = `
+        INSERT INTO LOG_ENTRIES_USER (sso_id, email, name, username, department, job_title, password, created_at)
+        OUTPUT INSERTED.id
+        VALUES (@ssoId, @email, @name, @email, @department, @jobTitle, 'SSO_USER', GETDATE())
+      `;
+      
+      insertRequest.input('ssoId', sql.NVarChar(255), ssoId);
+      insertRequest.input('email', sql.NVarChar(255), email);
+      insertRequest.input('name', sql.NVarChar(255), name);
+      insertRequest.input('department', sql.NVarChar(255), department || 'Unknown');
+      insertRequest.input('jobTitle', sql.NVarChar(255), jobTitle || 'Employee');
+      
+      const userResult = await insertRequest.query(insertUserQuery);
+      const newUserId = userResult.recordset[0].id;
+      
+      // Then insert into LOG_ENTRIES_USER_LEVEL with 'Viewer' level (assuming level_id 2 is Viewer)
+      const levelRequest = new sql.Request();
+      const insertLevelQuery = `
+        INSERT INTO LOG_ENTRIES_USER_LEVEL (User_id, level_id)
+        VALUES (@userId, (SELECT id FROM LOG_ENTRIES_LEVEL WHERE level_Name = 'Viewer'))
+      `;
+      
+      levelRequest.input('userId', sql.Int, newUserId);
+      await levelRequest.query(insertLevelQuery);
+      
+      // Get the newly created user with permissions
+      const newUserRequest = new sql.Request();
+      newUserRequest.input('newUserId', sql.Int, newUserId);
+      const newUserResult = await newUserRequest.query(`
+        SELECT u.id, u.name, u.username, u.email, u.department, u.job_title,
+               l.level_Name
+        FROM LOG_ENTRIES_USER u
+        LEFT JOIN LOG_ENTRIES_USER_LEVEL ul ON u.id = ul.User_id
+        LEFT JOIN LOG_ENTRIES_LEVEL l ON ul.level_id = l.id
+        WHERE u.id = @newUserId
+      `);
+      
+      const newUser = newUserResult.recordset[0];
+      console.log(`✅ New SSO user created: ${name} (${email}) - Level: ${newUser.level_Name}`);
+      
+      res.json({
+        success: true,
+        user: {
+          ...newUser,
+          department,
+          jobTitle
+        },
+        message: 'New user created successfully'
+      });
+      
+    } else {
+      // Update existing user info and last login
+      const updateRequest = new sql.Request();
+      const updateQuery = `
+        UPDATE LOG_ENTRIES_USER 
+        SET name = @name,
+            department = @department,
+            job_title = @jobTitle,
+            last_login = GETDATE()
+        WHERE sso_id = @ssoId OR email = @email
+      `;
+      
+      updateRequest.input('ssoId', sql.NVarChar(255), ssoId);
+      updateRequest.input('email', sql.NVarChar(255), email);
+      updateRequest.input('name', sql.NVarChar(255), name);
+      updateRequest.input('department', sql.NVarChar(255), department || 'Unknown');
+      updateRequest.input('jobTitle', sql.NVarChar(255), jobTitle || 'Employee');
+      
+      await updateRequest.query(updateQuery);
+      
+      const user = existingUser.recordset[0];
+      console.log(`✅ Existing SSO user logged in: ${name} (${email}) - Level: ${user.level_Name}`);
+      
+      res.json({
+        success: true,
+        user: {
+          ...user,
+          department,
+          jobTitle
+        },
+        message: 'User authenticated successfully'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ SSO authentication error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

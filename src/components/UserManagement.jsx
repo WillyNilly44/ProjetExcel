@@ -210,6 +210,37 @@ const UserManagement = () => {
     return icons[levelName] || '👤';
   };
 
+  const renderUserRow = (user) => (
+    <tr key={user.id}>
+      <td>{user.name}</td>
+      <td>{user.username}</td>
+      <td>{user.email}</td>
+      <td>{user.department || 'Unknown'}</td>
+      <td>{user.job_title || 'Employee'}</td>
+      <td>
+        <span className={`level-badge level-${user.level_Name?.toLowerCase()}`}>
+          {user.level_Name}
+        </span>
+      </td>
+      <td>
+        {user.sso_id ? (
+          <span style={{ color: '#0078d4', fontSize: '12px' }}>
+            🔗 SSO User
+          </span>
+        ) : (
+          <span style={{ color: '#6c757d', fontSize: '12px' }}>
+            📝 Local User
+          </span>
+        )}
+      </td>
+      <td>
+        <button onClick={() => editUser(user)} className="edit-btn">
+          ✏️ Edit Level
+        </button>
+      </td>
+    </tr>
+  );
+
   if (!hasPermission('Administrator')) {
     return (
       <div className="access-denied">
@@ -258,21 +289,24 @@ const UserManagement = () => {
               <th>ID</th>
               <th>Name</th>
               <th>Username</th>
+              <th>Email</th>
+              <th>Department</th>
+              <th>Job Title</th>
               <th>Access Level</th>
-              <th>Created</th>
+              <th>User Type</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="6" className="loading-cell">
+                <td colSpan="9" className="loading-cell">
                   ⏳ Loading users...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan="6" className="empty-cell">
+                <td colSpan="9" className="empty-cell">
                   👤 No users found
                 </td>
               </tr>
@@ -309,6 +343,10 @@ const UserManagement = () => {
                     )}
                   </td>
                   
+                  <td>{user.email}</td>
+                  <td>{user.department || 'Unknown'}</td>
+                  <td>{user.job_title || 'Employee'}</td>
+                  
                   <td>
                     {editingUser?.id === user.id ? (
                       <select
@@ -334,7 +372,15 @@ const UserManagement = () => {
                   </td>
                   
                   <td>
-                    {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
+                    {user.sso_id ? (
+                      <span style={{ color: '#0078d4', fontSize: '12px' }}>
+                        🔗 SSO User
+                      </span>
+                    ) : (
+                      <span style={{ color: '#6c757d', fontSize: '12px' }}>
+                        📝 Local User
+                      </span>
+                    )}
                   </td>
                   
                   <td className="actions-cell">

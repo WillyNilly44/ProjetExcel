@@ -1,6 +1,10 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { PublicClientApplication } from '@azure/msal-browser';
+import { msalConfig, loginRequest } from '../config/authConfig';
 
 const AuthContext = createContext();
+
+const msalInstance = new PublicClientApplication(msalConfig);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -13,40 +17,111 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = async (username, password) => {
+  useEffect(() => {
+    initializeSSO();
+  }, []);
+
+  const initializeSSO = async () => {
     try {
-      console.log('Attempting login for:', username);
+      await msalInstance.initialize();
       
-      const response = await fetch('/api/loginuser', {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        const ssoAccount = accounts[0];
+        const userWithPermissions = await fetchUserPermissions(ssoAccount);
+        
+        if (userWithPermissions) {
+          setUser(userWithPermissions);
+          setIsAuthenticated(true);
+        }
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('❌ SSO initialization failed:', error);
+      setIsLoading(false);
+    }
+  };
+
+  const login = async () => {
+    try {
+      console.log('🔐 Starting SSO login...');
+      
+      const response = await msalInstance.loginPopup(loginRequest);
+      const ssoAccount = response.account;
+      
+      const userWithPermissions = await fetchUserPermissions(ssoAccount);
+      
+      if (userWithPermissions) {
+        setUser(userWithPermissions);
+        setIsAuthenticated(true);
+        console.log('✅ SSO login successful:', userWithPermissions);
+        return { success: true };
+      } else {
+        console.log('❌ User not authorized');
+        return { success: false, error: 'User not authorized for this application' };
+      }
+      
+    } catch (error) {
+      console.error('❌ SSO Login error:', error);
+      return { success: false, error: 'SSO login failed. Please try again.' };
+    }
+  };
+
+  const fetchUserPermissions = async (ssoAccount) => {
+    try {
+      const response = await fetch('/api/sso-auth', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({
+          ssoId: ssoAccount.localAccountId,
+          email: ssoAccount.username,
+          name: ssoAccount.name || ssoAccount.username,
+          department: ssoAccount.idTokenClaims?.department,
+          jobTitle: ssoAccount.idTokenClaims?.jobTitle
+        })
       });
       
       const result = await response.json();
       
-      if (result.success) {
-        setUser(result.user);
-        setIsAuthenticated(true);
-        console.log('Login successful:', result.user);
-        return { success: true };
+      if (result.success && result.user) {
+        return {
+          id: result.user.id,
+          name: result.user.name,
+          username: result.user.email, // Use email as username
+          email: result.user.email,
+          level_Name: result.user.level_Name,
+          department: result.user.department,
+          jobTitle: result.user.jobTitle,
+          ssoId: ssoAccount.localAccountId
+        };
       } else {
-        console.log('Login failed:', result.error);
-        return { success: false, error: result.error };
+        console.log('❌ User authorization failed:', result.error);
+        return null;
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Network error' };
+      console.error('❌ Failed to fetch user permissions:', error);
+      return null;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    console.log('User logged out');
+  const logout = async () => {
+    try {
+      await msalInstance.logoutPopup();
+      setUser(null);
+      setIsAuthenticated(false);
+      console.log('✅ SSO logout successful');
+    } catch (error) {
+      console.error('❌ SSO logout failed:', error);
+      setUser(null);
+      setIsAuthenticated(false);
+      window.location.reload();
+    }
   };
-
 
   const hasPermission = (requiredLevel) => {
     if (!user || !user.level_Name) return false;
@@ -70,6 +145,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{ 
       user, 
       isAuthenticated, 
+      isLoading,
       login, 
       logout,
       hasPermission

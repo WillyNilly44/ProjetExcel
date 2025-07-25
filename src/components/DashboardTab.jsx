@@ -24,7 +24,7 @@ const DashboardTab = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ filters })
+        body: JSON.stringify({ filters }) 
       });
 
       if (!response.ok) {

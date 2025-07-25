@@ -2,36 +2,25 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const MiniLogin = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
   const { user, isAuthenticated, login, logout, isLoading } = useAuth();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSSOLogin = async () => {
     setError('');
-
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password'); 
-      return;
-    }
-
+    
     try {
-      const result = await login(username.trim(), password);
+      const result = await login();
       
       if (result.success) {
         setIsOpen(false);
-        setUsername('');
-        setPassword('');
         setError('');
       } else {
-        setError(result.error);
+        setError(result.error || 'SSO login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Login failed. Please try again.');
+      console.error('SSO Login error:', error);
+      setError('SSO login failed. Please try again.');
     }
   };
 
@@ -57,8 +46,13 @@ const MiniLogin = () => {
             <div className="mini-login-header">
               <div className="mini-user-info">
                 <div className="mini-user-name">{user.name}</div>
-                <div className="mini-user-username">@{user.username}</div>
-                <div className="mini-user-level">{user.level_Name}</div>
+                <div className="mini-user-username">{user.email}</div>
+                <div className="mini-user-level">Level: {user.level_Name}</div>
+                {user.department && (
+                  <div className="mini-user-department" style={{ fontSize: '11px', color: '#94a3b8' }}>
+                    {user.department} • {user.jobTitle}
+                  </div>
+                )}
               </div>
             </div>
             <div className="mini-login-actions">
@@ -77,15 +71,16 @@ const MiniLogin = () => {
       <button 
         className="mini-login-trigger"
         onClick={() => setIsOpen(!isOpen)}
+        disabled={isLoading}
       >
-        <span className="mini-login-icon">🔓</span>
-        <span className="mini-login-text">Login</span>
+        <span className="mini-login-icon">{isLoading ? '⏳' : '🔓'}</span>
+        <span className="mini-login-text">{isLoading ? 'Loading...' : 'Login'}</span>
       </button>
 
       {isOpen && (
         <div className="mini-login-dropdown">
           <div className="mini-login-header">
-            <h4>🔐 Staff Login</h4>
+            <h4>🏢 Company Login</h4>
             <button 
               className="mini-login-close"
               onClick={() => setIsOpen(false)}
@@ -94,58 +89,54 @@ const MiniLogin = () => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="mini-login-form">
+          <div className="mini-login-form">
             {error && (
               <div className="mini-login-error">
                 ⚠️ {error}
               </div>
             )}
 
-            <div className="mini-form-group">
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Username"
-                className="mini-form-input"
-                disabled={isLoading}
-                autoComplete="username"
-              />
-            </div>
-
-            <div className="mini-form-group">
-              <div className="mini-password-container">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="mini-form-input"
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="mini-password-toggle"
-                  disabled={isLoading}
-                >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
-                </button>
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <div style={{ 
+                fontSize: '48px', 
+                marginBottom: '16px',
+                color: '#0078d4'
+              }}>
+                🚀
               </div>
+              <p style={{ 
+                marginBottom: '20px', 
+                color: '#6b7280',
+                fontSize: '14px',
+                lineHeight: '1.4'
+              }}>
+                Sign in with your company Microsoft account to access the dashboard.
+              </p>
+              
+              <button
+                onClick={handleSSOLogin}
+                disabled={isLoading}
+                className="mini-login-submit"
+                style={{
+                  width: '100%',
+                  backgroundColor: '#0078d4',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 16px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {isLoading ? '⏳ Connecting...' : '🔐 Sign in with Microsoft'}
+              </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={isLoading || !username.trim() || !password.trim()}
-              className="mini-login-submit"
-            >
-              {isLoading ? '⏳' : '🚀'} Sign In
-            </button>
-          </form>
+          </div>
 
           <div className="mini-login-info">
-            <small>Login to access advanced tools</small>
+            <small>Secure authentication via Microsoft Azure AD</small>
           </div>
         </div>
       )}

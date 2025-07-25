@@ -25,10 +25,16 @@ export default function AddEntryModal({
       columns.forEach(column => {
         if (!['id', 'created_at', 'updated_at'].includes(column.COLUMN_NAME.toLowerCase())) {
           let defaultValue = getDefaultValue(column);
-          
           initialData[column.COLUMN_NAME] = defaultValue;
         }
       });
+      
+      // Always ensure uploader is set, even if not visible
+      const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
+      if (uploaderColumn) {
+        initialData[uploaderColumn.COLUMN_NAME] = currentUser?.username || currentUser?.name || currentUser?.email || 'Unknown User';
+      }
+      
       setFormData(initialData);
       setErrors({});
     }
@@ -69,6 +75,7 @@ export default function AddEntryModal({
     }
   };
 
+  // Update handleSubmit to ensure uploader is always set
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -81,11 +88,13 @@ export default function AddEntryModal({
     try {
       const submissionData = {
         ...formData,
-
-        uploader: currentUser?.username || 'Unknown User',
+        // Always set uploader to current user - this overrides any existing value
+        uploader: currentUser?.username || currentUser?.name || currentUser?.email || 'Unknown User',
         isRecurrence,
         day_of_the_week: isRecurrence ? selectedDayOfWeek : null 
       };
+      
+      console.log('📝 Submitting entry with uploader:', submissionData.uploader);
       
       await onSave(submissionData);
       resetForm();
@@ -98,6 +107,7 @@ export default function AddEntryModal({
     }
   };
 
+  // Update validateForm function to remove uploader from required fields
   const validateForm = () => {
     const newErrors = {};
     
@@ -109,8 +119,8 @@ export default function AddEntryModal({
       'log_start': 'Log Start Time',
       'log_end': 'Log End Time', 
       'log_status': 'Log Status',
-      'log_type': 'Log Type',
-      'uploader': 'Uploader'
+      'log_type': 'Log Type'
+      // Removed 'uploader' from required fields since it's auto-set
     };
     
     Object.entries(requiredFields).forEach(([fieldName, displayName]) => {
@@ -119,14 +129,15 @@ export default function AddEntryModal({
         newErrors[fieldName] = `${displayName} is required`;
       }
     });
-  
-    
+
+    // Time validation
     if (formData.log_start && formData.log_end) {
       if (formData.log_end <= formData.log_start) {
         newErrors.log_end = 'End time must be after start time';
       }
     }
     
+    // Recurrence validation
     if (isRecurrence && !selectedDayOfWeek) {
       newErrors.recurrence = 'Please select a day of the week for recurrence';
     }
@@ -205,6 +216,11 @@ export default function AddEntryModal({
     const value = formData[columnName] || '';
     const hasError = errors[columnName];
 
+    // Skip rendering uploader field - it will be set automatically
+    if (columnName.toLowerCase().includes('uploader')) {
+      return null; // Don't render anything for uploader field
+    }
+
     const baseStyle = {
       width: '100%',
       padding: '12px 16px',
@@ -221,36 +237,7 @@ export default function AddEntryModal({
       borderColor: '#60a5fa',
       boxShadow: '0 0 0 3px rgba(96, 165, 250, 0.1)'
     };
-    if (columnName.toLowerCase().includes('uploader')) {
-      const uploaderValue = currentUser?.username || 'Unknown User';
-      
-      return (
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={uploaderValue}
-            readOnly
-            style={{
-              ...baseStyle,
-              backgroundColor: '#1e293b',
-              color: '#94a3b8',
-              cursor: 'not-allowed',
-              fontWeight: '500'
-            }}
-          />
-          <div style={{
-            fontSize: '12px',
-            color: '#94a3b8',
-            marginTop: '4px',
-            fontStyle: 'italic'
-          }}>
-            Automatically set to current user
-          </div>
-        </div>
-      );
-    }
-    
-    else if (columnName.toLowerCase().includes('incident')) {
+    if (columnName.toLowerCase().includes('incident')) {
       const filteredSuggestions = getFilteredIncidentSuggestions(value);
       
       return (
@@ -654,40 +641,49 @@ export default function AddEntryModal({
               gap: '24px 32px',
               justifyContent: 'start'
             }}>
-              {filteredColumns.map(column => (
-                <div key={column.COLUMN_NAME} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  maxWidth: '280px'
-                }}>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#e2e8f0',
-                    marginBottom: '4px'
-                  }}>
-                    {formatColumnName(column.COLUMN_NAME)}
-                    {column.IS_NULLABLE === 'NO' && (
-                      <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
-                    )}
-                  </label>
-                  {renderInput(column)}
-                  {errors[column.COLUMN_NAME] && (
-                    <div style={{
-                      marginTop: '6px',
-                      fontSize: '13px',
-                      color: '#fecaca',
-                      padding: '4px 8px',
-                      backgroundColor: '#7f1d1d',
-                      borderRadius: '4px',
-                      border: '1px solid #ef4444'
+              {filteredColumns
+                .filter(column => !column.COLUMN_NAME.toLowerCase().includes('uploader')) // Hide uploader field
+                .map(column => {
+                  const renderedInput = renderInput(column);
+                  
+                  // Skip if renderInput returns null (like for uploader)
+                  if (!renderedInput) return null;
+                  
+                  return (
+                    <div key={column.COLUMN_NAME} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      maxWidth: '280px'
                     }}>
-                      {errors[column.COLUMN_NAME]}
+                      <label style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#e2e8f0',
+                        marginBottom: '4px'
+                      }}>
+                        {formatColumnName(column.COLUMN_NAME)}
+                        {column.IS_NULLABLE === 'NO' && (
+                          <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
+                        )}
+                      </label>
+                      {renderedInput}
+                      {errors[column.COLUMN_NAME] && (
+                        <div style={{
+                          marginTop: '6px',
+                          fontSize: '13px',
+                          color: '#fecaca',
+                          padding: '4px 8px',
+                          backgroundColor: '#7f1d1d',
+                          borderRadius: '4px',
+                          border: '1px solid #ef4444'
+                        }}>
+                          {errors[column.COLUMN_NAME]}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
             </div>
 
             {/* Recurrence Section */}
