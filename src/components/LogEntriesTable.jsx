@@ -10,7 +10,8 @@ import UserManagement from './UserManagement';
 import DashboardTab from './DashboardTab';
 import EntryDetailModal from './EntryDetailModal';
 import CalendarView from './CalendarView'; 
-import '../style.css';
+import AddColumnModal from './AddColumnModal';
+
 
 export default function LogEntriesTable() {
   const { hasPermission, user } = useAuth(); 
@@ -45,6 +46,7 @@ export default function LogEntriesTable() {
     assignees: [],
     uploaders: []
   });
+  const [showAddColumnModal, setShowAddColumnModal] = useState(false);
 
   // CONSOLIDATED useEffect - This fixes the hook rule violation
   useEffect(() => {
@@ -796,6 +798,7 @@ export default function LogEntriesTable() {
                 setShowFilters={setShowFilters}
                 setShowColumnManager={setShowColumnManager}
                 setShowAddModal={setShowAddModal}
+                setShowAddColumnModal={setShowAddColumnModal}
                 fetchLogEntries={fetchLogEntries}
                 exportComponent={
                   <PDFExport
@@ -1100,25 +1103,33 @@ export default function LogEntriesTable() {
           )}
 
           {hasPermission('Administrator') && (
-            <ColumnManager 
-              isOpen={showColumnManager}
-              onClose={() => setShowColumnManager(false)}
-              columns={columns}
-              visibleColumns={visibleColumns}
-              columnOrder={columnOrder}
-              onSave={handleColumnManagerSave}
-            />
+            <>
+              <ColumnManager 
+                isOpen={showColumnManager}
+                onClose={() => setShowColumnManager(false)}
+                columns={columns}
+                visibleColumns={visibleColumns}
+                columnOrder={columnOrder}
+                onSave={handleColumnManagerSave}
+              />
+
+              <AddColumnModal
+                isOpen={showAddColumnModal}
+                onClose={() => setShowAddColumnModal(false)}
+                onColumnAdded={handleColumnAdded}
+              />
+            </>
           )}
 
           <EntryDetailModal
-            isOpen={showDetailModal}
-            onClose={handleCloseDetailModal}
-            entry={selectedEntry}
-            columns={columns}
-            formatColumnName={formatColumnName}
-            formatCellValue={formatCellValue}
-            onSave={handleSaveEntry}
-          />
+  isOpen={showDetailModal}
+  onClose={handleCloseDetailModal}
+  entry={selectedEntry}
+  columns={columns}
+  formatColumnName={formatColumnName}
+  formatCellValue={formatCellValue}
+  onSave={handleSaveEditedEntry}  // Changed from handleSaveEntry to handleSaveEditedEntry
+/>
         </>
       )}
 
@@ -1153,3 +1164,69 @@ function getColumnType(columnName, dataType) {
   
   return '';
 }
+/* filepath: c:\Users\William\Documents\ProjetExcel\src\components\LogEntriesTable.jsx */
+
+// Add this function after the handleDeleteEntry function (around line 250)
+const handleColumnAdded = async () => {
+  console.log('🔧 Column added successfully, refreshing data...');
+  
+  try {
+    // Refresh the log entries to get updated column structure
+    await fetchLogEntries();
+    
+    // Show success message
+    setConnectionStatus('✅ Column added successfully! Data refreshed.');
+    
+    // Clear the status message after a few seconds
+    setTimeout(() => {
+      setConnectionStatus('✅ Loaded');
+    }, 3000);
+    
+  } catch (error) {
+    console.error('❌ Error refreshing data after column addition:', error);
+    setConnectionStatus('❌ Column added but failed to refresh data. Please reload the page.');
+  }
+};
+
+// Also add this function to handle saving edited entries from the detail modal
+const handleSaveEditedEntry = async (editedEntry) => {
+  try {
+    console.log('💾 Saving edited entry:', editedEntry);
+    
+    const response = await fetch('/api/updateentry', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(editedEntry)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ HTTP Error:', response.status, errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Entry updated successfully');
+      
+      // Refresh the data to show the updated entry
+      await fetchLogEntries();
+      
+      setConnectionStatus('✅ Entry updated successfully!');
+      setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
+      
+      return true;
+    } else {
+      throw new Error(result.error || 'Failed to update entry');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error updating entry:', error);
+    setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
+    setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
+    return false;
+  }
+};

@@ -1,0 +1,77 @@
+/* Status header */
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-primary);
+}
+
+.status-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+}
+
+.status-text {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.status-text.connected {
+  color: var(--success);
+}
+
+.status-text.disconnected {
+  color: var(--danger);
+}
+
+.status-text.connecting {
+  color: var(--warning);
+}
+
+/* Dashboard header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 2px solid var(--border-light);
+}
+
+.dashboard-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+}
+
+.dashboard-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Toolbar container */
+.toolbar-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* Responsive header */
+@media (max-width: 768px) {
+  .status-header,
+  .dashboard-header {
+    flex-direction: column;
+    gap: var(--space-md);
+    text-align: center;
+  }
+  
+  .toolbar-container {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

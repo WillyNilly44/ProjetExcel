@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import '../style.css';
-import '../threshold-dark.css'; // Add this line
+
 
 const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
   const [thresholds, setThresholds] = useState({

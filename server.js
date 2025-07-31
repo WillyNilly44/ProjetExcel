@@ -413,6 +413,185 @@ app.post('/api/savethresholds', async (req, res) => {
   }
 });
 
+// Add column endpoint
+app.post('/api/add-column', async (req, res) => {
+  try {
+    const { columnData, user } = req.body;
+    
+    // Verify user is Administrator
+    if (!user || !user.email) {
+      return res.status(401).json({
+        success: false,
+        error: 'User authentication required'
+      });
+    }
+
+    if (!sql.connected) {
+      await sql.connect(config);
+    }
+
+    // Check user permissions
+    const userRequest = new sql.Request();
+    userRequest.input('email', sql.NVarChar(255), user.email);
+    
+    const userResult = await userRequest.query(`
+      SELECT u.*, l.level_Name 
+      FROM users u 
+      LEFT JOIN access_levels l ON u.level_id = l.id 
+      WHERE u.username = @email
+    `);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'User not found in database'
+      });
+    }
+
+    const dbUser = userResult.recordset[0];
+    if (dbUser.level_Name !== 'Administrator') {
+      console.log(`❌ Add column attempt denied for ${user.name} (${user.email}) - Level: ${dbUser.level_Name}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Administrator privileges required to add columns'
+      });
+    }
+
+    // Validate column data
+    const { name, dataType, maxLength, isNullable, defaultValue } = columnData;
+    
+    if (!name || !dataType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Column name and data type are required'
+      });
+    }
+
+    // Sanitize column name
+    const sanitizedName = name.replace(/[^a-zA-Z0-9_]/g, '');
+    if (sanitizedName !== name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Column name contains invalid characters'
+      });
+    }
+
+    // Check if column already exists
+    const checkRequest = new sql.Request();
+    checkRequest.input('columnName', sql.NVarChar(255), sanitizedName);
+    
+    const existsResult = await checkRequest.query(`
+      SELECT COUNT(*) as count 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'LOG_ENTRIES' 
+      AND COLUMN_NAME = @columnName
+    `);
+
+    if (existsResult.recordset[0].count > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Column '${sanitizedName}' already exists`
+      });
+    }
+
+    // Build SQL ALTER TABLE statement
+    let sqlType = dataType.toUpperCase();
+    
+    // Handle data type specifics
+    switch (dataType.toLowerCase()) {
+      case 'nvarchar':
+        sqlType = `NVARCHAR(${maxLength || 255})`;
+        break;
+      case 'varchar':
+        sqlType = `VARCHAR(${maxLength || 255})`;
+        break;
+      case 'decimal':
+        const [precision, scale] = (maxLength || '10,2').split(',');
+        sqlType = `DECIMAL(${precision || 10},${scale || 2})`;
+        break;
+      case 'int':
+        sqlType = 'INT';
+        break;
+      case 'datetime':
+        sqlType = 'DATETIME';
+        break;
+      case 'date':
+        sqlType = 'DATE';
+        break;
+      case 'time':
+        sqlType = 'TIME';
+        break;
+      case 'bit':
+        sqlType = 'BIT';
+        break;
+      case 'text':
+        sqlType = 'NVARCHAR(MAX)';
+        break;
+      default:
+        sqlType = 'NVARCHAR(255)';
+    }
+
+    // Add NULL/NOT NULL constraint
+    const nullConstraint = isNullable ? 'NULL' : 'NOT NULL';
+    
+    // Add default value if provided
+    let defaultConstraint = '';
+    if (defaultValue && defaultValue.trim()) {
+      if (dataType === 'bit') {
+        defaultConstraint = ` DEFAULT ${defaultValue.toLowerCase() === 'true' ? '1' : '0'}`;
+      } else if (['int', 'decimal'].includes(dataType)) {
+        defaultConstraint = ` DEFAULT ${defaultValue}`;
+      } else {
+        defaultConstraint = ` DEFAULT '${defaultValue.replace(/'/g, "''")}'`;
+      }
+    }
+
+    // Execute ALTER TABLE statement
+    const alterRequest = new sql.Request();
+    const alterSQL = `ALTER TABLE LOG_ENTRIES ADD [${sanitizedName}] ${sqlType} ${nullConstraint}${defaultConstraint}`;
+    
+    console.log(`🔧 Executing SQL: ${alterSQL}`);
+    
+    await alterRequest.query(alterSQL);
+
+    // Log the action
+    console.log(`✅ Column '${sanitizedName}' added successfully by ${user.name} (${user.email})`);
+    console.log(`📋 Column details:`, {
+      name: sanitizedName,
+      type: sqlType,
+      nullable: isNullable,
+      default: defaultValue || 'None'
+    });
+
+    res.json({
+      success: true,
+      message: `Column '${sanitizedName}' added successfully`,
+      columnName: sanitizedName,
+      columnType: sqlType,
+      added_by: user.name,
+      added_at: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Add column error:', error);
+    
+    // Handle specific SQL errors
+    let errorMessage = error.message;
+    if (error.message.includes('Invalid column name')) {
+      errorMessage = 'Invalid column name. Please use only letters, numbers, and underscores.';
+    } else if (error.message.includes('already exists')) {
+      errorMessage = 'A column with this name already exists.';
+    } else if (error.message.includes('syntax error')) {
+      errorMessage = 'Invalid data type or SQL syntax error.';
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: `Failed to add column: ${errorMessage}`
+    });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });

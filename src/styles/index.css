@@ -1,0 +1,21 @@
+/* Base styles */
+@import './base.css';
+
+/* Layout components */
+@import './layout/containers.css';
+@import './layout/header.css';
+@import './layout/filters.css';
+
+/* UI Components */
+@import './components/buttons.css';
+@import './components/forms.css';
+@import './components/tables.css';
+@import './components/modals.css';
+@import './components/navigation.css';
+@import './components/login.css';
+@import './components/dashboard.css';
+@import './components/calendar.css';
+
+
+/* Utilities */
+@import './utilities.css';

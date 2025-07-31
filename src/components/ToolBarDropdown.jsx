@@ -9,6 +9,7 @@ const ToolbarDropdown = ({
   setShowFilters,
   setShowColumnManager,
   setShowAddModal,
+  setShowAddColumnModal, // Add this line
   fetchLogEntries,
   exportComponent,
   hasPermission,
@@ -183,6 +184,20 @@ const ToolbarDropdown = ({
 
               return null;
             })}
+
+            {/* Add Column Option - Only for Administrators */}
+            {hasPermission('Administrator') && (
+              <button 
+                onClick={() => {
+                  setShowAddColumnModal(true);
+                  setIsOpen(false);
+                }} 
+                className="toolbar-menu-item action"  // Changed from "dropdown-option"
+                title="Add new column to the database table"
+              >
+                <span className="toolbar-menu-item-label">🔧 Add Column</span>  {/* Updated structure */}
+              </button>
+            )}
           </div>
         </div>
       )}

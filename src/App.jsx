@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import LogEntriesTable from './components/LogEntriesTable';
-import './style.css';
 
 function App() {
   return (
     <AuthProvider>
-      <div>
+      <div className="App">
         <LogEntriesTable />
       </div>
     </AuthProvider>

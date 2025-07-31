@@ -198,34 +198,6 @@ const CalendarView = ({
 
   return (
     <div className="calendar-view-container">
-      {/* Calendar View Controls */}
-      <div className="calendar-controls">
-
-        {/* Legend */}
-        <div className="calendar-legend">
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: '#28a745' }}></div>
-            <span>Operational</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: '#dc3545' }}></div>
-            <span>Application</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: '#6c757d' }}></div>
-            <span>Recurring</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: '#20c997' }}></div>
-            <span>Completed</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: '#ffc107' }}></div>
-            <span>Pending</span>
-          </div>
-        </div>
-      </div>
-
       {/* FullCalendar Component */}
       <div className="calendar-wrapper">
         {calendarEvents.length === 0 ? (

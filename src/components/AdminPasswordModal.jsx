@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import '../style.css';
 
 const AdminPasswordModal = ({ isOpen, onClose, onAuthenticate, title = "Admin Authentication Required" }) => {
   const [password, setPassword] = useState('');

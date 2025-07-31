@@ -1,0 +1,660 @@
+/* Update table spacing - make it more compact */
+
+/* Table container with compact spacing */
+.table-container,
+.dashboard-table-container,
+.users-table-container {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin: var(--space-md) 0;
+}
+
+.table-header {
+  background-color: var(--bg-tertiary);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-medium);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.table-info {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  background-color: var(--bg-primary);
+  padding: var(--space-1) var(--space-xs);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+}
+
+.table-scroll-container {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
+  margin: var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+/* Table header cells with compact spacing */
+.table-header-cell {
+  padding: var(--space-sm) var(--space-md);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-medium);
+  background-color: var(--bg-tertiary);
+  border-right: 1px solid var(--border-light);
+}
+
+/* Table cells with compact spacing */
+.table-cell {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-light);
+  vertical-align: top;
+  color: var(--text-primary);
+  transition: all var(--transition-base);
+}
+
+.table-cell.actions {
+  width: 100px;
+  text-align: center;
+  padding: var(--space-xs) var(--space-sm);
+}
+
+/* Cell content with minimal spacing */
+.cell-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  padding: var(--space-1) 0;
+}
+
+.cell-content.note {
+  max-width: 200px;
+  white-space: normal;
+  line-height: var(--leading-normal);
+}
+
+/* Update the table container section */
+
+/* Table container with better spacing */
+.table-container,
+.dashboard-table-container,
+.users-table-container {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin: var(--space-xl) 0;
+}
+
+.table-header {
+  background-color: var(--bg-tertiary);
+  padding: var(--space-lg) var(--space-xl);
+  border-bottom: 1px solid var(--border-medium);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.table-info {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  background-color: var(--bg-primary);
+  padding: var(--space-2) var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.table-scroll-container {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
+  margin: var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+}
+
+/* Data table with better spacing */
+.data-table,
+.users-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-sm);
+  background-color: var(--bg-primary);
+}
+
+.table-head {
+  background-color: var(--bg-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-header-cell {
+  padding: var(--space-md) var(--space-lg);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-medium);
+  background-color: var(--bg-tertiary);
+  border-right: 1px solid var(--border-light);
+}
+
+.table-header-cell:last-child {
+  border-right: none;
+}
+
+.table-header-cell:hover {
+  background-color: var(--bg-secondary);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+/* Table rows with better spacing */
+.table-row {
+  border-bottom: 1px solid var(--border-light);
+  transition: all var(--transition-base);
+}
+
+.table-row.even {
+  background-color: var(--bg-primary);
+}
+
+.table-row.odd {
+  background-color: rgba(30, 41, 59, 0.3);
+}
+
+.table-row:hover:not(.editing) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Table cells with better spacing */
+.table-cell {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-light);
+  vertical-align: top;
+  color: var(--text-primary);
+  transition: all var(--transition-base);
+}
+
+.table-cell:last-child {
+  border-right: none;
+}
+
+.table-cell.actions {
+  width: 120px;
+  text-align: center;
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* Cell content with better spacing */
+.cell-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+  padding: var(--space-1) 0;
+}
+
+.cell-content.note {
+  max-width: 250px;
+  white-space: normal;
+  line-height: var(--leading-relaxed);
+}
+
+/* Table container */
+.table-container,
+.dashboard-table-container,
+.users-table-container {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.table-header {
+  background-color: var(--bg-secondary);
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+}
+
+.table-info {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.table-scroll-container {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* Data table */
+.data-table,
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  background-color: var(--bg-primary);
+}
+
+.table-head {
+  background-color: var(--bg-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.table-header-cell {
+  padding: 12px var(--space-sm);
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-medium);
+  background-color: var(--bg-tertiary);
+}
+
+/* Add these styles for table headers */
+.table-header-cell:hover {
+  background-color: var(--bg-secondary);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-header-actions {
+  width: 80px;
+  text-align: center;
+}
+
+/* Table rows */
+.table-row {
+  border-bottom: 1px solid var(--border-light);
+  transition: background-color 0.2s ease;
+}
+
+.table-row.even {
+  background-color: var(--bg-primary);
+}
+
+.table-row.odd {
+  background-color: var(--bg-secondary);
+}
+
+.table-row:hover:not(.editing) {
+  background-color: var(--bg-tertiary); /* Changed from #f3f4f6 */
+  color: var(--text-primary); /* Ensure text stays readable */
+}
+
+/* Ensure hover doesn't affect text color negatively */
+.table-row:hover:not(.editing) .table-cell {
+  color: var(--text-primary); /* Keep text readable on hover */
+}
+
+.table-row:hover:not(.editing) .virtual-text {
+  color: #1e40af; /* Keep virtual text blue but readable */
+}
+
+.table-row:hover:not(.editing) .normal-text {
+  color: var(--text-primary); /* Normal text stays readable */
+}
+
+/* Virtual row hover improvements */
+.table-row.virtual:hover:not(.editing) {
+  background-color: rgba(59, 130, 246, 0.15); /* Subtle blue tint */
+}
+
+.table-row.virtual.even:hover:not(.editing) {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.table-row.virtual.odd:hover:not(.editing) {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.table-row:hover:not(.editing) {
+  background-color: #f3f4f6;
+}
+
+.table-row.editing {
+  background-color: #fef3c7;
+}
+
+.table-row.virtual {
+  border-left: 4px solid var(--info);
+  opacity: 0.95;
+}
+
+.table-row.virtual.even {
+  background-color: #dbeafe;
+}
+
+.table-row.virtual.odd {
+  background-color: #bfdbfe;
+}
+
+.table-row.clickable-row {
+  cursor: pointer;
+}
+
+/* Table cells */
+.table-cell {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--border-light);
+  vertical-align: top;
+  color: var(--text-primary);
+}
+
+.table-cell.center {
+  text-align: center;
+}
+
+.table-cell.numeric {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.table-cell.status {
+  font-weight: 500;
+  color: var(--success);
+}
+
+.table-cell.note {
+  max-width: 200px;
+}
+
+.table-cell.actions {
+  width: 80px;
+  text-align: center;
+  padding: var(--space-sm);
+}
+
+.table-cell.actions.virtual {
+  background-color: #bfdbfe;
+}
+
+.table-cell.incident.virtual {
+  background-color: #93c5fd;
+}
+
+/* Cell content wrapper */
+.cell-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  position: relative;
+}
+
+.cell-content.note {
+  max-width: 200px;
+}
+
+/* Virtual entry indicators */
+.virtual-icon {
+  font-size: var(--font-size-sm);
+  color: #1e40af;
+  margin-right: 6px;
+  font-weight: bold;
+}
+
+.virtual-text {
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.normal-text {
+  font-weight: normal;
+  color: inherit;
+}
+
+/* Loading and empty states */
+.loading-cell,
+.empty-cell {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Better loading and empty state styling */
+.loading-cell:hover,
+.empty-cell:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+}
+
+.no-data-text {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+}
+
+/* Threshold colors */
+.threshold-green {
+  background-color: var(--success) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+.threshold-yellow {
+  background-color: var(--warning) !important;
+  color: black !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+.threshold-red {
+  background-color: var(--danger) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+/* Ensure threshold colors override other styles */
+.table-cell.threshold-green,
+.table-cell.threshold-yellow,
+.table-cell.threshold-red {
+  border: 2px solid rgba(0,0,0,0.1) !important;
+}
+
+/* Add transition for smooth color changes */
+.table-cell {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Responsive tables */
+@media (max-width: 768px) {
+  .table-scroll-container {
+    overflow-x: auto;
+  }
+  
+  .data-table {
+    min-width: 600px;
+  }
+  
+  .table-header-cell,
+  .table-cell {
+    padding: 6px 4px;
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* Action button hover improvements */
+.action-btn:hover:not(:disabled) {
+  background-color: var(--danger);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.action-btn.virtual:hover {
+  background-color: var(--info);
+  color: white;
+}
+
+/* Cell content hover - make sure text stays readable */
+.table-cell:hover .cell-content {
+  color: inherit; /* Don't change text color on cell hover */
+}
+
+/* Specific hover for different cell types */
+.table-cell.status:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.table-cell.note:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.table-cell.actions:hover {
+  background-color: transparent; /* Don't change action cell background */
+}
+
+/* Clickable row improvements */
+.table-row.clickable-row {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-row.clickable-row:hover:not(.editing) {
+  background-color: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure virtual indicators stay visible on hover */
+.table-row:hover .virtual-icon {
+  color: #1e40af; /* Keep blue but readable */
+}
+
+/* Threshold colors - make sure they work on hover too */
+.table-cell.threshold-green:hover {
+  background-color: #047857 !important; /* Darker green on hover */
+  color: white !important;
+}
+
+.table-cell.threshold-yellow:hover {
+  background-color: #d97706 !important; /* Darker yellow on hover */
+  color: white !important;
+}
+
+.table-cell.threshold-red:hover {
+  background-color: #dc2626 !important; /* Darker red on hover */
+  color: white !important;
+}
+
+/* Editing row - make sure it doesn't get hover effects */
+.table-row.editing {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 2px solid var(--primary) !important;
+}
+
+.table-row.editing:hover {
+  background-color: rgba(59, 130, 246, 0.1) !important; /* Keep same color */
+  transform: none !important; /* No transform when editing */
+  box-shadow: none !important; /* No shadow when editing */
+}
+
+/* Better focus states */
+.table-row:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Inline editing improvements */
+.inline-input,
+.inline-select {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  transition: border-color 0.2s ease;
+}
+
+.inline-input:focus,
+.inline-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  background-color: var(--bg-primary);
+}
+
+.inline-input:hover:not(:focus),
+.inline-select:hover:not(:focus) {
+  border-color: var(--primary);
+  background-color: var(--bg-primary);
+}
+
+/* Edit actions in table */
+.edit-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: center;
+}
+
+.edit-actions .btn {
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+}
+
+.view-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: center;
+}
+
+.view-actions .btn {
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+}
