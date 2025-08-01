@@ -139,7 +139,6 @@ app.delete('/api/deleteentry', async (req, res) => {
 
     // Check if user is Administrator
     if (userLevel !== 'Administrator') {
-      console.log(`❌ Delete attempt denied for ${user.name} (${user.email}) - Level: ${userLevel}`);
       return res.status(403).json({
         success: false,
         error: 'Administrator privileges required to delete entries'
@@ -171,14 +170,6 @@ app.delete('/api/deleteentry', async (req, res) => {
     
     // Delete the entry
     await deleteRequest.query('DELETE FROM LOG_ENTRIES WHERE id = @id');
-    
-    console.log(`✅ Entry ${id} deleted successfully by Administrator ${user.name} (${user.email})`);
-    console.log(`📋 Deleted entry details:`, {
-      id: entryToDelete.id,
-      incident: entryToDelete.incident,
-      district: entryToDelete.district,
-      log_date: entryToDelete.log_date
-    });
 
     res.json({
       success: true,
@@ -279,7 +270,6 @@ app.post('/api/getdashboard', async (req, res) => {
 // GET /api/getthresholds - Fetch thresholds from database
 app.get('/api/getthresholds', async (req, res) => {
   try {
-    console.log('📊 Fetching thresholds from database...');
 
     // Ensure we're connected to the database
     if (!sql.connected) {
@@ -302,8 +292,6 @@ app.get('/api/getthresholds', async (req, res) => {
 
     const result = await request.query(query);
 
-    console.log(`✅ Found ${result.recordset.length} threshold records`);
-
     res.json({
       success: true,
       data: result.recordset,
@@ -324,8 +312,6 @@ app.get('/api/getthresholds', async (req, res) => {
 // POST /api/savethresholds - Save thresholds to database
 app.post('/api/savethresholds', async (req, res) => {
   try {
-    console.log('💾 Saving thresholds to database...');
-    console.log('📊 Threshold data:', req.body);
 
     const { 
       maintenance_yellow, 
@@ -396,7 +382,6 @@ app.post('/api/savethresholds', async (req, res) => {
 
     const result = await mainRequest.query(query);
 
-    console.log(`✅ Thresholds ${hasExistingThresholds ? 'updated' : 'inserted'} successfully`);
 
     res.json({
       success: true,
@@ -450,7 +435,6 @@ app.post('/api/add-column', async (req, res) => {
 
     const dbUser = userResult.recordset[0];
     if (dbUser.level_Name !== 'Administrator') {
-      console.log(`❌ Add column attempt denied for ${user.name} (${user.email}) - Level: ${dbUser.level_Name}`);
       return res.status(403).json({
         success: false,
         error: 'Administrator privileges required to add columns'
@@ -550,19 +534,8 @@ app.post('/api/add-column', async (req, res) => {
     const alterRequest = new sql.Request();
     const alterSQL = `ALTER TABLE LOG_ENTRIES ADD [${sanitizedName}] ${sqlType} ${nullConstraint}${defaultConstraint}`;
     
-    console.log(`🔧 Executing SQL: ${alterSQL}`);
     
     await alterRequest.query(alterSQL);
-
-    // Log the action
-    console.log(`✅ Column '${sanitizedName}' added successfully by ${user.name} (${user.email})`);
-    console.log(`📋 Column details:`, {
-      name: sanitizedName,
-      type: sqlType,
-      nullable: isNullable,
-      default: defaultValue || 'None'
-    });
-
     res.json({
       success: true,
       message: `Column '${sanitizedName}' added successfully`,

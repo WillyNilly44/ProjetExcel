@@ -75,7 +75,6 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
     setIsLoading(true);
 
     try {
-      console.log('🔧 Adding new column:', columnData);
 
       const response = await fetch('/api/add-column', {
         method: 'POST',

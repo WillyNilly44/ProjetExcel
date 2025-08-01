@@ -43,8 +43,7 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
           impact: dbThresholds.impact || 5
         });
       } else {
-        // If no thresholds exist, keep defaults
-        console.log('📊 No thresholds found in database, using defaults');
+
       }
 
     } catch (error) {

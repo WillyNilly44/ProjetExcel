@@ -31,10 +31,10 @@ export const AuthProvider = ({ children }) => {
           const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
           
           if (sessionAge < maxSessionAge) {
-            console.log('✅ Restored user session from localStorage');
+           
             setUser(userObj);
           } else {
-            console.log('⏰ Stored session expired, clearing localStorage');
+           
             localStorage.removeItem('logViewerUser');
             localStorage.removeItem('logViewerUserTimestamp');
           }
@@ -57,7 +57,6 @@ export const AuthProvider = ({ children }) => {
       try {
         localStorage.setItem('logViewerUser', JSON.stringify(user));
         localStorage.setItem('logViewerUserTimestamp', Date.now().toString());
-        console.log('💾 User session saved to localStorage');
       } catch (error) {
         console.error('❌ Error saving user to localStorage:', error);
       }
@@ -65,13 +64,11 @@ export const AuthProvider = ({ children }) => {
       // Clear localStorage when user logs out
       localStorage.removeItem('logViewerUser');
       localStorage.removeItem('logViewerUserTimestamp');
-      console.log('🗑️ User session cleared from localStorage');
     }
   }, [user]);
 
   const login = async (username, password) => {
     try {
-      console.log('🔑 Attempting login...');
       
       const response = await fetch('/api/loginuser', {
         method: 'POST',
@@ -89,7 +86,6 @@ export const AuthProvider = ({ children }) => {
       const userData = await response.json();
       
       if (userData.success && userData.user) {
-        console.log('✅ Login successful:', userData.user);
         setUser(userData.user);
         return { success: true, user: userData.user };
       } else {
@@ -102,9 +98,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log('👋 Logging out user');
     setUser(null);
-    // localStorage will be cleared by the useEffect above
   };
 
   const hasPermission = (requiredLevel) => {
@@ -127,7 +121,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (updatedUserData) => {
-    console.log('🔄 Updating user data');
     setUser(prev => ({
       ...prev,
       ...updatedUserData
@@ -140,8 +133,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      console.log('🔄 Refreshing user session...');
-      
+       
       const response = await fetch('/api/validateuser', {
         method: 'POST',
         headers: {
@@ -151,7 +143,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (!response.ok) {
-        console.log('❌ Failed to refresh user session');
         logout();
         return false;
       }
@@ -159,11 +150,9 @@ export const AuthProvider = ({ children }) => {
       const userData = await response.json();
       
       if (userData.success && userData.user) {
-        console.log('✅ User session refreshed');
         setUser(userData.user);
         return true;
       } else {
-        console.log('❌ User session invalid');
         logout();
         return false;
       }

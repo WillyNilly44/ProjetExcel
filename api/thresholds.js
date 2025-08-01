@@ -5,7 +5,6 @@ const sql = require('mssql');
 // GET /api/getthresholds - Fetch thresholds from database
 router.get('/getthresholds', async (req, res) => {
   try {
-    console.log('📊 Fetching thresholds from database...');
 
     const request = new sql.Request();
     
@@ -23,7 +22,6 @@ router.get('/getthresholds', async (req, res) => {
 
     const result = await request.query(query);
 
-    console.log(`✅ Found ${result.recordset.length} threshold records`);
 
     res.json({
       success: true,
@@ -45,8 +43,6 @@ router.get('/getthresholds', async (req, res) => {
 // POST /api/savethresholds - Save thresholds to database
 router.post('/savethresholds', async (req, res) => {
   try {
-    console.log('💾 Saving thresholds to database...');
-    console.log('📊 Threshold data:', req.body);
 
     const { 
       maintenance_yellow, 
@@ -108,8 +104,6 @@ router.post('/savethresholds', async (req, res) => {
     request.input('impact', sql.Int, parseInt(impact) || 0);
 
     const result = await request.query(query);
-
-    console.log(`✅ Thresholds ${hasExistingThresholds ? 'updated' : 'inserted'} successfully`);
 
     res.json({
       success: true,

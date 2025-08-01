@@ -22,18 +22,13 @@ const CalendarView = ({
   };
 
   const calendarEvents = useMemo(() => {
-    console.log('📅 Starting calendar conversion...', { 
-      dataLength: data?.length || 0, 
-      columnsLength: columns?.length || 0 
-    });
+    
 
     if (!data || !Array.isArray(data) || data.length === 0) {
-      console.log('📅 No data available');
       return [];
     }
 
     if (!columns || !Array.isArray(columns) || columns.length === 0) {
-      console.log('📅 No columns available');
       return [];
     }
 
@@ -62,16 +57,9 @@ const CalendarView = ({
       });
 
       if (!dateColumn) {
-        console.log('📅 No date column found');
         return [];
       }
 
-      console.log('📅 Found columns:', {
-        date: dateColumn.COLUMN_NAME,
-        title: titleColumn?.COLUMN_NAME,
-        status: statusColumn?.COLUMN_NAME,
-        logType: logTypeColumn?.COLUMN_NAME
-      });
 
       const events = [];
       
@@ -176,7 +164,6 @@ const CalendarView = ({
         }
       }
 
-      console.log(`📅 Successfully created ${events.length} calendar events`);
       return events;
 
     } catch (error) {

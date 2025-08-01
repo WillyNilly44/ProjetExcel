@@ -64,7 +64,6 @@ const DashboardTab = () => {
   // Add this temporarily in your component to see all available columns
   useEffect(() => {
     if (columns.length > 0) {
-      console.log('📊 Dashboard columns available:', columns.map(col => col.COLUMN_NAME));
     }
   }, [columns]);
 

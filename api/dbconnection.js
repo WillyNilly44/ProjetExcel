@@ -43,10 +43,8 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('🔌 Connecting to:', config.server);
     
     pool = await sql.connect(config);
-    console.log('✅ Connected successfully');
     
     const query = `
       SELECT 
@@ -107,7 +105,6 @@ exports.handler = async (event, context) => {
     if (pool) {
       try {
         await pool.close();
-        console.log('🔌 Connection closed');
       } catch (closeError) {
         console.error('⚠️ Error closing connection:', closeError);
       }

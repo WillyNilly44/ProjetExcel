@@ -182,7 +182,7 @@ const ExcelExport = ({
 
       saveAs(file, finalFilename);
 
-      console.log(`Excel export completed: ${finalFilename}`);
+
       
       const filteredCount = data.filter(entry => !entry.is_virtual || exportOptions.includeVirtualEntries).length;
       alert(`Excel export completed successfully!\n\nExported ${filteredCount} records with ${allColumns.length} columns to ${finalFilename}`);

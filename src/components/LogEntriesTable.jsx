@@ -1168,7 +1168,7 @@ function getColumnType(columnName, dataType) {
 
 // Add this function after the handleDeleteEntry function (around line 250)
 const handleColumnAdded = async () => {
-  console.log('🔧 Column added successfully, refreshing data...');
+
   
   try {
     // Refresh the log entries to get updated column structure
@@ -1191,7 +1191,7 @@ const handleColumnAdded = async () => {
 // Also add this function to handle saving edited entries from the detail modal
 const handleSaveEditedEntry = async (editedEntry) => {
   try {
-    console.log('💾 Saving edited entry:', editedEntry);
+
     
     const response = await fetch('/api/updateentry', {
       method: 'PUT',
@@ -1210,7 +1210,7 @@ const handleSaveEditedEntry = async (editedEntry) => {
     const result = await response.json();
     
     if (result.success) {
-      console.log('✅ Entry updated successfully');
+ 
       
       // Refresh the data to show the updated entry
       await fetchLogEntries();
