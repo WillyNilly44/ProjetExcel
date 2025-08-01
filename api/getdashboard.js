@@ -30,7 +30,7 @@ exports.handler = async (event, context) => {
 
     await sql.connect(config);
 
-    
+    // Get column information
     const columnsResult = await sql.query`
       SELECT 
         COLUMN_NAME,
@@ -43,10 +43,9 @@ exports.handler = async (event, context) => {
       ORDER BY ORDINAL_POSITION
     `;
 
- 
+    // Build WHERE clause for filters
     let whereClause = '';
     const queryParams = [];
-
 
     if (filters.month) {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
@@ -54,39 +53,35 @@ exports.handler = async (event, context) => {
       queryParams.push({ name: 'month', type: sql.VarChar, value: filters.month });
     }
 
-  
     if (filters.week) {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
       whereClause += 'week = @week';
       queryParams.push({ name: 'week', type: sql.VarChar, value: filters.week });
     }
 
-
     if (filters.maintenanceMin !== undefined && filters.maintenanceMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
-      whereClause += 'maintenance >= @maintenanceMin';
+      whereClause += 'maintenance_1 >= @maintenanceMin';
       queryParams.push({ name: 'maintenanceMin', type: sql.Int, value: parseInt(filters.maintenanceMin) });
     }
 
     if (filters.maintenanceMax !== undefined && filters.maintenanceMax !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
-      whereClause += 'maintenance <= @maintenanceMax';
+      whereClause += 'maintenance_1 <= @maintenanceMax';
       queryParams.push({ name: 'maintenanceMax', type: sql.Int, value: parseInt(filters.maintenanceMax) });
     }
 
-
     if (filters.incidentsMin !== undefined && filters.incidentsMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
-      whereClause += 'incidents >= @incidentsMin';
+      whereClause += 'incidents_1 >= @incidentsMin';
       queryParams.push({ name: 'incidentsMin', type: sql.Int, value: parseInt(filters.incidentsMin) });
     }
 
     if (filters.incidentsMax !== undefined && filters.incidentsMax !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
-      whereClause += 'incidents <= @incidentsMax';
+      whereClause += 'incidents_1 <= @incidentsMax';
       queryParams.push({ name: 'incidentsMax', type: sql.Int, value: parseInt(filters.incidentsMax) });
     }
-
 
     if (filters.businessImpactMin !== undefined && filters.businessImpactMin !== '') {
       whereClause += whereClause ? ' AND ' : ' WHERE ';
@@ -100,42 +95,88 @@ exports.handler = async (event, context) => {
       queryParams.push({ name: 'businessImpactMax', type: sql.Int, value: parseInt(filters.businessImpactMax) });
     }
 
-    const query = `
+    // First, get the actual data
+    const dataQuery = `
       SELECT * 
       FROM LOG_ENTRIES_DASHBOARD 
       ${whereClause}
       ORDER BY id DESC
     `;
 
-    const request = new sql.Request();
+    const dataRequest = new sql.Request();
     queryParams.forEach(param => {
-      request.input(param.name, param.type, param.value);
+      dataRequest.input(param.name, param.type, param.value);
     });
 
-    const result = await request.query(query);
+    const dataResult = await dataRequest.query(dataQuery);
 
+    // Calculate averages for maintenance and incident columns
+    const columnAverages = {};
+    const columns = columnsResult.recordset;
+    
+    // Find maintenance and incident columns
+    const maintenanceColumns = columns.filter(col => 
+      col.COLUMN_NAME.toLowerCase().includes('maintenance_') &&
+      (col.DATA_TYPE.includes('int') || col.DATA_TYPE.includes('decimal') || col.DATA_TYPE.includes('float'))
+    );
+    
+    const incidentColumns = columns.filter(col => 
+      col.COLUMN_NAME.toLowerCase().includes('incidents_') &&
+      (col.DATA_TYPE.includes('int') || col.DATA_TYPE.includes('decimal') || col.DATA_TYPE.includes('float'))
+    );
+
+    // Calculate averages for each column
+    [...maintenanceColumns, ...incidentColumns].forEach(col => {
+      const columnName = col.COLUMN_NAME;
+      const values = dataResult.recordset
+        .map(row => row[columnName])
+        .filter(val => val !== null && val !== undefined && !isNaN(val));
+      
+      if (values.length > 0) {
+        const average = values.reduce((sum, val) => sum + parseFloat(val), 0) / values.length;
+        columnAverages[columnName] = Math.round(average * 100) / 100; // Round to 2 decimal places
+      } else {
+        columnAverages[columnName] = 0;
+      }
+    });
+
+    // Modify column information to include averages in display names
+    const modifiedColumns = columns.map(col => {
+      const newCol = { ...col };
+      
+      if (columnAverages[col.COLUMN_NAME] !== undefined) {
+        // For maintenance and incident columns, show the average as the header
+        newCol.DISPLAY_NAME = `${columnAverages[col.COLUMN_NAME]} Avg`;
+        newCol.ORIGINAL_NAME = col.COLUMN_NAME;
+        newCol.AVERAGE_VALUE = columnAverages[col.COLUMN_NAME];
+        newCol.IS_AVERAGE_COLUMN = true;
+      } else {
+        // For other columns, keep original name but formatted
+        newCol.DISPLAY_NAME = col.COLUMN_NAME;
+        newCol.IS_AVERAGE_COLUMN = false;
+      }
+      
+      return newCol;
+    });
+
+    // Calculate summary stats
     const summaryStats = {
-      totalRecords: result.recordset.length,
-      totalMaintenance: result.recordset.reduce((sum, row) => sum + (row.maintenance || 0), 0),
-      totalIncidents: result.recordset.reduce((sum, row) => sum + (row.incidents || 0), 0),
-      totalBusinessImpact: result.recordset.reduce((sum, row) => sum + (row.business_impacted || 0), 0),
-      avgMaintenance: result.recordset.length > 0 ? 
-        (result.recordset.reduce((sum, row) => sum + (row.maintenance || 0), 0) / result.recordset.length).toFixed(1) : 0,
-      avgIncidents: result.recordset.length > 0 ? 
-        (result.recordset.reduce((sum, row) => sum + (row.incidents || 0), 0) / result.recordset.length).toFixed(1) : 0,
-      avgBusinessImpact: result.recordset.length > 0 ? 
-        (result.recordset.reduce((sum, row) => sum + (row.business_impacted || 0), 0) / result.recordset.length).toFixed(1) : 0
+      totalRecords: dataResult.recordset.length,
+      columnAverages,
+      appliedFilters: filters,
+      timestamp: new Date().toISOString()
     };
 
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        data: result.recordset,
-        columns: columnsResult.recordset,
+        data: dataResult.recordset,
+        columns: modifiedColumns,
         summary: summaryStats,
         metadata: {
-          totalRecords: result.recordset.length,
+          totalRecords: dataResult.recordset.length,
+          columnAverages,
           appliedFilters: filters,
           timestamp: new Date().toISOString()
         }

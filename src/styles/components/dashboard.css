@@ -128,6 +128,190 @@
   font-weight: 600;
 }
 
+/* Update the existing styles with better contrast and visibility */
+
+/* Table cell styling for better visibility */
+.table-cell {
+  text-align: center;
+  font-weight: 600; /* Increased from 500 */
+  padding: var(--space-sm);
+  border: 1px solid var(--border-medium);
+  font-size: var(--font-size-base); /* Ensure readable size */
+  color: var(--text-primary); /* Ensure good contrast */
+  background-color: var(--bg-primary);
+}
+
+/* Improved average column headers */
+.table-header-cell.average-header {
+  background-color: #2c3e50 !important; /* Darker, more readable background */
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: var(--font-size-base) !important;
+  text-align: center !important;
+  position: relative;
+  border: 2px solid #34495e !important;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3); /* Add text shadow for better readability */
+}
+
+.table-header-cell.average-header:hover {
+  background-color: #34495e !important; /* Darker hover, not too bright */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Better maintenance column styling */
+.table-header-cell[title*="maintenance"] {
+  background-color: #2d5a3d !important; /* Darker green */
+  border-color: #1e3a28 !important;
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+}
+
+.table-header-cell[title*="maintenance"]:hover {
+  background-color: #3d6b4d !important; /* Slightly lighter on hover */
+}
+
+/* Better incident column styling */
+.table-header-cell[title*="incident"] {
+  background-color: #a83232 !important; /* Darker red */
+  border-color: #7d2525 !important;
+  color: #ffffff !important;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+}
+
+.table-header-cell[title*="incident"]:hover {
+  background-color: #b84242 !important; /* Slightly lighter on hover */
+}
+
+/* Regular column headers with better contrast */
+.table-header-cell:not(.average-header) {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 700; /* Increased from 600 */
+  font-size: var(--font-size-base);
+  padding: var(--space-sm);
+  border: 1px solid var(--border-medium);
+}
+
+/* Improved color coding for better visibility */
+.table-cell.threshold-green {
+  background-color: #d1f2d1 !important; /* Lighter background */
+  color: #0d4f1a !important; /* Darker text */
+  border-color: #28a745 !important;
+  font-weight: 700 !important;
+}
+
+.table-cell.threshold-yellow {
+  background-color: #fff8dc !important; /* Lighter background */
+  color: #6b5600 !important; /* Darker text */
+  border-color: #ffc107 !important;
+  font-weight: 700 !important;
+}
+
+.table-cell.threshold-red {
+  background-color: #fce4e4 !important; /* Lighter background */
+  color: #5a1a1a !important; /* Darker text */
+  border-color: #dc3545 !important;
+  font-weight: 700 !important;
+}
+
+/* Enhanced number visibility in cells */
+.table-cell[data-type="numeric"] {
+  font-family: 'Segoe UI', 'Roboto', 'Arial', monospace;
+  font-weight: 700;
+  font-size: 16px; /* Larger font for numbers */
+  color: #2c3e50; /* Dark, readable color */
+}
+
+/* Business Impact column styling */
+.table-cell[data-column*="business"] {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+}
+
+/* Hover effects for table cells */
+.table-cell:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Add zebra striping for better readability */
+.table-row:nth-child(even) .table-cell {
+  background-color: var(--bg-primary);
+}
+
+.table-row:nth-child(odd) .table-cell {
+  background-color: var(--bg-primary);
+}
+
+/* Ensure numbers stand out in maintenance/incident columns */
+.table-cell[data-column*="maintenance"] {
+  background-color: rgba(40, 167, 69, 0.05);
+  border-left: 3px solid rgba(40, 167, 69, 0.3);
+  font-weight: 700;
+  color: #1e4d2b;
+}
+
+.table-cell[data-column*="incident"] {
+  background-color: rgba(220, 53, 69, 0.05);
+  border-left: 3px solid rgba(220, 53, 69, 0.3);
+  font-weight: 700;
+  color: #7d1b24;
+}
+
+/* Table container improvements */
+.table-container {
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+/* Table header improvements */
+.table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Better focus states for accessibility */
+.table-cell:focus,
+.table-header-cell:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+/* Print styles for better visibility */
+@media print {
+  .table-cell {
+    color: #000 !important;
+    background-color: #fff !important;
+    border: 1px solid #000 !important;
+  }
+  
+  .table-header-cell {
+    background-color: #f0f0f0 !important;
+    color: #000 !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .table-cell {
+    border: 2px solid #000;
+    color: #000;
+    background-color: #fff;
+  }
+  
+  .table-header-cell {
+    border: 2px solid #000;
+    color: #000;
+    background-color: #f0f0f0;
+  }
+}
+
 /* Responsive dashboard */
 @media (max-width: 768px) {
   .dashboard-stats {

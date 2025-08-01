@@ -67,7 +67,28 @@ const DashboardTab = () => {
     }
   }, [columns]);
 
-  const formatColumnName = (columnName) => {
+  const formatColumnName = (column) => {
+    // If column is an object with display name (from new API)
+    if (typeof column === 'object' && column.DISPLAY_NAME) {
+      if (column.IS_AVERAGE_COLUMN) {
+        // Return the average value as the header (e.g., "16.29 Avg")
+        return column.DISPLAY_NAME;
+      } else {
+        // Return the original column name formatted
+        return column.DISPLAY_NAME
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (char) => char.toUpperCase());
+      }
+    }
+    
+    // Fallback for string column names
+    const columnName = typeof column === 'string' ? column : column.COLUMN_NAME;
+    
+    // Handle special cases for non-average columns
+    if (columnName === 'month') return 'Month';
+    if (columnName === 'week') return 'Week';
+    if (columnName === 'business_impacted') return 'Business Impacted';
+    
     return columnName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
@@ -289,10 +310,13 @@ const DashboardTab = () => {
                     .map((column) => (
                       <th 
                         key={column.COLUMN_NAME} 
-                        className="table-header-cell"
-                        title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
+                        className={`table-header-cell ${column.IS_AVERAGE_COLUMN ? 'average-header' : ''}`}
+                        title={column.IS_AVERAGE_COLUMN ? 
+                          `${column.ORIGINAL_NAME?.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())} - Average: ${column.AVERAGE_VALUE}` : 
+                          `${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`
+                        }
                       >
-                        {formatColumnName(column.COLUMN_NAME)}
+                        {formatColumnName(column)}
                       </th>
                     ))}
                 </tr>
