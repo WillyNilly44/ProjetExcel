@@ -59,17 +59,6 @@ const ToolbarDropdown = ({
       type: 'divider'
     },
     {
-      id: 'pdf-export',
-      label: '📄 Export PDF',
-      type: 'component',
-      component: exportComponent,
-      disabled: isLoading || columnsLength === 0
-    },
-    {
-      id: 'divider-2',
-      type: 'divider'
-    },
-    {
       id: 'add-entry',
       label: '➕ Add Entry',
       type: 'action',
@@ -81,7 +70,18 @@ const ToolbarDropdown = ({
       requiresLogin: !hasPermission('Operator')
     },
     {
-      id: 'columns',
+      id: 'add-column',
+      label: '🔧 Add Column',
+      type: 'action',
+      action: () => {
+        setShowAddColumnModal(true);
+        setIsOpen(false);
+      },
+      disabled: isLoading || columnsLength === 0 || !hasPermission('Administrator'),
+      requiresLogin: !hasPermission('Administrator')
+    },
+    {
+      id: 'manage-columns',
       label: '⚙️ Manage Columns',
       type: 'action',
       action: () => {
@@ -92,115 +92,116 @@ const ToolbarDropdown = ({
       requiresLogin: !hasPermission('Administrator')
     },
     {
-      id: 'divider-3',
+      id: 'divider-2',
       type: 'divider'
     },
     {
-      id: 'refresh',
-      label: isLoading ? '⏳ Loading...' : '🔄 Refresh Data',
-      type: 'action',
-      action: () => {
-        fetchLogEntries();
-        setIsOpen(false);
-      },
-      disabled: isLoading
+      id: 'pdf-export',
+      label: '📄 Export PDF',
+      type: 'component',
+      component: exportComponent,
+      disabled: isLoading || columnsLength === 0
     }
   ];
 
   return (
-    <div className="toolbar-dropdown" ref={dropdownRef}>
-      {/* Main Trigger Button */}
+    <div className="toolbar-dropdown-container">
+      {/* Refresh Button - Outside the dropdown */}
       <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`toolbar-trigger ${isOpen ? 'active' : ''}`}
+        onClick={() => fetchLogEntries()}
         disabled={isLoading}
+        className={`toolbar-refresh-btn ${isLoading ? 'loading' : ''}`}
+        title="Refresh data from database"
       >
-        <span className="toolbar-trigger-icon">⚙️</span>
-        <span className="toolbar-trigger-text">Tools</span>
-        <span className={`toolbar-trigger-arrow ${isOpen ? 'up' : 'down'}`}>
-          {isOpen ? '▲' : '▼'}
+        <span className="toolbar-refresh-icon">
+          {isLoading ? '⏳' : '🔄'}
+        </span>
+        <span className="toolbar-refresh-text">
+          {isLoading ? 'Loading...' : 'Refresh'}
         </span>
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="toolbar-menu">
-          <div className="toolbar-menu-header">
-            <span className="toolbar-menu-title">🛠️ Table Tools</span>
-            <button 
-              onClick={() => setIsOpen(false)}
-              className="toolbar-menu-close"
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div className="toolbar-menu-items">
-            {menuItems.map((item) => {
-              if (item.type === 'divider') {
-                return <div key={item.id} className="toolbar-menu-divider" />;
-              }
+      {/* Main Dropdown */}
+      <div className="toolbar-dropdown" ref={dropdownRef}>
+        {/* Main Trigger Button */}
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className={`toolbar-trigger ${isOpen ? 'active' : ''}`}
+          disabled={isLoading}
+        >
+          <span className="toolbar-trigger-icon">⚙️</span>
+          <span className="toolbar-trigger-text">Tools</span>
+          <span className={`toolbar-trigger-arrow ${isOpen ? 'up' : 'down'}`}>
+            {isOpen ? '▲' : '▼'}
+          </span>
+        </button>
 
-              if (item.type === 'toggle') {
-                return (
-                  <button
-                    key={item.id}
-                    onClick={item.action}
-                    disabled={item.disabled}
-                    className={`toolbar-menu-item toggle ${item.active ? 'active' : 'inactive'}`}
-                  >
-                    <span className="toolbar-menu-item-label">{item.label}</span>
-                    <span className="toolbar-menu-item-status">
-                      {item.active ? '✅' : '❌'}
-                    </span>
-                  </button>
-                );
-              }
-
-              if (item.type === 'component') {
-                return (
-                  <div key={item.id} className="toolbar-menu-component">
-                    {item.component}
-                  </div>
-                );
-              }
-
-              if (item.type === 'action') {
-                return (
-                  <button
-                    key={item.id}
-                    onClick={item.action}
-                    disabled={item.disabled}
-                    className={`toolbar-menu-item action ${item.requiresLogin ? 'requires-login' : ''}`}
-                    title={item.requiresLogin ? 'Login required for this feature' : ''}
-                  >
-                    <span className="toolbar-menu-item-label">{item.label}</span>
-                    {item.requiresLogin && (
-                      <span className="toolbar-menu-item-lock">🔒</span>
-                    )}
-                  </button>
-                );
-              }
-
-              return null;
-            })}
-
-            {/* Add Column Option - Only for Administrators */}
-            {hasPermission('Administrator') && (
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div className="toolbar-menu">
+            <div className="toolbar-menu-header">
+              <span className="toolbar-menu-title">🛠️ Table Tools</span>
               <button 
-                onClick={() => {
-                  setShowAddColumnModal(true);
-                  setIsOpen(false);
-                }} 
-                className="toolbar-menu-item action"  // Changed from "dropdown-option"
-                title="Add new column to the database table"
+                onClick={() => setIsOpen(false)}
+                className="toolbar-menu-close"
               >
-                <span className="toolbar-menu-item-label">🔧 Add Column</span>  {/* Updated structure */}
+                ✕
               </button>
-            )}
+            </div>
+            
+            <div className="toolbar-menu-items">
+              {menuItems.map((item) => {
+                if (item.type === 'divider') {
+                  return <div key={item.id} className="toolbar-menu-divider" />;
+                }
+
+                if (item.type === 'toggle') {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.action}
+                      disabled={item.disabled}
+                      className={`toolbar-menu-item toggle ${item.active ? 'active' : 'inactive'}`}
+                    >
+                      <span className="toolbar-menu-item-label">{item.label}</span>
+                      <span className="toolbar-menu-item-status">
+                        {item.active ? '✅' : '❌'}
+                      </span>
+                    </button>
+                  );
+                }
+
+                if (item.type === 'component') {
+                  return (
+                    <div key={item.id} className="toolbar-menu-component">
+                      {item.component}
+                    </div>
+                  );
+                }
+
+                if (item.type === 'action') {
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.action}
+                      disabled={item.disabled}
+                      className={`toolbar-menu-item action ${item.requiresLogin ? 'requires-login' : ''}`}
+                      title={item.requiresLogin ? 'Login required for this feature' : ''}
+                    >
+                      <span className="toolbar-menu-item-label">{item.label}</span>
+                      {item.requiresLogin && (
+                        <span className="toolbar-menu-item-lock">🔒</span>
+                      )}
+                    </button>
+                  );
+                }
+
+                return null;
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

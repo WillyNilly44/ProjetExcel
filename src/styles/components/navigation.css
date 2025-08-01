@@ -266,6 +266,63 @@
   margin-bottom: var(--space-sm);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-medium);
+  flex-wrap: wrap;
+}
+
+/* Toolbar container with refresh button outside dropdown */
+.toolbar-dropdown-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Refresh button styling */
+.toolbar-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  background-color: var(--success);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+  min-width: 100px;
+  justify-content: center;
+}
+
+.toolbar-refresh-btn:hover:not(:disabled) {
+  background-color: #047857;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.toolbar-refresh-btn:disabled {
+  background-color: var(--secondary);
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.7;
+}
+
+.toolbar-refresh-btn.loading {
+  background-color: var(--warning);
+}
+
+.toolbar-refresh-btn.loading:hover {
+  background-color: var(--warning);
+  transform: none;
+}
+
+.toolbar-refresh-icon {
+  font-size: var(--font-size-base);
+}
+
+.toolbar-refresh-text {
+  font-weight: 500;
 }
 
 /* Main app navigation */

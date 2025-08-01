@@ -146,3 +146,61 @@ a:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--border-dark);
 }
+
+/* Add loading screen styles */
+
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.loading-container {
+  text-align: center;
+  padding: var(--space-2xl);
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-medium);
+  box-shadow: var(--shadow-lg);
+  max-width: 400px;
+  width: 90%;
+}
+
+.loading-spinner {
+  font-size: 3rem;
+  margin-bottom: var(--space-lg);
+  animation: spin 2s linear infinite;
+}
+
+.loading-container h2 {
+  margin: 0 0 var(--space-sm) 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+}
+
+.loading-container p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Additional loading states */
+.session-expired {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.session-restored {
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: var(--success);
+  color: var(--success);
+}

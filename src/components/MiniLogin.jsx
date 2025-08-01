@@ -1,48 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const MiniLogin = () => {
+  const { user, login, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { user, isAuthenticated, login, logout, isLoading } = useAuth();
+  const [loginStatus, setLoginStatus] = useState('');
+  const dropdownRef = useRef(null);
+
+  const isAuthenticated = Boolean(user);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Add session restoration message
+  useEffect(() => {
+    if (user && !isOpen) {
+      // Check if this is a restored session
+      const storedTimestamp = localStorage.getItem('logViewerUserTimestamp');
+      if (storedTimestamp) {
+        const sessionAge = Date.now() - parseInt(storedTimestamp);
+        const minutesAgo = Math.floor(sessionAge / (1000 * 60));
+        
+        if (minutesAgo > 1) {
+          setTimeout(() => setLoginStatus(''), 5000);
+        }
+      }
+    }
+  }, [user, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
+    
     if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password'); 
+      setError('Please enter both username and password');
       return;
     }
-
+    
+    setIsLoading(true);
+    setError('');
+    
     try {
       const result = await login(username.trim(), password);
       
       if (result.success) {
-        setIsOpen(false);
         setUsername('');
         setPassword('');
-        setError('');
+        setIsOpen(false);
+        setTimeout(() => setLoginStatus(''), 3000);
       } else {
-        setError(result.error);
+        setError(result.error || 'Login failed');
+        setTimeout(() => setError(''), 5000);
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Login failed. Please try again.');
+      setError(`Login failed: ${error.message}`);
+      setTimeout(() => setError(''), 5000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLogout = () => {
     logout();
     setIsOpen(false);
+    setTimeout(() => setLoginStatus(''), 3000);
   };
 
   if (isAuthenticated) {
     return (
-      <div className="mini-login">
+      <div className="mini-login" ref={dropdownRef}>
         <div 
           className="mini-login-trigger authenticated"
           onClick={() => setIsOpen(!isOpen)}
@@ -50,6 +89,9 @@ const MiniLogin = () => {
           <span className="mini-login-icon">👤</span>
           <span className="mini-login-text">{user.name}</span>
           <span className="mini-login-level">{user.level_Name}</span>
+          <span className="session-info" title="Session will expire in 24 hours">
+            💾 Active
+          </span>
         </div>
 
         {isOpen && (
@@ -68,12 +110,18 @@ const MiniLogin = () => {
             </div>
           </div>
         )}
+        
+        {loginStatus && (
+          <div className={`login-status ${loginStatus.includes('restored') ? 'session-restored' : ''}`}>
+            {loginStatus}
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="mini-login">
+    <div className="mini-login" ref={dropdownRef}>
       <button 
         className="mini-login-trigger"
         onClick={() => setIsOpen(!isOpen)}
@@ -114,39 +162,31 @@ const MiniLogin = () => {
             </div>
 
             <div className="mini-form-group">
-              <div className="mini-password-container">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="mini-form-input"
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="mini-password-toggle"
-                  disabled={isLoading}
-                >
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
-                </button>
-              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="mini-form-input"
+                disabled={isLoading}
+                autoComplete="current-password"
+              />
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading || !username.trim() || !password.trim()}
-              className="mini-login-submit"
+            <button 
+              type="submit" 
+              className="mini-login-btn"
+              disabled={isLoading}
             >
-              {isLoading ? '⏳' : '🚀'} Sign In
+              {isLoading ? '⏳ Signing in...' : '🔑 Sign In'}
             </button>
           </form>
-
-          <div className="mini-login-info">
-            <small>Login to access advanced tools</small>
-          </div>
+        </div>
+      )}
+      
+      {loginStatus && (
+        <div className={`login-status ${loginStatus.includes('restored') ? 'session-restored' : ''}`}>
+          {loginStatus}
         </div>
       )}
     </div>
