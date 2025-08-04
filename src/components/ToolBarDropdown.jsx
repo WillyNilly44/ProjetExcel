@@ -88,8 +88,8 @@ const ToolbarDropdown = ({
         setShowColumnManager(true);
         setIsOpen(false);
       },
-      disabled: isLoading || columnsLength === 0 || !hasPermission('Administrator'),
-      requiresLogin: !hasPermission('Administrator')
+      disabled: isLoading || columnsLength === 0 ,
+      requiresLogin: false
     },
     {
       id: 'divider-2',

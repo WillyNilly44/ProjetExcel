@@ -1049,10 +1049,7 @@ export default function LogEntriesTable() {
               currentUser={user} 
             />
           )}
-
-          {hasPermission('Administrator') && (
-            <>
-              <ColumnManager 
+          <ColumnManager 
                 isOpen={showColumnManager}
                 onClose={() => setShowColumnManager(false)}
                 columns={columns}
@@ -1060,6 +1057,10 @@ export default function LogEntriesTable() {
                 columnOrder={columnOrder}
                 onSave={handleColumnManagerSave}
               />
+
+          {hasPermission('Administrator') && (
+            <>
+              
 
               <AddColumnModal
                 isOpen={showAddColumnModal}
