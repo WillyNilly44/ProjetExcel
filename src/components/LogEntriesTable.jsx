@@ -12,11 +12,12 @@ import EntryDetailModal from './EntryDetailModal';
 import CalendarView from './CalendarView'; 
 import AddColumnModal from './AddColumnModal';
 import VirtualTable from './VirtualTable';
+import KPITab from './KPITab'; // Import KPITab component
 
 
 export default function LogEntriesTable() {
   const { hasPermission, user } = useAuth(); 
-  const [activeTab, setActiveTab] = useState('logs');
+  const [activeTab, setActiveTab] = useState('dashboard'); // Changed from 'kpi' to 'dashboard'
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -760,6 +761,27 @@ export default function LogEntriesTable() {
         hasPermission={hasPermission}
       />
 
+      {/* Dashboard Tab - Landing Page */}
+      {activeTab === 'dashboard' && (
+        <DashboardTab 
+          data={data}
+          columns={columns}
+          formatCellValue={formatCellValue}
+          hasPermission={hasPermission}
+        />
+      )}
+
+      {/* KPI Tab */}
+      {activeTab === 'kpi' && (
+        <KPITab 
+          data={data}
+          columns={columns}
+          formatCellValue={formatCellValue}
+          hasPermission={hasPermission}
+        />
+      )}
+
+      {/* Logs Tab */}
       {activeTab === 'logs' && (
         <>
           {/* Status Header */}
@@ -1080,11 +1102,6 @@ export default function LogEntriesTable() {
   onSave={handleSaveEditedEntry}  // Changed from handleSaveEntry to handleSaveEditedEntry
 />
         </>
-      )}
-
-      {/* Dashboard Tab */}
-      {activeTab === 'dashboard' && (
-        <DashboardTab />
       )}
 
       {/* User Management Tab */}

@@ -3,27 +3,37 @@ import React from 'react';
 const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
   const tabs = [
     {
-      id: 'logs',
-      label: 'Log Entries',
-      icon: '📋',
-      description: 'View and manage log entries',
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: '📈',
+      description: 'Main Dashboard - Landing Page',
       public: true
     },
     {
-      id: 'dashboard',
-      label: '📊 Dashboard',
-      description: 'See dashboard info',
-      public: true,
-
+      id: 'kpi',
+      label: 'KPI',
+      icon: '📊',
+      description: 'Key Performance Indicators',
+      public: true
     },
     {
-      id: 'users',
-      label: '👥 User Management',
-      icon: '🔐',
-      description: 'Manage users and permissions',
-      public: false,
-      requiredPermission: 'Administrator'
-    }
+      id: 'logs',
+      label: 'Logs',
+      icon: '📋',
+      description: 'Log Entries Management',
+      public: true
+    },
+    // Only show users tab for administrators
+    ...(hasPermission('Administrator') ? [
+      {
+        id: 'users',
+        label: 'Users',
+        icon: '👥',
+        description: 'User Management',
+        public: false,
+        requiredPermission: 'Administrator'
+      }
+    ] : [])
   ];
 
   return (

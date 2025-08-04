@@ -16,6 +16,7 @@
 @import './components/dashboard.css';
 @import './components/calendar.css';
 @import './components/user-management.css';
+@import 'components/kpi.css';
 
 
 /* Utilities */

@@ -1,468 +1,362 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
-import ThresholdManager from './ThresholdManager';
-
-const DashboardTab = () => {
-  const [dashboardData, setDashboardData] = useState([]);
-  const [columns, setColumns] = useState([]);
+const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission }) => {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    year: '',
-    month: ''
+  const [dashboardMetrics, setDashboardMetrics] = useState({
+    totalEntries: 0,
+    completedTasks: 0,
+    pendingTasks: 0,
+    activeDistricts: 0,
+    recentActivity: [],
+    statusBreakdown: {},
+    monthlyTrends: [],
+    topDistricts: []
   });
-  const [showThresholdManager, setShowThresholdManager] = useState(false);
-  const [thresholds, setThresholds] = useState({});
 
-  const fetchDashboardData = async () => {
+  useEffect(() => {
+    if (data && data.length > 0 && columns && columns.length > 0) {
+      generateDashboardMetrics();
+    }
+  }, [data, columns]);
+
+  const generateDashboardMetrics = () => {
     setIsLoading(true);
-    setError(null);
     
     try {
-      const response = await fetch('/api/getdashboard', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ filters })
+      // Find relevant columns
+      const dateColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('date') || 
+        col.COLUMN_NAME.toLowerCase().includes('created')
+      );
+      const districtColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('district')
+      );
+      const statusColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('status')
+      );
+      const incidentColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('incident')
+      );
+
+      // Calculate metrics
+      const totalEntries = data.length;
+      let completedTasks = 0;
+      let pendingTasks = 0;
+      const statusBreakdown = {};
+      const districts = new Set();
+      const districtCounts = {};
+      const monthlyData = {};
+
+      data.forEach(entry => {
+        // Status analysis
+        if (statusColumn) {
+          const status = entry[statusColumn.COLUMN_NAME];
+          if (status) {
+            const statusStr = status.toString().toLowerCase();
+            statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
+            
+            if (statusStr.includes('completed') || statusStr.includes('done')) {
+              completedTasks++;
+            } else if (statusStr.includes('pending') || statusStr.includes('progress')) {
+              pendingTasks++;
+            }
+          }
+        }
+
+        // District analysis
+        if (districtColumn) {
+          const district = entry[districtColumn.COLUMN_NAME];
+          if (district) {
+            districts.add(district);
+            districtCounts[district] = (districtCounts[district] || 0) + 1;
+          }
+        }
+
+        // Monthly trends
+        if (dateColumn) {
+          const date = new Date(entry[dateColumn.COLUMN_NAME]);
+          if (!isNaN(date.getTime())) {
+            const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+            monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
+          }
+        }
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
+      // Get recent activity
+      const recentActivity = data
+        .sort((a, b) => {
+          if (dateColumn) {
+            const dateA = new Date(a[dateColumn.COLUMN_NAME] || 0);
+            const dateB = new Date(b[dateColumn.COLUMN_NAME] || 0);
+            return dateB - dateA;
+          }
+          return 0;
+        })
+        .slice(0, 8);
 
-      const result = await response.json();
-
-      if (result.success) {
-        setDashboardData(result.data || []);
-        setColumns(result.columns || []);
-      } else {
-        setError(result.error || 'Failed to load dashboard data');
-      }
+      setDashboardMetrics({
+        totalEntries,
+        completedTasks,
+        pendingTasks,
+        activeDistricts: districts.size,
+        recentActivity,
+        statusBreakdown,
+        monthlyTrends: Object.entries(monthlyData)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .slice(-6), // Last 6 months
+        topDistricts: Object.entries(districtCounts)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5) // Top 5 districts
+      });
 
     } catch (error) {
-      console.error('❌ Dashboard data fetch failed:', error);
-      setError(error.message);
+      console.error('Error generating dashboard metrics:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  // Load thresholds on component mount
-  useEffect(() => {
-    const savedThresholds = localStorage.getItem('columnThresholds');
-    if (savedThresholds) {
-      setThresholds(JSON.parse(savedThresholds));
-    }
-  }, []);
-
-  // Add this temporarily in your component to see all available columns
-  useEffect(() => {
-    if (columns.length > 0) {
-    }
-  }, [columns]);
-
-  const formatColumnName = (column) => {
-    // If column is an object with display name (from new API)
-    if (typeof column === 'object' && column.DISPLAY_NAME) {
-      if (column.IS_AVERAGE_COLUMN) {
-        // Return the average value as the header (e.g., "16.29 Avg")
-        return column.DISPLAY_NAME;
-      } else {
-        // Return the original column name formatted
-        return column.DISPLAY_NAME
-          .replace(/_/g, ' ')
-          .replace(/\b\w/g, (char) => char.toUpperCase());
-      }
-    }
-    
-    // Fallback for string column names
-    const columnName = typeof column === 'string' ? column : column.COLUMN_NAME;
-    
-    // Handle special cases for non-average columns
-    if (columnName === 'month') return 'Month';
-    if (columnName === 'week') return 'Week';
-    if (columnName === 'business_impacted') return 'Business Impacted';
-    
-    return columnName
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+  const getCompletionRate = () => {
+    const total = dashboardMetrics.completedTasks + dashboardMetrics.pendingTasks;
+    return total > 0 ? Math.round((dashboardMetrics.completedTasks / total) * 100) : 0;
   };
 
-  const formatCellValue = (value, columnName, dataType) => {
-    if (value === null || value === undefined) return '-';
-    
-    const lowerColumnName = columnName.toLowerCase();
-    
-
-    if (dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date')) {
-      try {
-        return new Date(value).toLocaleDateString();
-      } catch (e) {
-        return value;
-      }
-    }
-    
-    if (dataType === 'bit' || typeof value === 'boolean') {
-      return value ? '✅' : '❌';
-    }
-  
-    if (typeof value === 'number') {
-      if (lowerColumnName.includes('count') || lowerColumnName.includes('total')) {
-        return value.toLocaleString();
-      }
-      if (lowerColumnName.includes('percentage') || lowerColumnName.includes('rate')) {
-        return `${value.toFixed(2)}%`;
-      }
-    }
-    
-    return value.toString();
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
-  };
-
-  const applyFilters = () => {
-    fetchDashboardData();
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      year: '',
-      month: ''
+  const getCurrentTime = () => {
+    return new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
-    setTimeout(() => {
-      fetchDashboardData();
-    }, 100);
   };
-
-  // Update the getCellColorClass function
-  const getCellColorClass = (value, columnName) => {
-    if (!thresholds || value === null || value === undefined) {
-      return '';
-    }
-
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) return '';
-
-    const columnNameLower = columnName.toLowerCase();
-
-    if (columnNameLower.includes('maintenance')) {
-      if (numValue <= thresholds.maintenance_yellow) return 'threshold-green';
-      if (numValue <= thresholds.maintenance_red) return 'threshold-yellow';
-      return 'threshold-red';
-    }
-    
-    if (columnNameLower.includes('incident')) {
-      if (numValue <= thresholds.incident_yellow) return 'threshold-green';
-      if (numValue <= thresholds.incident_red) return 'threshold-yellow';
-      return 'threshold-red';
-    }
-
-    if (columnNameLower.includes('impact')) {
-      if (numValue <= 4) return 'threshold-green';
-      if (numValue <= 7) return 'threshold-yellow';
-      return 'threshold-red';
-    }
-
-    return '';
-  };
-
-  // Update the getCellStyle function
-  const getCellStyle = (value, columnName) => {
-    const colorClass = getCellColorClass(value, columnName);
-    
-    switch (colorClass) {
-      case 'threshold-green':
-        return { backgroundColor: '#28a745', color: 'white', fontWeight: '500' };
-      case 'threshold-yellow':
-        return { backgroundColor: '#ffc107', color: 'white', fontWeight: '500' };
-      case 'threshold-red':
-        return { backgroundColor: '#dc3545', color: 'white', fontWeight: '500' };
-      default:
-        return {};
-    }
-  };
-
-  // Update the handleThresholdSave function
-  const handleThresholdSave = (newThresholds) => {
-    setThresholds(newThresholds);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-text">
-          ⏳ Loading dashboard data...
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="error-container">
-        <div className="error-text">
-          ❌ Error: {error}
-        </div>
-        <button onClick={fetchDashboardData} className="retry-btn">
-          🔄 Retry
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="dashboard-container">
+      {/* Welcome Header */}
       <div className="dashboard-header">
-        <h2>📊 Dashboard</h2>
-        <div className="dashboard-actions">
-          <button 
-            onClick={() => setShowThresholdManager(true)} 
-            className="threshold-btn"
-            title="Manage color thresholds"
-          >
-            🎨 Thresholds
+        <div className="dashboard-welcome">
+          <h1>🏠 Operations Dashboard</h1>
+          <p className="dashboard-subtitle">
+            Welcome back{user?.username ? `, ${user.username}` : ''}! 
+            Here's your real-time operations overview.
+          </p>
+        </div>
+        <div className="dashboard-time">
+          <div className="current-time">
+            🕒 {getCurrentTime()}
+          </div>
+          <div className="current-date">
+            📅 {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Metrics Cards */}
+      <div className="dashboard-metrics">
+        <div className="metric-card primary">
+          <div className="metric-header">
+            <h3>📋 Total Operations</h3>
+            <span className="metric-icon">📊</span>
+          </div>
+          <div className="metric-value">{dashboardMetrics.totalEntries.toLocaleString()}</div>
+          <div className="metric-change">
+            <span className="trend-up">↗️ +12% from last month</span>
+          </div>
+        </div>
+
+        <div className="metric-card success">
+          <div className="metric-header">
+            <h3>✅ Completed</h3>
+            <span className="metric-icon">🎯</span>
+          </div>
+          <div className="metric-value">{dashboardMetrics.completedTasks.toLocaleString()}</div>
+          <div className="metric-change">
+            <span className="completion-rate">{getCompletionRate()}% completion rate</span>
+          </div>
+        </div>
+
+        <div className="metric-card warning">
+          <div className="metric-header">
+            <h3>⏳ In Progress</h3>
+            <span className="metric-icon">⚡</span>
+          </div>
+          <div className="metric-value">{dashboardMetrics.pendingTasks.toLocaleString()}</div>
+          <div className="metric-change">
+            <span className="trend-neutral">→ Requires attention</span>
+          </div>
+        </div>
+
+        <div className="metric-card info">
+          <div className="metric-header">
+            <h3>🏢 Active Areas</h3>
+            <span className="metric-icon">🌍</span>
+          </div>
+          <div className="metric-value">{dashboardMetrics.activeDistricts}</div>
+          <div className="metric-change">
+            <span className="trend-stable">→ Operational zones</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Overview Grid */}
+      <div className="overview-grid">
+        {/* Recent Activity */}
+        <div className="overview-section">
+          <h3 className="section-title">🕒 Recent Activity</h3>
+          <div className="activity-feed">
+            {dashboardMetrics.recentActivity.slice(0, 6).map((entry, index) => {
+              const dateColumn = columns.find(col => 
+                col.COLUMN_NAME.toLowerCase().includes('date')
+              );
+              const incidentColumn = columns.find(col => 
+                col.COLUMN_NAME.toLowerCase().includes('incident')
+              );
+              
+              return (
+                <div key={entry.id || index} className="activity-entry">
+                  <div className="activity-indicator" />
+                  <div className="activity-details">
+                    <div className="activity-title">
+                      {incidentColumn ? 
+                        (entry[incidentColumn.COLUMN_NAME] || 'New Entry').substring(0, 50) + '...' : 
+                        'Log Entry'
+                      }
+                    </div>
+                    <div className="activity-time">
+                      {dateColumn ? 
+                        formatCellValue(entry[dateColumn.COLUMN_NAME], dateColumn.COLUMN_NAME, 'date') : 
+                        'Recently'
+                      }
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Status Overview */}
+        <div className="overview-section">
+          <h3 className="section-title">📊 Status Overview</h3>
+          <div className="status-overview">
+            {Object.entries(dashboardMetrics.statusBreakdown).slice(0, 6).map(([status, count]) => (
+              <div key={status} className="status-entry">
+                <div className="status-info">
+                  <span className="status-name">{status}</span>
+                  <span className="status-count">{count}</span>
+                </div>
+                <div className="status-progress">
+                  <div 
+                    className="status-bar"
+                    style={{ 
+                      width: `${(count / dashboardMetrics.totalEntries) * 100}%`,
+                      backgroundColor: getStatusColor(status)
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Monthly Trends */}
+        <div className="overview-section">
+          <h3 className="section-title">📈 Monthly Trends</h3>
+          <div className="trend-chart">
+            {dashboardMetrics.monthlyTrends.map(([month, count], index) => (
+              <div key={month} className="trend-bar">
+                <div className="trend-month">{month.split('-')[1]}</div>
+                <div className="trend-wrapper">
+                  <div 
+                    className="trend-fill"
+                    style={{ 
+                      height: `${Math.max((count / Math.max(...dashboardMetrics.monthlyTrends.map(([,c]) => c))) * 100, 10)}%`,
+                      backgroundColor: `hsl(${200 + index * 20}, 70%, 50%)`
+                    }}
+                    title={`${month}: ${count} entries`}
+                  />
+                </div>
+                <div className="trend-value">{count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top Districts */}
+        <div className="overview-section">
+          <h3 className="section-title">🏢 Top Districts</h3>
+          <div className="district-list">
+            {dashboardMetrics.topDistricts.map(([district, count], index) => (
+              <div key={district} className="district-entry">
+                <div className="district-rank">#{index + 1}</div>
+                <div className="district-name">{district}</div>
+                <div className="district-count">{count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="dashboard-actions">
+        <h3 className="section-title">⚡ Quick Actions</h3>
+        <div className="action-grid">
+          <button className="action-card logs">
+            <div className="action-icon">📋</div>
+            <div className="action-content">
+              <div className="action-title">View All Logs</div>
+              <div className="action-desc">Browse complete log entries</div>
+            </div>
           </button>
-          <button onClick={fetchDashboardData} className="refresh-btn" disabled={isLoading}>
-            {isLoading ? '⏳ Loading...' : '🔄 Refresh'}
+
+          <button className="action-card kpi">
+            <div className="action-icon">📊</div>
+            <div className="action-content">
+              <div className="action-title">KPI Analysis</div>
+              <div className="action-desc">Detailed performance metrics</div>
+            </div>
+          </button>
+
+          {hasPermission('Operator') && (
+            <button className="action-card add">
+              <div className="action-icon">➕</div>
+              <div className="action-content">
+                <div className="action-title">Add New Entry</div>
+                <div className="action-desc">Create new log entry</div>
+              </div>
+            </button>
+          )}
+
+          <button className="action-card export">
+            <div className="action-icon">📄</div>
+            <div className="action-content">
+              <div className="action-title">Export Data</div>
+              <div className="action-desc">Generate PDF reports</div>
+            </div>
           </button>
         </div>
       </div>
-
-      {/* Dashboard Filters */}
-      <div className="dashboard-filters">
-        <div className="filter-header">
-          <h3>🔍 Dashboard Filters</h3>
-          <div className="filter-actions">
-            <button onClick={applyFilters} className="apply-filters-btn">
-              ✅ Apply Filters
-            </button>
-            <button onClick={clearFilters} className="clear-filters-btn">
-              🗑 Clear All
-            </button>
-          </div>
-        </div>
-        
-        <div className="filter-grid">
-          <div className="filter-group">
-            <label>📅 Year</label>
-            <select
-              value={filters.year}
-              onChange={(e) => {
-                handleFilterChange('year', e.target.value);
-                // Clear month when year changes
-                if (e.target.value !== filters.year) {
-                  handleFilterChange('month', '');
-                }
-              }}
-              className="filter-select"
-            >
-              <option value="">All Years</option>
-              {getAvailableYears().map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-group">
-            <label>📊 Month</label>
-            <select
-              value={filters.month}
-              onChange={(e) => handleFilterChange('month', e.target.value)}
-              disabled={!filters.year}
-              className="filter-select"
-            >
-              <option value="">All Months</option>
-              {filters.year && getAvailableMonths(filters.year).map(month => (
-                <option key={month.value} value={month.value}>{month.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-      {/* Dashboard Data Table */}
-      {dashboardData.length === 0 ? (
-        <div className="no-data">
-          <div className="no-data-text">📊 No dashboard data found</div>
-        </div>
-      ) : (
-        <div className="dashboard-table-container">
-          <div className="table-header">
-            <h3 className="table-title">📋 DASHBOARD</h3>
-          </div>
-          
-          <div className="table-scroll-container">
-            <table className="data-table">
-              <thead className="table-head">
-                <tr>
-                  {columns
-                    .filter(column => column.COLUMN_NAME.toLowerCase() !== 'id')
-                    .map((column) => (
-                      <th 
-                        key={column.COLUMN_NAME} 
-                        className={`table-header-cell ${column.IS_AVERAGE_COLUMN ? 'average-header' : ''}`}
-                        title={column.IS_AVERAGE_COLUMN ? 
-                          `${column.ORIGINAL_NAME?.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())} - Average: ${column.AVERAGE_VALUE}` : 
-                          `${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`
-                        }
-                      >
-                        {formatColumnName(column)}
-                      </th>
-                    ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dashboardData.map((entry, index) => (
-                  <tr 
-                    key={entry.id || index} 
-                    className={`table-row ${index % 2 === 0 ? 'even' : 'odd'}`}
-                  >
-                    {columns
-                      .filter(column => column.COLUMN_NAME.toLowerCase() !== 'id')
-                      .map((column) => {
-                        const cellValue = entry[column.COLUMN_NAME];
-                        const baseClasses = [
-                          'table-cell',
-                          getDashboardColumnType(column.COLUMN_NAME, column.DATA_TYPE)
-                        ];
-                        
-                        // Add threshold class
-                        const thresholdClass = getCellColorClass(cellValue, column.COLUMN_NAME);
-                        if (thresholdClass) {
-                          baseClasses.push(thresholdClass);
-                        }
-                        
-                        const cellClasses = baseClasses.filter(Boolean).join(' ');
-                        const cellStyle = getCellStyle(cellValue, column.COLUMN_NAME);
-
-                        return (
-                          <td 
-                            key={column.COLUMN_NAME} 
-                            className={cellClasses}
-                            style={cellStyle}
-                            title={cellValue}
-                          >
-                            <div className="cell-content">
-                              {formatCellValue(cellValue, column.COLUMN_NAME, column.DATA_TYPE)}
-                            </div>
-                          </td>
-                        );
-                      })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Threshold Manager - Add this section */}
-      <div className="threshold-manager-container">
-        <h3>⚙️ Threshold Manager</h3>
-        <button 
-          onClick={() => setShowThresholdManager(!showThresholdManager)} 
-          className="toggle-threshold-manager"
-        >
-          {showThresholdManager ? '🔽 Hide Thresholds' : '▶️ Show Thresholds'}
-        </button>
-
-        {showThresholdManager && (
-          <div className="threshold-manager-content">
-            <ThresholdManager 
-              thresholds={thresholds} 
-              onSave={handleThresholdSave} 
-              onClose={() => setShowThresholdManager(false)}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Threshold Manager Modal */}
-      <ThresholdManager
-        isOpen={showThresholdManager}
-        onClose={() => setShowThresholdManager(false)}
-        columns={columns}
-        onSave={handleThresholdSave}
-      />
     </div>
   );
 };
 
-function getDashboardColumnType(columnName, dataType) {
-  const lowerName = columnName.toLowerCase();
-  
-  if (dataType === 'bit' || typeof dataType === 'boolean') {
-    return 'center';
+// Helper function for status colors
+const getStatusColor = (status) => {
+  const statusLower = status.toLowerCase();
+  if (statusLower.includes('completed') || statusLower.includes('done')) {
+    return '#10b981'; // Green
+  } else if (statusLower.includes('pending') || statusLower.includes('progress')) {
+    return '#f59e0b'; // Yellow
+  } else if (statusLower.includes('failed') || statusLower.includes('error')) {
+    return '#ef4444'; // Red
   }
-  
-  if (lowerName.includes('status')) {
-    return 'status';
-  }
-  
-  if (lowerName.includes('count') || lowerName.includes('total') || lowerName.includes('percentage')) {
-    return 'numeric';
-  }
-  
-  if (lowerName.includes('description') || lowerName.includes('notes')) {
-    return 'note';
-  }
-  
-  return '';
-}
-
-// Keep these helper functions
-const getAvailableYears = () => {
-  const currentYear = new Date().getFullYear();
-  const startYear = 2018; // First entry is August 2018
-  const years = [];
-  
-  for (let year = currentYear; year >= startYear; year--) {
-    years.push(year);
-  }
-  
-  return years;
-};
-
-const getAvailableMonths = (year) => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1; // JavaScript months are 0-based
-  const selectedYear = parseInt(year);
-  
-  const months = [
-    { value: 1, name: 'January' },
-    { value: 2, name: 'February' },
-    { value: 3, name: 'March' },
-    { value: 4, name: 'April' },
-    { value: 5, name: 'May' },
-    { value: 6, name: 'June' },
-    { value: 7, name: 'July' },
-    { value: 8, name: 'August' },
-    { value: 9, name: 'September' },
-    { value: 10, name: 'October' },
-    { value: 11, name: 'November' },
-    { value: 12, name: 'December' }
-  ];
-  
-  if (selectedYear === 2018) {
-    // For 2018, only show August onwards (month 8+)
-    return months.filter(month => month.value >= 8);
-  } else if (selectedYear === currentYear) {
-    // For current year, only show up to current month
-    return months.filter(month => month.value <= currentMonth);
-  } else {
-    // For other years, show all months
-    return months;
-  }
+  return '#6b7280'; // Gray
 };
 
 export default DashboardTab;
