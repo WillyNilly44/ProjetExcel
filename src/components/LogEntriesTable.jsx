@@ -11,6 +11,7 @@ import DashboardTab from './DashboardTab';
 import EntryDetailModal from './EntryDetailModal';
 import CalendarView from './CalendarView'; 
 import AddColumnModal from './AddColumnModal';
+import VirtualTable from './VirtualTable';
 
 
 export default function LogEntriesTable() {
@@ -1010,82 +1011,29 @@ export default function LogEntriesTable() {
           ) : (
             <div className="table-container">
               <div className="table-header">
-                <h3 className="table-title"> LOGS</h3>
+                <h3 className="table-title">📊 LOGS</h3>
+                <div className="table-info">
+                  <span className="record-count">
+                    {getFilteredData().length.toLocaleString()} records
+                    {getFilteredData().length > 1000 && (
+                      <span className="virtual-mode-indicator">⚡ Virtual Mode</span>
+                    )}
+                  </span>
+                </div>
               </div>
               
-              <div className="table-scroll-container">
-                <table className="data-table">
-                  <thead className="table-head">
-                    <tr>
-                      {getDisplayColumns().map((column) => (
-                        <th 
-                          key={column.COLUMN_NAME} 
-                          className="table-header-cell"
-                          title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
-                        >
-                          {formatColumnName(column.COLUMN_NAME)}
-                        </th>
-                      ))}
-                      {/* Only show Actions column for Administrators */}
-                      {hasPermission('Administrator') && (
-                        <th className="table-header-cell table-header-actions">Actions</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getFilteredData().map((entry, index) => (
-                      <tr 
-                        key={entry.id || index} 
-                        className={`table-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'} clickable-row`}
-                        onClick={() => handleRowClick(entry)} 
-                        title="Click to view details"
-                      >
-                        {getDisplayColumns().map((column) => {
-                          const cellClasses = [
-                            'table-cell',
-                            getColumnType(column.COLUMN_NAME, column.DATA_TYPE),
-                            entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') ? 'incident virtual' : ''
-                          ].filter(Boolean).join(' ');
-
-                          return (
-                            <td 
-                              key={column.COLUMN_NAME} 
-                              className={cellClasses}
-                              title={`${entry[column.COLUMN_NAME]}${entry.is_virtual ? ' (Recurring Entry)' : ''}`}
-                            >
-                              <div className={`cell-content ${column.COLUMN_NAME.toLowerCase().includes('note') ? 'note' : ''}`}>
-                                {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
-                                  <span className="virtual-icon">🔄</span>
-                                )}
-                                <span className={entry.is_virtual ? 'virtual-text' : 'normal-text'}>
-                                  {formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE)}
-                                </span>
-                              </div>
-                            </td>
-                          );
-                        })}
-                        
-                        {/* Only show Actions cell for Administrators */}
-                        {hasPermission('Administrator') && (
-                          <td className={`table-cell actions ${entry.is_virtual ? 'virtual' : ''}`}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation(); 
-                                handleDeleteEntry(entry.original_id || entry.id);
-                              }}
-                              disabled={!entry.id || entry.is_virtual}
-                              className={`action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
-                              title={entry.is_virtual ? 'Cannot delete recurring instance' : (entry.id ? 'Delete this entry' : 'No ID available')}
-                            >
-                              {entry.is_virtual ? '🔄' : '🗑'} {entry.is_virtual ? 'Recu.' : 'Delete'}
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {/* Use VirtualTable for better performance */}
+              <VirtualTable
+                data={getFilteredData()}
+                columns={columns}
+                getDisplayColumns={getDisplayColumns}
+                formatColumnName={formatColumnName}
+                formatCellValue={formatCellValue}
+                onRowClick={handleRowClick}
+                onDeleteEntry={handleDeleteEntry}
+                hasPermission={hasPermission}
+                getColumnType={getColumnType}
+              />
             </div>
           )}
 
@@ -1164,6 +1112,7 @@ function getColumnType(columnName, dataType) {
   
   return '';
 }
+
 /* filepath: c:\Users\William\Documents\ProjetExcel\src\components\LogEntriesTable.jsx */
 
 // Add this function after the handleDeleteEntry function (around line 250)
