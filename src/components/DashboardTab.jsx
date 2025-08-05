@@ -1,362 +1,296 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission }) => {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [dashboardMetrics, setDashboardMetrics] = useState({
-    totalEntries: 0,
-    completedTasks: 0,
-    pendingTasks: 0,
-    activeDistricts: 0,
-    recentActivity: [],
-    statusBreakdown: {},
-    monthlyTrends: [],
-    topDistricts: []
-  });
+  const [currentWeekData, setCurrentWeekData] = useState([]);
 
+  // Define specific columns for dashboard
+  const dashboardColumns = useMemo(() => {
+    const requiredColumns = [
+      { key: 'ticket_number', label: 'Ticket #' },
+      { key: 'assigned', label: 'Assignee' },
+      { key: 'note', label: 'Note' },
+      { key: 'datetime', label: 'Date & Time' }, // Combined log_date and log_start
+      { key: 'risk_level', label: 'Risk Level' },
+      { key: 'actual_time', label: 'Duration' },
+      { key: 'expected_down_time', label: 'Estimated Downtime' },
+      { key: 'log_status', label: 'Status' },
+      { key: 'district', label: 'District' }
+    ];
+
+    // Map to actual database columns
+    const mappedColumns = requiredColumns.map(reqCol => {
+      if (reqCol.key === 'datetime') {
+        // Special case for combined date/time - we'll handle this separately
+        return {
+          COLUMN_NAME: 'datetime',
+          DISPLAY_NAME: reqCol.label,
+          DATA_TYPE: 'datetime',
+          IS_COMBINED: true
+        };
+      }
+
+      // Find matching column in database
+      const dbColumn = columns.find(col => {
+        const colName = col.COLUMN_NAME.toLowerCase();
+        const keyName = reqCol.key.toLowerCase();
+        return colName === keyName || colName.includes(keyName.replace('_', ''));
+      });
+
+      if (dbColumn) {
+        return {
+          ...dbColumn,
+          DISPLAY_NAME: reqCol.label
+        };
+      }
+
+      // Return placeholder if not found
+      return {
+        COLUMN_NAME: reqCol.key,
+        DISPLAY_NAME: reqCol.label,
+        DATA_TYPE: 'varchar',
+        IS_NULLABLE: 'YES'
+      };
+    });
+
+    return mappedColumns;
+  }, [columns]);
+
+  // Get current week's date range
+  const getCurrentWeekRange = () => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Calculate start of week (Monday)
+    const startOfWeek = new Date(today);
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1; // If Sunday, go back 6 days
+    startOfWeek.setDate(today.getDate() - daysToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    // Calculate end of week (Sunday)
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    
+    return { startOfWeek, endOfWeek };
+  };
+
+  // Filter data for current week
   useEffect(() => {
     if (data && data.length > 0 && columns && columns.length > 0) {
-      generateDashboardMetrics();
+      const { startOfWeek, endOfWeek } = getCurrentWeekRange();
+      
+      // Find date column
+      const dateColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('log_date') ||
+        col.COLUMN_NAME.toLowerCase().includes('date') || 
+        col.COLUMN_NAME.toLowerCase().includes('scheduled') ||
+        col.COLUMN_NAME.toLowerCase().includes('created')
+      );
+
+      if (dateColumn) {
+        const filteredData = data.filter(entry => {
+          const entryDate = new Date(entry[dateColumn.COLUMN_NAME]);
+          return entryDate >= startOfWeek && entryDate <= endOfWeek;
+        });
+        
+        // Sort by date (most recent first)
+        const sortedData = filteredData.sort((a, b) => {
+          const dateA = new Date(a[dateColumn.COLUMN_NAME]);
+          const dateB = new Date(b[dateColumn.COLUMN_NAME]);
+          return dateB - dateA;
+        });
+        
+        setCurrentWeekData(sortedData.slice(0, 50)); // Show up to 50 entries for dashboard
+      } else {
+        // If no date column, just show recent entries
+        setCurrentWeekData(data.slice(0, 50));
+      }
     }
   }, [data, columns]);
 
-  const generateDashboardMetrics = () => {
-    setIsLoading(true);
+  // Format combined date and time
+  const formatDateTime = (entry) => {
+    const dateCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('log_date'));
+    const timeCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('log_start'));
     
-    try {
-      // Find relevant columns
-      const dateColumn = columns.find(col => 
-        col.COLUMN_NAME.toLowerCase().includes('date') || 
-        col.COLUMN_NAME.toLowerCase().includes('created')
-      );
-      const districtColumn = columns.find(col => 
-        col.COLUMN_NAME.toLowerCase().includes('district')
-      );
-      const statusColumn = columns.find(col => 
-        col.COLUMN_NAME.toLowerCase().includes('status')
-      );
-      const incidentColumn = columns.find(col => 
-        col.COLUMN_NAME.toLowerCase().includes('incident')
-      );
-
-      // Calculate metrics
-      const totalEntries = data.length;
-      let completedTasks = 0;
-      let pendingTasks = 0;
-      const statusBreakdown = {};
-      const districts = new Set();
-      const districtCounts = {};
-      const monthlyData = {};
-
-      data.forEach(entry => {
-        // Status analysis
-        if (statusColumn) {
-          const status = entry[statusColumn.COLUMN_NAME];
-          if (status) {
-            const statusStr = status.toString().toLowerCase();
-            statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
-            
-            if (statusStr.includes('completed') || statusStr.includes('done')) {
-              completedTasks++;
-            } else if (statusStr.includes('pending') || statusStr.includes('progress')) {
-              pendingTasks++;
-            }
-          }
-        }
-
-        // District analysis
-        if (districtColumn) {
-          const district = entry[districtColumn.COLUMN_NAME];
-          if (district) {
-            districts.add(district);
-            districtCounts[district] = (districtCounts[district] || 0) + 1;
-          }
-        }
-
-        // Monthly trends
-        if (dateColumn) {
-          const date = new Date(entry[dateColumn.COLUMN_NAME]);
-          if (!isNaN(date.getTime())) {
-            const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-            monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1;
-          }
-        }
-      });
-
-      // Get recent activity
-      const recentActivity = data
-        .sort((a, b) => {
-          if (dateColumn) {
-            const dateA = new Date(a[dateColumn.COLUMN_NAME] || 0);
-            const dateB = new Date(b[dateColumn.COLUMN_NAME] || 0);
-            return dateB - dateA;
-          }
-          return 0;
-        })
-        .slice(0, 8);
-
-      setDashboardMetrics({
-        totalEntries,
-        completedTasks,
-        pendingTasks,
-        activeDistricts: districts.size,
-        recentActivity,
-        statusBreakdown,
-        monthlyTrends: Object.entries(monthlyData)
-          .sort(([a], [b]) => a.localeCompare(b))
-          .slice(-6), // Last 6 months
-        topDistricts: Object.entries(districtCounts)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5) // Top 5 districts
-      });
-
-    } catch (error) {
-      console.error('Error generating dashboard metrics:', error);
-    } finally {
-      setIsLoading(false);
+    const dateValue = dateCol ? entry[dateCol.COLUMN_NAME] : null;
+    const timeValue = timeCol ? entry[timeCol.COLUMN_NAME] : null;
+    
+    let formattedDate = '';
+    let formattedTime = '';
+    
+    // Format date
+    if (dateValue) {
+      try {
+        const date = new Date(dateValue);
+        formattedDate = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        });
+      } catch (e) {
+        formattedDate = dateValue.toString();
+      }
     }
+    
+    // Format time
+    if (timeValue) {
+      if (typeof timeValue === 'string' && timeValue.includes(':')) {
+        formattedTime = timeValue;
+      } else if (timeValue instanceof Date) {
+        formattedTime = timeValue.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      } else {
+        formattedTime = timeValue.toString();
+      }
+    }
+    
+    // Combine date and time
+    if (formattedDate && formattedTime) {
+      return `${formattedDate} ${formattedTime}`;
+    } else if (formattedDate) {
+      return formattedDate;
+    } else if (formattedTime) {
+      return formattedTime;
+    }
+    
+    return '';
   };
 
-  const getCompletionRate = () => {
-    const total = dashboardMetrics.completedTasks + dashboardMetrics.pendingTasks;
-    return total > 0 ? Math.round((dashboardMetrics.completedTasks / total) * 100) : 0;
+  // Get cell value for display
+  const getCellValue = (entry, column) => {
+    if (column.COLUMN_NAME === 'datetime' && column.IS_COMBINED) {
+      return formatDateTime(entry);
+    }
+    
+    const value = entry[column.COLUMN_NAME];
+    
+    // Format duration and downtime as hours
+    if (column.COLUMN_NAME.toLowerCase().includes('time') && 
+        (column.COLUMN_NAME.toLowerCase().includes('actual') || 
+         column.COLUMN_NAME.toLowerCase().includes('expected'))) {
+      if (value !== null && value !== undefined && value !== '') {
+        const numValue = parseFloat(value);
+        return isNaN(numValue) ? value : `${numValue}h`;
+      }
+    }
+    
+    return formatCellValue ? 
+      formatCellValue(value, column.COLUMN_NAME, column.DATA_TYPE) :
+      (value?.toString() || '');
   };
 
-  const getCurrentTime = () => {
-    return new Date().toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+  const getStatusColor = (status) => {
+    if (!status) return '';
+    const statusLower = status.toString().toLowerCase();
+    if (statusLower.includes('completed')) return 'status-completed';
+    if (statusLower.includes('progress') || statusLower.includes('pending')) return 'status-progress';
+    if (statusLower.includes('failed') || statusLower.includes('error')) return 'status-failed';
+    return 'status-default';
   };
+
+  const getRiskColor = (risk) => {
+    if (!risk) return '';
+    const riskLower = risk.toString().toLowerCase();
+    if (riskLower.includes('high')) return 'risk-high';
+    if (riskLower.includes('medium')) return 'risk-medium';
+    if (riskLower.includes('low')) return 'risk-low';
+    return 'risk-default';
+  };
+
+  const getCellColorClass = (value, columnName) => {
+    const colNameLower = columnName.toLowerCase();
+    
+    if (colNameLower.includes('status') || colNameLower.includes('log_status')) {
+      return getStatusColor(value);
+    }
+    
+    if (colNameLower.includes('risk')) {
+      return getRiskColor(value);
+    }
+    
+    return '';
+  };
+
+  const { startOfWeek, endOfWeek } = getCurrentWeekRange();
 
   return (
     <div className="dashboard-container">
-      {/* Welcome Header */}
-      <div className="dashboard-header">
-        <div className="dashboard-welcome">
-          <h1>🏠 Operations Dashboard</h1>
-          <p className="dashboard-subtitle">
-            Welcome back{user?.username ? `, ${user.username}` : ''}! 
-            Here's your real-time operations overview.
-          </p>
-        </div>
-        <div className="dashboard-time">
-          <div className="current-time">
-            🕒 {getCurrentTime()}
-          </div>
-          <div className="current-date">
-            📅 {new Date().toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            })}
-          </div>
-        </div>
-      </div>
 
-      {/* Main Metrics Cards */}
-      <div className="dashboard-metrics">
-        <div className="metric-card primary">
-          <div className="metric-header">
-            <h3>📋 Total Operations</h3>
-            <span className="metric-icon">📊</span>
-          </div>
-          <div className="metric-value">{dashboardMetrics.totalEntries.toLocaleString()}</div>
-          <div className="metric-change">
-            <span className="trend-up">↗️ +12% from last month</span>
+      {/* Current Week Table */}
+      <div className="dashboard-table-section">
+        <div className="table-header">
+          <h3 className="table-title">📊 Current Week Activities</h3>
+          <div className="table-info">
+            <span className="record-count">
+              {currentWeekData.length} entries this week
+            </span>
           </div>
         </div>
 
-        <div className="metric-card success">
-          <div className="metric-header">
-            <h3>✅ Completed</h3>
-            <span className="metric-icon">🎯</span>
+        {currentWeekData.length === 0 ? (
+          <div className="no-data">
+            <div className="no-data-text">📝 No entries found for this week</div>
           </div>
-          <div className="metric-value">{dashboardMetrics.completedTasks.toLocaleString()}</div>
-          <div className="metric-change">
-            <span className="completion-rate">{getCompletionRate()}% completion rate</span>
-          </div>
-        </div>
+        ) : (
+          <div className="dashboard-table-container">
+            <div className="table-scroll-container">
+              <table className="dashboard-table">
+                <thead className="table-head">
+                  <tr>
+                    <th className="table-header-cell row-number">#</th>
+                    {dashboardColumns.map((column) => (
+                      <th 
+                        key={column.COLUMN_NAME} 
+                        className="table-header-cell"
+                        title={column.DISPLAY_NAME}
+                      >
+                        {column.DISPLAY_NAME}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentWeekData.map((entry, index) => (
+                    <tr 
+                      key={entry.id || index} 
+                      className={`table-row ${index % 2 === 0 ? 'even' : 'odd'}`}
+                    >
+                      <td className="table-cell row-number">{index + 1}</td>
+                      {dashboardColumns.map((column) => {
+                        const cellValue = getCellValue(entry, column);
+                        const colorClass = getCellColorClass(
+                          column.IS_COMBINED ? entry[columns.find(col => col.COLUMN_NAME.toLowerCase().includes('status'))?.COLUMN_NAME] : entry[column.COLUMN_NAME], 
+                          column.COLUMN_NAME
+                        );
 
-        <div className="metric-card warning">
-          <div className="metric-header">
-            <h3>⏳ In Progress</h3>
-            <span className="metric-icon">⚡</span>
-          </div>
-          <div className="metric-value">{dashboardMetrics.pendingTasks.toLocaleString()}</div>
-          <div className="metric-change">
-            <span className="trend-neutral">→ Requires attention</span>
-          </div>
-        </div>
-
-        <div className="metric-card info">
-          <div className="metric-header">
-            <h3>🏢 Active Areas</h3>
-            <span className="metric-icon">🌍</span>
-          </div>
-          <div className="metric-value">{dashboardMetrics.activeDistricts}</div>
-          <div className="metric-change">
-            <span className="trend-stable">→ Operational zones</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Overview Grid */}
-      <div className="overview-grid">
-        {/* Recent Activity */}
-        <div className="overview-section">
-          <h3 className="section-title">🕒 Recent Activity</h3>
-          <div className="activity-feed">
-            {dashboardMetrics.recentActivity.slice(0, 6).map((entry, index) => {
-              const dateColumn = columns.find(col => 
-                col.COLUMN_NAME.toLowerCase().includes('date')
-              );
-              const incidentColumn = columns.find(col => 
-                col.COLUMN_NAME.toLowerCase().includes('incident')
-              );
-              
-              return (
-                <div key={entry.id || index} className="activity-entry">
-                  <div className="activity-indicator" />
-                  <div className="activity-details">
-                    <div className="activity-title">
-                      {incidentColumn ? 
-                        (entry[incidentColumn.COLUMN_NAME] || 'New Entry').substring(0, 50) + '...' : 
-                        'Log Entry'
-                      }
-                    </div>
-                    <div className="activity-time">
-                      {dateColumn ? 
-                        formatCellValue(entry[dateColumn.COLUMN_NAME], dateColumn.COLUMN_NAME, 'date') : 
-                        'Recently'
-                      }
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Status Overview */}
-        <div className="overview-section">
-          <h3 className="section-title">📊 Status Overview</h3>
-          <div className="status-overview">
-            {Object.entries(dashboardMetrics.statusBreakdown).slice(0, 6).map(([status, count]) => (
-              <div key={status} className="status-entry">
-                <div className="status-info">
-                  <span className="status-name">{status}</span>
-                  <span className="status-count">{count}</span>
-                </div>
-                <div className="status-progress">
-                  <div 
-                    className="status-bar"
-                    style={{ 
-                      width: `${(count / dashboardMetrics.totalEntries) * 100}%`,
-                      backgroundColor: getStatusColor(status)
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Monthly Trends */}
-        <div className="overview-section">
-          <h3 className="section-title">📈 Monthly Trends</h3>
-          <div className="trend-chart">
-            {dashboardMetrics.monthlyTrends.map(([month, count], index) => (
-              <div key={month} className="trend-bar">
-                <div className="trend-month">{month.split('-')[1]}</div>
-                <div className="trend-wrapper">
-                  <div 
-                    className="trend-fill"
-                    style={{ 
-                      height: `${Math.max((count / Math.max(...dashboardMetrics.monthlyTrends.map(([,c]) => c))) * 100, 10)}%`,
-                      backgroundColor: `hsl(${200 + index * 20}, 70%, 50%)`
-                    }}
-                    title={`${month}: ${count} entries`}
-                  />
-                </div>
-                <div className="trend-value">{count}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Top Districts */}
-        <div className="overview-section">
-          <h3 className="section-title">🏢 Top Districts</h3>
-          <div className="district-list">
-            {dashboardMetrics.topDistricts.map(([district, count], index) => (
-              <div key={district} className="district-entry">
-                <div className="district-rank">#{index + 1}</div>
-                <div className="district-name">{district}</div>
-                <div className="district-count">{count}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="dashboard-actions">
-        <h3 className="section-title">⚡ Quick Actions</h3>
-        <div className="action-grid">
-          <button className="action-card logs">
-            <div className="action-icon">📋</div>
-            <div className="action-content">
-              <div className="action-title">View All Logs</div>
-              <div className="action-desc">Browse complete log entries</div>
+                        return (
+                          <td 
+                            key={column.COLUMN_NAME} 
+                            className={`table-cell ${colorClass}`}
+                            title={cellValue?.toString() || ''}
+                          >
+                            <div className="cell-content">
+                              {cellValue}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </button>
-
-          <button className="action-card kpi">
-            <div className="action-icon">📊</div>
-            <div className="action-content">
-              <div className="action-title">KPI Analysis</div>
-              <div className="action-desc">Detailed performance metrics</div>
-            </div>
-          </button>
-
-          {hasPermission('Operator') && (
-            <button className="action-card add">
-              <div className="action-icon">➕</div>
-              <div className="action-content">
-                <div className="action-title">Add New Entry</div>
-                <div className="action-desc">Create new log entry</div>
-              </div>
-            </button>
-          )}
-
-          <button className="action-card export">
-            <div className="action-icon">📄</div>
-            <div className="action-content">
-              <div className="action-title">Export Data</div>
-              <div className="action-desc">Generate PDF reports</div>
-            </div>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-// Helper function for status colors
-const getStatusColor = (status) => {
-  const statusLower = status.toLowerCase();
-  if (statusLower.includes('completed') || statusLower.includes('done')) {
-    return '#10b981'; // Green
-  } else if (statusLower.includes('pending') || statusLower.includes('progress')) {
-    return '#f59e0b'; // Yellow
-  } else if (statusLower.includes('failed') || statusLower.includes('error')) {
-    return '#ef4444'; // Red
-  }
-  return '#6b7280'; // Gray
 };
 
 export default DashboardTab;
