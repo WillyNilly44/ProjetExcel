@@ -3,22 +3,22 @@ import React from 'react';
 const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
   const tabs = [
     {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: '📈',
-      description: 'Main Dashboard - Landing Page',
+      id: 'kpi',
+      label: '📊 KPI',
+      icon: '📊',
+      description: 'Key Performance Indicators - Landing Page',
       public: true
     },
     {
-      id: 'kpi',
-      label: 'KPI',
-      icon: '📊',
-      description: 'Key Performance Indicators',
+      id: 'dashboard',
+      label: '📈 Dashboard',
+      icon: '📈',
+      description: 'Current Week Overview',
       public: true
     },
     {
       id: 'logs',
-      label: 'Logs',
+      label: '📋 Logs',
       icon: '📋',
       description: 'Log Entries Management',
       public: true
@@ -27,7 +27,7 @@ const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
     ...(hasPermission('Administrator') ? [
       {
         id: 'users',
-        label: 'Users',
+        label: '👥 Users',
         icon: '👥',
         description: 'User Management',
         public: false,

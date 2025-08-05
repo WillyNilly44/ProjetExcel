@@ -17,7 +17,7 @@ import KPITab from './KPITab'; // Import KPITab component
 
 export default function LogEntriesTable() {
   const { hasPermission, user } = useAuth(); 
-  const [activeTab, setActiveTab] = useState('dashboard'); // Changed from 'kpi' to 'dashboard'
+  const [activeTab, setActiveTab] = useState('kpi'); // Changed from 'dashboard' to 'kpi'
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -761,9 +761,9 @@ export default function LogEntriesTable() {
         hasPermission={hasPermission}
       />
 
-      {/* Dashboard Tab - Landing Page */}
-      {activeTab === 'dashboard' && (
-        <DashboardTab 
+      {/* KPI Tab - Landing Page */}
+      {activeTab === 'kpi' && (
+        <KPITab 
           data={data}
           columns={columns}
           formatCellValue={formatCellValue}
@@ -771,9 +771,9 @@ export default function LogEntriesTable() {
         />
       )}
 
-      {/* KPI Tab */}
-      {activeTab === 'kpi' && (
-        <KPITab 
+      {/* Dashboard Tab */}
+      {activeTab === 'dashboard' && (
+        <DashboardTab 
           data={data}
           columns={columns}
           formatCellValue={formatCellValue}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-
 const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
   const [thresholds, setThresholds] = useState({
     maintenance_yellow: 3,
@@ -12,11 +11,13 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   // Fetch thresholds from database
   const fetchThresholds = async () => {
     setIsLoading(true);
     setError('');
+    setSuccess('');
     
     try {
       const response = await fetch('/api/getthresholds', {
@@ -33,7 +34,6 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
-        // Use the first threshold record (assuming one row)
         const dbThresholds = result.data[0];
         setThresholds({
           maintenance_yellow: dbThresholds.maintenance_yellow || 3,
@@ -42,8 +42,6 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
           incident_red: dbThresholds.incident_red || 5,
           impact: dbThresholds.impact || 5
         });
-      } else {
-
       }
 
     } catch (error) {
@@ -58,6 +56,7 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
   const saveThresholds = async () => {
     setIsSaving(true);
     setError('');
+    setSuccess('');
     
     try {
       const response = await fetch('/api/savethresholds', {
@@ -75,11 +74,15 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
       const result = await response.json();
 
       if (result.success) {
+        setSuccess('Thresholds saved successfully!');
         // Call parent save function to update dashboard
         if (onSave) {
           onSave(thresholds);
         }
-        onClose();
+        // Close modal after a brief delay
+        setTimeout(() => {
+          onClose();
+        }, 1500);
       } else {
         throw new Error(result.error || 'Failed to save thresholds');
       }
@@ -104,6 +107,8 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
       ...prev,
       [field]: parseInt(value) || 0
     }));
+    setError(''); // Clear any errors when user makes changes
+    setSuccess(''); // Clear success message
   };
 
   const resetToDefaults = () => {
@@ -114,12 +119,14 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
       incident_red: 5,
       impact: 5
     });
+    setError('');
+    setSuccess('');
   };
 
-  const getColorForValue = (value, yellowThreshold, redThreshold) => {
-    if (value <= yellowThreshold) return '#28a745'; // Green
-    if (value <= redThreshold) return '#ffc107';    // Yellow
-    return '#dc3545';                               // Red
+  const getImpactColor = (value) => {
+    if (value <= 4) return '#28a745'; // Green
+    if (value <= 7) return '#ffc107'; // Yellow
+    return '#dc3545'; // Red
   };
 
   if (!isOpen) return null;
@@ -128,7 +135,7 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
     <div className="modal-overlay">
       <div className="threshold-manager-modal">
         <div className="modal-header">
-          <h2>Threshold Manager</h2>
+          <h2>🎨 Threshold Manager</h2>
           <button onClick={onClose} className="close-btn">✕</button>
         </div>
 
@@ -139,16 +146,21 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
             </div>
           )}
 
+          {success && (
+            <div className="success-message">
+              <p>✅ {success}</p>
+            </div>
+          )}
+
           {isLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
+            <div className="threshold-loading">
               <p>⏳ Loading thresholds...</p>
             </div>
           ) : (
             <>
-
               {/* Maintenance Thresholds */}
               <div className="threshold-section">
-                <h3> Maintenance Thresholds</h3>
+                <h3>🔧 Maintenance Thresholds</h3>
                 <div className="threshold-row">
                   <div className="threshold-input-group">
                     <label>🟡 Yellow Threshold (≤)</label>
@@ -158,13 +170,15 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
                       onChange={(e) => handleThresholdChange('maintenance_yellow', e.target.value)}
                       className="threshold-value"
                       min="0"
+                      max="99"
                     />
                     <div 
                       className="color-preview" 
-                      style={{ backgroundColor: '#ffc107' }}
+                      style={{ backgroundColor: '#ffc107', color: 'black' }}
                       title="Yellow color preview"
-                    ></div>
+                    />
                   </div>
+
                   <div className="threshold-input-group">
                     <label>🔴 Red Threshold (≤)</label>
                     <input
@@ -173,19 +187,20 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
                       onChange={(e) => handleThresholdChange('maintenance_red', e.target.value)}
                       className="threshold-value"
                       min="0"
+                      max="99"
                     />
                     <div 
                       className="color-preview" 
                       style={{ backgroundColor: '#dc3545' }}
                       title="Red color preview"
-                    ></div>
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Incident Thresholds */}
               <div className="threshold-section">
-                <h3>Incident Thresholds</h3>
+                <h3>🚨 Incident Thresholds</h3>
                 <div className="threshold-row">
                   <div className="threshold-input-group">
                     <label>🟡 Yellow Threshold (≤)</label>
@@ -195,13 +210,15 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
                       onChange={(e) => handleThresholdChange('incident_yellow', e.target.value)}
                       className="threshold-value"
                       min="0"
+                      max="99"
                     />
                     <div 
                       className="color-preview" 
-                      style={{ backgroundColor: '#ffc107' }}
+                      style={{ backgroundColor: '#ffc107', color: 'black' }}
                       title="Yellow color preview"
-                    ></div>
+                    />
                   </div>
+
                   <div className="threshold-input-group">
                     <label>🔴 Red Threshold (≤)</label>
                     <input
@@ -210,22 +227,23 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
                       onChange={(e) => handleThresholdChange('incident_red', e.target.value)}
                       className="threshold-value"
                       min="0"
+                      max="99"
                     />
                     <div 
                       className="color-preview" 
                       style={{ backgroundColor: '#dc3545' }}
                       title="Red color preview"
-                    ></div>
+                    />
                   </div>
                 </div>
               </div>
 
               {/* Impact Threshold */}
               <div className="threshold-section">
-                <h3>Impact Threshold</h3>
+                <h3>📊 Impact Threshold</h3>
                 <div className="threshold-row">
                   <div className="threshold-input-group">
-                    <label>Impact</label>
+                    <label>Impact Level (1-10)</label>
                     <input
                       type="number"
                       value={thresholds.impact}
@@ -236,9 +254,9 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
                     />
                     <div 
                       className="color-preview" 
-                      style={{ backgroundColor: thresholds.impact > 7 ? '#dc3545' : thresholds.impact > 4 ? '#ffc107' : '#28a745' }}
+                      style={{ backgroundColor: getImpactColor(thresholds.impact) }}
                       title="Impact color preview"
-                    ></div>
+                    />
                   </div>
                 </div>
               </div>
@@ -248,16 +266,28 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
 
         <div className="modal-footer">
           <div className="footer-left">
-            <button onClick={resetToDefaults} className="reset-btn" disabled={isLoading || isSaving}>
+            <button 
+              onClick={resetToDefaults} 
+              className="reset-btn" 
+              disabled={isLoading || isSaving}
+            >
               🔄 Reset to Defaults
             </button>
           </div>
           <div className="footer-right">
-            <button onClick={onClose} className="cancel-btn" disabled={isSaving}>
+            <button 
+              onClick={onClose} 
+              className="cancel-btn" 
+              disabled={isSaving}
+            >
               Cancel
             </button>
-            <button onClick={saveThresholds} className="save-btn" disabled={isLoading || isSaving}>
-              {isSaving ? ' Saving...' : ' Save Thresholds'}
+            <button 
+              onClick={saveThresholds} 
+              className={`save-btn ${isSaving ? 'loading' : ''}`}
+              disabled={isLoading || isSaving}
+            >
+              {isSaving ? '💾 Saving...' : '💾 Save Thresholds'}
             </button>
           </div>
         </div>

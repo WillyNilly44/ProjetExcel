@@ -15,7 +15,13 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     month: ''
   });
   const [showThresholdManager, setShowThresholdManager] = useState(false);
-  const [thresholds, setThresholds] = useState({});
+  const [thresholds, setThresholds] = useState({
+    maintenance_yellow: 3,
+    maintenance_red: 7,
+    incident_yellow: 2,
+    incident_red: 5,
+    impact: 5
+  });
   
   const [kpiData, setKpiData] = useState({
     totalEntries: 0,
@@ -25,6 +31,70 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     recentActivity: [],
     statusBreakdown: {}
   });
+
+  // Load thresholds from database on component mount
+  const loadThresholds = async () => {
+    try {
+      const response = await fetch('/api/getthresholds', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.length > 0) {
+          const dbThresholds = result.data[0];
+          const loadedThresholds = {
+            maintenance_yellow: dbThresholds.maintenance_yellow || 3,
+            maintenance_red: dbThresholds.maintenance_red || 7,
+            incident_yellow: dbThresholds.incident_yellow || 2,
+            incident_red: dbThresholds.incident_red || 5,
+            impact: dbThresholds.impact || 5
+          };
+          
+          setThresholds(loadedThresholds);
+          
+          // Also save to localStorage as backup
+          localStorage.setItem('columnThresholds', JSON.stringify(loadedThresholds));
+          
+          console.log('✅ Thresholds loaded from database:', loadedThresholds);
+        } else {
+          // Fallback to localStorage if database doesn't have thresholds
+          const savedThresholds = localStorage.getItem('columnThresholds');
+          if (savedThresholds) {
+            const parsedThresholds = JSON.parse(savedThresholds);
+            setThresholds(parsedThresholds);
+            console.log('✅ Thresholds loaded from localStorage:', parsedThresholds);
+          }
+        }
+      } else {
+        // Fallback to localStorage if API fails
+        const savedThresholds = localStorage.getItem('columnThresholds');
+        if (savedThresholds) {
+          const parsedThresholds = JSON.parse(savedThresholds);
+          setThresholds(parsedThresholds);
+          console.log('✅ Thresholds loaded from localStorage (API failed):', parsedThresholds);
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to load thresholds from database, using defaults:', error);
+      
+      // Try localStorage as final fallback
+      const savedThresholds = localStorage.getItem('columnThresholds');
+      if (savedThresholds) {
+        try {
+          const parsedThresholds = JSON.parse(savedThresholds);
+          setThresholds(parsedThresholds);
+          console.log('✅ Thresholds loaded from localStorage (final fallback):', parsedThresholds);
+        } catch (parseError) {
+          console.warn('⚠️ Failed to parse localStorage thresholds, using defaults');
+        }
+      }
+    }
+  };
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
@@ -62,16 +132,14 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     }
   };
 
+  // Load thresholds immediately when component mounts
   useEffect(() => {
-    fetchDashboardData();
+    loadThresholds();
   }, []);
 
-  // Load thresholds on component mount
+  // Fetch dashboard data after thresholds are loaded
   useEffect(() => {
-    const savedThresholds = localStorage.getItem('columnThresholds');
-    if (savedThresholds) {
-      setThresholds(JSON.parse(savedThresholds));
-    }
+    fetchDashboardData();
   }, []);
 
   useEffect(() => {
@@ -221,7 +289,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     }, 100);
   };
 
-  // Threshold functions
+  // Threshold functions with improved logic
   const getCellColorClass = (value, columnName) => {
     if (!thresholds || value === null || value === undefined) {
       return '';
@@ -232,18 +300,21 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
     const columnNameLower = columnName.toLowerCase();
 
+    // Apply maintenance thresholds
     if (columnNameLower.includes('maintenance')) {
       if (numValue <= thresholds.maintenance_yellow) return 'threshold-green';
       if (numValue <= thresholds.maintenance_red) return 'threshold-yellow';
       return 'threshold-red';
     }
     
+    // Apply incident thresholds
     if (columnNameLower.includes('incident')) {
       if (numValue <= thresholds.incident_yellow) return 'threshold-green';
       if (numValue <= thresholds.incident_red) return 'threshold-yellow';
       return 'threshold-red';
     }
 
+    // Apply impact thresholds
     if (columnNameLower.includes('impact')) {
       if (numValue <= 4) return 'threshold-green';
       if (numValue <= 7) return 'threshold-yellow';
@@ -270,6 +341,9 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
   const handleThresholdSave = (newThresholds) => {
     setThresholds(newThresholds);
+    // Save to localStorage as well
+    localStorage.setItem('columnThresholds', JSON.stringify(newThresholds));
+    console.log('✅ Thresholds updated and saved:', newThresholds);
   };
 
   // Helper functions for filters
@@ -355,6 +429,18 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         </div>
       </div>
 
+      {/* Threshold Status Indicator */}
+      <div className="threshold-status">
+        <div className="threshold-info">
+          <span className="threshold-label">🎨 Threshold Status:</span>
+          <span className="threshold-values">
+            Maintenance: {thresholds.maintenance_yellow}/{thresholds.maintenance_red} | 
+            Incident: {thresholds.incident_yellow}/{thresholds.incident_red} | 
+            Impact: {thresholds.impact}
+          </span>
+        </div>
+      </div>
+
       {/* Dashboard Filters */}
       <div className="dashboard-filters">
         <div className="filter-header">
@@ -368,7 +454,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
             </button>
           </div>
         </div>
-        
+
         <div className="filter-grid">
           <div className="filter-group">
             <label>📅 Year</label>
