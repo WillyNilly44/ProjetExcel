@@ -23,6 +23,8 @@ const PDFExport = ({
   const exportToPDF = () => {
     try {
       const doc = new jsPDF('l', 'mm', 'a4'); 
+      const pageWidth = doc.internal.pageSize.getWidth(); // Get actual page width
+      const availableWidth = pageWidth - 28; // Account for margins (14mm left + 14mm right)
       
       let currentData, currentColumns;
       
@@ -63,7 +65,7 @@ const PDFExport = ({
         ? currentColumns.map(col => col.DISPLAY_NAME)
         : currentColumns.map(column => formatColumnName(column.COLUMN_NAME));
       
-      // Prepare table data
+      // Prepare table data with proper text wrapping
       let tableData;
       
       if (mode === 'dashboard') {
@@ -80,7 +82,7 @@ const PDFExport = ({
           });
         });
       } else {
-        // Original logs mode logic
+        // LOGS MODE: Improved text handling for better fit
         tableData = currentData.map(entry => {
           return currentColumns.map(column => {
             let cellValue = formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE);
@@ -89,25 +91,35 @@ const PDFExport = ({
               cellValue = `🔄 ${cellValue}`;
             }
             
-            const stringValue = String(cellValue);
+            const stringValue = String(cellValue || '');
             const columnName = column.COLUMN_NAME.toLowerCase();
             
+            // Handle different column types for better fitting
             if (columnName.includes('note') || 
                 columnName.includes('description') || 
                 columnName.includes('comment') ||
                 columnName.includes('remarks')) {
-              return stringValue; 
+              // Keep full text for notes but let autoTable handle wrapping
+              return stringValue;
+            } else if (columnName.includes('date') || columnName.includes('time')) {
+              // Format dates to be more compact
+              return stringValue.length > 16 ? stringValue.substring(0, 16) : stringValue;
+            } else if (columnName.includes('id')) {
+              // IDs should be short
+              return stringValue;
+            } else {
+              // For other columns, limit length but not too aggressively
+              return stringValue.length > 30 ? stringValue.substring(0, 27) + '...' : stringValue;
             }
-            
-            return stringValue.length > 50 ? stringValue.substring(0, 47) + '...' : stringValue;
           });
         });
       }
 
-      // Column styles based on mode
+      // DYNAMIC COLUMN STYLES based on actual columns and available width
       let columnStyles = {};
       
       if (mode === 'dashboard') {
+        // Dashboard mode - fixed column widths that fit in page
         columnStyles = {
           0: { cellWidth: 15, halign: 'center' }, // #
           1: { cellWidth: 25 }, // Ticket #
@@ -121,63 +133,80 @@ const PDFExport = ({
           9: { cellWidth: 25 } // District
         };
       } else {
-        // Original column styles for logs
+        // LOGS MODE: Calculate dynamic column widths to fit page
+        const totalColumns = currentColumns.length;
+        const baseWidth = Math.floor(availableWidth / totalColumns);
+        
         columnStyles = Object.fromEntries(
           currentColumns.map((column, index) => {
             const columnName = column.COLUMN_NAME.toLowerCase();
-            let width = 'auto';
-            let minCellHeight = 10;
+            let width;
+            let styles = {
+              overflow: 'linebreak',
+              cellPadding: 2
+            };
             
             if (columnName.includes('note') || 
                 columnName.includes('description') || 
                 columnName.includes('comment') ||
                 columnName.includes('remarks')) {
-              width = 60; 
-              minCellHeight = 15; 
-              return [index, { 
-                cellWidth: width,
-                minCellHeight: minCellHeight,
-                overflow: 'linebreak',
-                fontSize: 7 
-              }];
+              // Notes get more space but still fit in page
+              width = Math.min(baseWidth * 2.5, availableWidth * 0.3);
+              styles.fontSize = 6;
+              styles.minCellHeight = 12;
             } else if (columnName.includes('date') || columnName.includes('time')) {
-              width = 25;
+              width = Math.min(baseWidth * 1.2, 30);
+              styles.fontSize = 7;
             } else if (columnName.includes('id')) {
-              width = 15;
-            } else if (columnName.includes('status')) {
-              width = 20;
+              width = Math.min(baseWidth * 0.7, 20);
+              styles.fontSize = 7;
+              styles.halign = 'center';
+            } else if (columnName.includes('status') || columnName.includes('type')) {
+              width = Math.min(baseWidth * 0.9, 25);
+              styles.fontSize = 7;
+              styles.halign = 'center';
             } else {
-              width = 25; 
+              // Default column width
+              width = baseWidth;
+              styles.fontSize = 7;
             }
             
-            return [index, { cellWidth: width }];
+            // Ensure width doesn't exceed available space
+            width = Math.min(width, availableWidth / totalColumns);
+            styles.cellWidth = width;
+            
+            return [index, styles];
           })
         );
       }
 
-      // Create table - START RIGHT AFTER TITLE
+      // Create table with improved settings
       doc.autoTable({
         head: [tableHeaders],
         body: tableData,
-        startY: 30, // Start right after title
+        startY: 30,
         styles: {
-          fontSize: mode === 'dashboard' ? 7 : 8,
-          cellPadding: mode === 'dashboard' ? 2 : 3,
+          fontSize: mode === 'dashboard' ? 7 : 6, // Smaller font for better fit
+          cellPadding: { top: 2, right: 1, bottom: 2, left: 1 }, // Reduced padding
           overflow: 'linebreak',
           halign: 'left',
-          valign: mode === 'dashboard' ? 'middle' : 'top'
+          valign: 'top',
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
         },
         headStyles: {
           fillColor: [59, 130, 246],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          fontSize: mode === 'dashboard' ? 8 : 9,
-          halign: 'center'
+          fontSize: mode === 'dashboard' ? 8 : 7,
+          halign: 'center',
+          cellPadding: { top: 3, right: 1, bottom: 3, left: 1 }
         },
         columnStyles: columnStyles,
         alternateRowStyles: {
-          fillColor: [245, 245, 245]
+          fillColor: [248, 250, 252]
         },
+        tableWidth: 'wrap', // Let table adjust to content
         didParseCell: function (data) {
           if (mode === 'dashboard') {
             // Dashboard-specific cell styling
@@ -215,25 +244,14 @@ const PDFExport = ({
               data.cell.styles.fillColor = [219, 234, 254];
               data.cell.styles.textColor = [30, 64, 175];
             }
-            
-            const column = currentColumns[data.column.index];
-            if (column) {
-              const columnName = column.COLUMN_NAME.toLowerCase();
-              if (columnName.includes('note')) {
-                data.cell.styles.minCellHeight = 15;
-                data.cell.styles.overflow = 'linebreak';
-                data.cell.styles.cellPadding = 4;
-              }
-            }
           }
         },
         pageBreak: 'auto',
         showHead: 'everyPage',
-        margin: { top: 30, left: 14, right: 14, bottom: 14 } // Minimal margins
+        margin: { top: 30, left: 14, right: 14, bottom: 14 },
+        theme: 'grid' // Add grid theme for better table appearance
       });
 
-      // NO STATISTICS, NO METADATA, NO FOOTER NOTES - JUST TABLE!
-      
       // Generate filename
       const now = new Date();
       const dateStr = now.toISOString().split('T')[0];
@@ -247,8 +265,9 @@ const PDFExport = ({
       // Save PDF
       doc.save(filename);
       
-      // Minimal success message
-      alert(`PDF exported successfully!\nEntries: ${currentData.length}\nFilename: ${filename}`);
+      // Success message with fit info
+      const fitMessage = mode === 'logs' ? '\nOptimized to fit all columns on page.' : '';
+      alert(`PDF exported successfully!\nEntries: ${currentData.length}\nFilename: ${filename}${fitMessage}`);
       
     } catch (error) {
       console.error(`❌ ${mode} PDF export failed:`, error);
@@ -271,7 +290,7 @@ const PDFExport = ({
     if (mode === 'dashboard') {
       return `Export current week dashboard (${data.length} entries) to PDF`;
     }
-    return `Export ${data.length} entries to PDF`;
+    return `Export ${data.length} entries to PDF (optimized fit)`;
   };
 
   if (compact) {
