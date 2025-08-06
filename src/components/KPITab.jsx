@@ -60,14 +60,12 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
           // Also save to localStorage as backup
           localStorage.setItem('columnThresholds', JSON.stringify(loadedThresholds));
           
-          console.log('✅ Thresholds loaded from database:', loadedThresholds);
         } else {
           // Fallback to localStorage if database doesn't have thresholds
           const savedThresholds = localStorage.getItem('columnThresholds');
           if (savedThresholds) {
             const parsedThresholds = JSON.parse(savedThresholds);
             setThresholds(parsedThresholds);
-            console.log('✅ Thresholds loaded from localStorage:', parsedThresholds);
           }
         }
       } else {
@@ -76,7 +74,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         if (savedThresholds) {
           const parsedThresholds = JSON.parse(savedThresholds);
           setThresholds(parsedThresholds);
-          console.log('✅ Thresholds loaded from localStorage (API failed):', parsedThresholds);
         }
       }
     } catch (error) {
@@ -88,7 +85,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         try {
           const parsedThresholds = JSON.parse(savedThresholds);
           setThresholds(parsedThresholds);
-          console.log('✅ Thresholds loaded from localStorage (final fallback):', parsedThresholds);
         } catch (parseError) {
           console.warn('⚠️ Failed to parse localStorage thresholds, using defaults');
         }
@@ -224,19 +220,24 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
   // Dashboard formatting functions
   const formatColumnName = (column) => {
-    if (typeof column === 'object' && column.DISPLAY_NAME) {
-      return column.DISPLAY_NAME;
-    }
-    
-    if (typeof column === 'object' && column.COLUMN_NAME) {
+    if (column.IS_AVERAGE_COLUMN && column.AVERAGE_VALUE) {
+        const avgValue = parseFloat(column.AVERAGE_VALUE);
+        const formattedValue = !isNaN(avgValue) ? avgValue.toFixed(2) : '0.00';        
+        
+        // 1st and 3rd average columns are QTY, 2nd and 4th are Time
+        if (column.COLUMN_NAME === "maintenance_1" || column.COLUMN_NAME === "incidents_1") {
+          return `${formattedValue} Avg Qty`;
+        } else if (column.COLUMN_NAME === "maintenance_2" || column.COLUMN_NAME === "incidents_2") {
+          return `${formattedValue} Avg Time`;
+        } else {
+          // Default for any additional average columns
+          return `${formattedValue} Avg`;
+        }
+      }
+      
       return column.COLUMN_NAME
         .replace(/_/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
-    }
-    
-    return column.toString()
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   const formatDashboardCellValue = (value, columnName, dataType) => {
@@ -343,7 +344,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     setThresholds(newThresholds);
     // Save to localStorage as well
     localStorage.setItem('columnThresholds', JSON.stringify(newThresholds));
-    console.log('✅ Thresholds updated and saved:', newThresholds);
   };
 
   // Helper functions for filters
@@ -429,17 +429,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         </div>
       </div>
 
-      {/* Threshold Status Indicator */}
-      <div className="threshold-status">
-        <div className="threshold-info">
-          <span className="threshold-label">🎨 Threshold Status:</span>
-          <span className="threshold-values">
-            Maintenance: {thresholds.maintenance_yellow}/{thresholds.maintenance_red} | 
-            Incident: {thresholds.incident_yellow}/{thresholds.incident_red} | 
-            Impact: {thresholds.impact}
-          </span>
-        </div>
-      </div>
 
       {/* Dashboard Filters */}
       <div className="dashboard-filters">

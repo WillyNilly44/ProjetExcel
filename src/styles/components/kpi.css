@@ -76,8 +76,9 @@
 
 .kpi-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
-  border-color: #4b5563;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.8);
+  border-color: #1f2937;
+  background: linear-gradient(135deg, #030712 0%, #000000 100%);
 }
 
 .kpi-card.primary::before {
@@ -299,6 +300,34 @@
 
 .action-btn.info:hover {
   background-color: #7c3aed;
+}
+
+/* New specific hover for month and week columns only */
+.table-cell:hover {
+  background-color: inherit;
+}
+
+/* Hover effect specifically for month column */
+.table-row:hover .table-cell:first-child {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Hover effect specifically for week column (second column) */
+.table-row:hover .table-cell:nth-child(2) {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Optional: Darker hover for month and week columns */
+.table-row:hover .table-cell:first-child,
+.table-row:hover .table-cell:nth-child(2) {
+  background-color: #111827 !important;
+  border: 1px solid #374151;
 }
 
 /* Responsive Design */
