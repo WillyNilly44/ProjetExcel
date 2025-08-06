@@ -1110,25 +1110,51 @@
   color: #f9fafb;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .stats-overview {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .insights-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .bar-chart {
-    height: 200px;
-  }
-  
-  .bar-wrapper {
-    height: 120px;
-  }
+/* Dashboard Table Row Hover Effects - Add this after the existing dashboard table styles */
+
+/* Dashboard table row hover */
+.dashboard-table .table-row {
+  transition: background-color 0.2s ease;
+}
+
+.dashboard-table .table-row:hover {
+  background-color: #111827 !important; /* Dark hover background */
+}
+
+.dashboard-table .table-row:hover .table-cell {
+  background-color: transparent !important;
+}
+
+/* Specific hover effects for first two columns only (# and Ticket #) */
+.dashboard-table .table-row:hover .table-cell:nth-child(1),
+.dashboard-table .table-row:hover .table-cell:nth-child(2) {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* Keep status and risk colors visible on hover but darken them */
+.dashboard-table .table-row:hover .table-cell.status-completed {
+  background-color: #065f46 !important; /* Darker green */
+}
+
+.dashboard-table .table-row:hover .table-cell.status-progress {
+  background-color: #92400e !important; /* Darker orange */
+}
+
+.dashboard-table .table-row:hover .table-cell.status-failed {
+  background-color: #991b1b !important; /* Darker red */
+}
+
+.dashboard-table .table-row:hover .table-cell.risk-high {
+  background-color: #991b1b !important; /* Darker red */
+}
+
+.dashboard-table .table-row:hover .table-cell.risk-medium {
+  background-color: #92400e !important; /* Darker orange */
+}
+
+.dashboard-table .table-row:hover .table-cell.risk-low {
+  background-color: #065f46 !important; /* Darker green */
 }
