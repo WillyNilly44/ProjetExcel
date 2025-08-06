@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import PDFExport from './PDFExport'; // Use the enhanced existing component
 
 const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission }) => {
   const { user } = useAuth();
@@ -135,17 +136,64 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
       }
     }
     
-    // Format time
+    // Format time - EXTRACT ONLY TIME PORTION
     if (timeValue) {
-      if (typeof timeValue === 'string' && timeValue.includes(':')) {
-        formattedTime = timeValue;
-      } else if (timeValue instanceof Date) {
-        formattedTime = timeValue.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        });
-      } else {
+      try {
+        // Handle different time formats
+        if (typeof timeValue === 'string') {
+          // If it's a full datetime string (e.g., "2024-08-06T14:30:00")
+          if (timeValue.includes('T')) {
+            const timePart = timeValue.split('T')[1];
+            if (timePart) {
+              // Extract HH:MM from HH:MM:SS or HH:MM:SS.000
+              const timeOnly = timePart.split('.')[0]; // Remove milliseconds if present
+              const timeParts = timeOnly.split(':');
+              formattedTime = `${timeParts[0]}:${timeParts[1]}`; // HH:MM format
+            }
+          }
+          // If it's a date-time string with space (e.g., "2024-08-06 14:30:00")
+          else if (timeValue.includes(' ')) {
+            const parts = timeValue.split(' ');
+            if (parts.length > 1) {
+              const timePart = parts[1];
+              const timeParts = timePart.split(':');
+              formattedTime = `${timeParts[0]}:${timeParts[1]}`; // HH:MM format
+            }
+          }
+          // If it's already just time (e.g., "14:30:00" or "14:30")
+          else if (timeValue.includes(':')) {
+            const timeParts = timeValue.split(':');
+            formattedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1]}`; // HH:MM format
+          }
+          // If it's just the time value as string
+          else {
+            formattedTime = timeValue;
+          }
+        } 
+        // Handle Date objects
+        else if (timeValue instanceof Date) {
+          formattedTime = timeValue.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+        // Handle other formats
+        else {
+          // Try to parse as date and extract time
+          const dateObj = new Date(timeValue);
+          if (!isNaN(dateObj.getTime())) {
+            formattedTime = dateObj.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            });
+          } else {
+            formattedTime = timeValue.toString();
+          }
+        }
+      } catch (e) {
+        console.warn('Time parsing error:', e, timeValue);
         formattedTime = timeValue.toString();
       }
     }
@@ -217,6 +265,36 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     return '';
   };
 
+  // Calculate dashboard statistics for PDF
+  const calculateDashboardStats = () => {
+    const totalEntries = currentWeekData.length;
+    const completed = currentWeekData.filter(entry => {
+      const statusCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('status'));
+      return statusCol && entry[statusCol.COLUMN_NAME]?.toString().toLowerCase().includes('completed');
+    }).length;
+    
+    const pending = currentWeekData.filter(entry => {
+      const statusCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('status'));
+      const status = statusCol ? entry[statusCol.COLUMN_NAME]?.toString().toLowerCase() : '';
+      return status.includes('progress') || status.includes('pending');
+    }).length;
+    
+    const highRisk = currentWeekData.filter(entry => {
+      const riskCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('risk'));
+      return riskCol && entry[riskCol.COLUMN_NAME]?.toString().toLowerCase().includes('high');
+    }).length;
+
+    const completionRate = totalEntries > 0 ? Math.round((completed / totalEntries) * 100) : 0;
+
+    return {
+      totalEntries,
+      completed,
+      pending,
+      highRisk,
+      completionRate
+    };
+  };
+
   const { startOfWeek, endOfWeek } = getCurrentWeekRange();
 
   return (
@@ -230,6 +308,17 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
             <span className="record-count">
               {currentWeekData.length} entries this week
             </span>
+            {/* Use Enhanced PDFExport Component */}
+            <PDFExport
+              data={currentWeekData}
+              mode="dashboard"
+              title="OPERATIONS DASHBOARD REPORT"
+              formatDateTime={formatDateTime}
+              getCellValue={getCellValue}
+              customStats={calculateDashboardStats()}
+              disabled={currentWeekData.length === 0}
+              compact={true}
+            />
           </div>
         </div>
 

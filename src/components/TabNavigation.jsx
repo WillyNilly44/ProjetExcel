@@ -4,30 +4,29 @@ const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
   const tabs = [
     {
       id: 'kpi',
-      label: '📊 KPI',
+      label: 'KPI',
       icon: '📊',
       description: 'Key Performance Indicators - Landing Page',
       public: true
     },
     {
       id: 'dashboard',
-      label: '📈 Dashboard',
+      label: 'Dashboard',
       icon: '📈',
       description: 'Current Week Overview',
       public: true
     },
     {
       id: 'logs',
-      label: '📋 Logs',
+      label: 'Logs',
       icon: '📋',
       description: 'Log Entries Management',
       public: true
     },
-    // Only show users tab for administrators
     ...(hasPermission('Administrator') ? [
       {
         id: 'users',
-        label: '👥 Users',
+        label: 'Users',
         icon: '👥',
         description: 'User Management',
         public: false,

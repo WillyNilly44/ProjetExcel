@@ -423,6 +423,42 @@
   color: #9ca3af;
 }
 
+/* Enhanced PDF Export Button for Dashboard */
+.btn.btn-export.dashboard {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+}
+
+.btn.btn-export.dashboard:hover:not(:disabled) {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.btn.btn-export.dashboard:disabled {
+  background: #6b7280;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn.btn-export.compact.dashboard {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-container {
@@ -686,13 +722,40 @@
   font-family: 'Courier New', monospace;
   font-size: 0.85rem;
   white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* Duration and Downtime styling */
-.dashboard-table .table-cell:nth-child(7) .cell-content,
-.dashboard-table .table-cell:nth-child(8) .cell-content {
-  font-weight: 600;
-  font-family: 'Courier New', monospace;
+/* Style for date and time parts */
+.dashboard-table .table-cell:nth-child(5) .cell-content {
+  line-height: 1.2;
+}
+
+/* Ensure proper spacing between date and time */
+.dashboard-table .table-cell:nth-child(5) {
+  min-width: 140px;
+  max-width: 140px;
+}
+
+/* Better alignment for combined date/time */
+.table-cell .cell-content {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 768px) {
+  .dashboard-table .table-cell:nth-child(5) .cell-content {
+    font-size: 0.75rem;
+    flex-direction: row;
+    gap: 4px;
+  }
+  
+  .dashboard-table .table-cell:nth-child(5) {
+    min-width: 110px;
+    max-width: 110px;
+  }
 }
 
 /* Responsive adjustments */

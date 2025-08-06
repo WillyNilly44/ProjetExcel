@@ -1,7 +1,7 @@
 const sql = require('mssql');
 
 const config = {
-  server: process.env.AWS_RDS_HOST?.replace(',1433', '') || 'sancoreweb.cdoxgz1zznntkn.us-west-2.rds.amazonaws.com',
+  server: process.env.AWS_RDS_HOST?.replace(',1433', ''),
   database: process.env.AWS_RDS_DATABASE,
   user: process.env.AWS_RDS_USER,
   password: process.env.AWS_RDS_PASSWORD?.replace(/"/g, ''),
