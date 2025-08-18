@@ -783,18 +783,353 @@
   justify-content: center;
 }
 
-.virtual-icon {
-  margin-right: 4px;
-  font-size: 12px;
-}
-
-.virtual-text {
+/* Loading and empty states */
+.loading-cell,
+.empty-cell {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
   font-style: italic;
-  opacity: 0.8;
 }
 
-.normal-text {
-  font-style: normal;
+/* Better loading and empty state styling */
+.loading-cell:hover,
+.empty-cell:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+}
+
+.no-data-text {
+  font-size: var(--font-size-lg);
+  color: var(--text-secondary);
+}
+
+/* Threshold colors */
+.threshold-green {
+  background-color: var(--success) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+.threshold-yellow {
+  background-color: var(--warning) !important;
+  color: black !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+.threshold-red {
+  background-color: var(--danger) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+}
+
+/* Ensure threshold colors override other styles */
+.table-cell.threshold-green,
+.table-cell.threshold-yellow,
+.table-cell.threshold-red {
+  border: 2px solid rgba(0,0,0,0.1) !important;
+}
+
+/* Add transition for smooth color changes */
+.table-cell {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Responsive tables */
+@media (max-width: 768px) {
+  .table-scroll-container {
+    overflow-x: auto;
+  }
+  
+  .data-table {
+    min-width: 600px;
+  }
+  
+  .table-header-cell,
+  .table-cell {
+    padding: 6px 4px;
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* Action button hover improvements */
+.action-btn:hover:not(:disabled) {
+  background-color: var(--danger);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.action-btn.virtual:hover {
+  background-color: var(--info);
+  color: white;
+}
+
+/* Cell content hover - make sure text stays readable */
+.table-cell:hover .cell-content {
+  color: inherit; /* Don't change text color on cell hover */
+}
+
+/* Specific hover for different cell types */
+.table-cell.status:hover {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.table-cell.note:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.table-cell.actions:hover {
+  background-color: transparent; /* Don't change action cell background */
+}
+
+/* Clickable row improvements */
+.table-row.clickable-row {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.table-row.clickable-row:hover:not(.editing) {
+  background-color: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure virtual indicators stay visible on hover */
+.table-row:hover .virtual-icon {
+  color: #1e40af; /* Keep blue but readable */
+}
+
+/* Threshold colors - make sure they work on hover too */
+.table-cell.threshold-green:hover {
+  background-color: #047857 !important; /* Darker green on hover */
+  color: white !important;
+}
+
+.table-cell.threshold-yellow:hover {
+  background-color: #d97706 !important; /* Darker yellow on hover */
+  color: white !important;
+}
+
+.table-cell.threshold-red:hover {
+  background-color: #dc2626 !important; /* Darker red on hover */
+  color: white !important;
+}
+
+/* Editing row - make sure it doesn't get hover effects */
+.table-row.editing {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 2px solid var(--primary) !important;
+}
+
+.table-row.editing:hover {
+  background-color: rgba(59, 130, 246, 0.1) !important; /* Keep same color */
+  transform: none !important; /* No transform when editing */
+  box-shadow: none !important; /* No shadow when editing */
+}
+
+/* Better focus states */
+.table-row:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Inline editing improvements */
+.inline-input,
+.inline-select {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  transition: border-color 0.2s ease;
+}
+
+.inline-input:focus,
+.inline-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  background-color: var(--bg-primary);
+}
+
+.inline-input:hover:not(:focus),
+.inline-select:hover:not(:focus) {
+  border-color: var(--primary);
+  background-color: var(--bg-primary);
+}
+
+/* Edit actions in table */
+.edit-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: center;
+}
+
+.edit-actions .btn {
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* Virtual Table Styles - Dark Theme */
+.virtual-table-container {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  background-color: #111827; /* Very dark background */
+  border: 1px solid #374151; /* Dark border */
+}
+
+.virtual-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #1f2937; /* Dark gray header */
+  border-bottom: 2px solid #4b5563; /* Darker border */
+}
+
+.virtual-header-row {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+}
+
+.virtual-header-cell {
+  padding: 12px 8px;
+  font-weight: 700; /* Bolder text */
+  font-size: 12px;
+  color: #f9fafb; /* Light text */
+  border-right: 1px solid #4b5563; /* Dark border */
+  background-color: #1f2937; /* Dark background */
+  display: flex;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.virtual-header-cell:last-child {
+  border-right: none;
+}
+
+.virtual-header-cell:hover {
+  background-color: #374151; /* Lighter on hover */
+  color: #ffffff; /* Pure white on hover */
+}
+
+.virtual-header-cell.actions {
+  flex: 0 0 120px;
+  justify-content: center;
+}
+
+.virtual-table-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #1f2937; /* Dark scrollbar */
+  background-color: #111827; /* Dark background */
+}
+
+.virtual-table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.virtual-table-scroll::-webkit-scrollbar-track {
+  background: #1f2937; /* Dark track */
+}
+
+.virtual-table-scroll::-webkit-scrollbar-thumb {
+  background-color: #6b7280; /* Dark thumb */
+  border-radius: 4px;
+}
+
+.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af; /* Lighter on hover */
+}
+
+.virtual-row {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px solid #374151; /* Dark border */
+  transition: background-color 0.2s ease;
+  min-height: 50px;
+}
+
+.virtual-row:hover {
+  background-color: #1e3a8a; /* Dark blue on hover */
+  box-shadow: inset 0 0 0 1px #3b82f6; /* Blue glow */
+}
+
+.virtual-row.even {
+  background-color: #1f2937; /* Dark gray */
+}
+
+.virtual-row.odd {
+  background-color: #111827; /* Very dark gray */
+}
+
+.virtual-row.virtual {
+  background-color: #365314; /* Dark green for virtual */
+  font-style: italic;
+}
+
+.virtual-row.virtual:hover {
+  background-color: #4ade80; /* Brighter green on hover */
+  color: #111827; /* Dark text on bright background */
+}
+
+.virtual-cell {
+  padding: 12px 8px;
+  border-right: 1px solid #374151; /* Dark border */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  color: #e5e7eb; /* Light gray text */
+}
+
+.virtual-cell:last-child {
+  border-right: none;
+}
+
+.virtual-cell.center {
+  justify-content: center;
+}
+
+.virtual-cell.status {
+  font-weight: 600;
+  color: #10b981; /* Green for status */
+  text-align: center;
+  justify-content: center;
+}
+
+.virtual-cell.note {
+  font-size: 13px;
+  line-height: 1.3;
+  color: #d1d5db; /* Lighter gray for notes */
+}
+
+.virtual-cell.actions {
+  flex: 0 0 120px;
+  justify-content: center;
 }
 
 /* Loading and empty states */
@@ -1163,13 +1498,14 @@
   color: #e5e7eb; /* Light gray for normal text */
 }
 
-.virtual-action-btn {
-  padding: 6px 12px; /* Larger padding */
-  font-size: 12px;
-  font-weight: 600;
+/* Virtual Action Button - Dark Theme */
+/* .virtual-action-btn {
+  padding: 4px 8px;
+  font-size: 11px;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
+  font-weight: 500;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -1183,73 +1519,20 @@
 }
 
 .virtual-action-btn.delete {
-  background-color: #dc2626; /* Red delete button */
+  background-color: #dc2626;
   color: white;
 }
 
 .virtual-action-btn.delete:hover:not(:disabled) {
-  background-color: #b91c1c; /* Darker red on hover */
+  background-color: #b91c1c;
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
 }
 
 .virtual-action-btn.virtual {
-  background-color: #4b5563; /* Dark gray for virtual */
-  color: #d1d5db; /* Light gray text */
+  background-color: #4b5563;
+  color: #d1d5db;
   cursor: not-allowed;
-}
-
-.virtual-table-stats {
-  padding: 16px 20px; /* Better padding */
-  background-color: #1f2937; /* Dark background */
-  border-top: 2px solid #374151; /* Dark border */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  color: #d1d5db; /* Light gray text */
-}
-
-.performance-badge {
-  background-color: #059669; /* Keep green badge */
-  color: white;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
-}
-
-.virtual-table-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 300px;
-  background-color: #1f2937; /* Dark background */
-  border: 1px solid #374151; /* Dark border */
-  border-radius: 8px;
-}
-
-.empty-state {
-  text-align: center;
-  color: #9ca3af; /* Light gray text */
-  font-size: 16px;
-}
-
-/* Virtual Mode Indicator - Dark Theme */
-.virtual-mode-indicator {
-  background-color: #059669;
-  color: white;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
-}
+} */
 
 .table-info {
   display: flex;

@@ -9,7 +9,6 @@ const VirtualTable = ({
   formatColumnName, 
   formatCellValue, 
   onRowClick, 
-  onDeleteEntry, 
   hasPermission, 
   getColumnType 
 }) => {
@@ -96,11 +95,6 @@ const VirtualTable = ({
               {formatColumnName(column.COLUMN_NAME)}
             </div>
           ))}
-          {hasPermission('Administrator') && (
-            <div className="virtual-header-cell actions">
-              Actions
-            </div>
-          )}
         </div>
       </div>
       
@@ -124,7 +118,6 @@ const VirtualTable = ({
                   formatCellValue={formatCellValue}
                   getColumnType={getColumnType}
                   onRowClick={onRowClick}
-                  onDeleteEntry={onDeleteEntry}
                   hasPermission={hasPermission}
                   rowHeight={rowHeight}
                 />
@@ -155,15 +148,9 @@ const VirtualRow = React.memo(({
   formatCellValue, 
   getColumnType, 
   onRowClick, 
-  onDeleteEntry, 
   hasPermission, 
   rowHeight 
 }) => {
-  
-  const handleDeleteClick = useCallback((e) => {
-    e.stopPropagation();
-    onDeleteEntry(entry.original_id || entry.id);
-  }, [entry, onDeleteEntry]);
   
   const handleRowClick = useCallback(() => {
     onRowClick(entry);
@@ -171,30 +158,24 @@ const VirtualRow = React.memo(({
   
   return (
     <div
-      className={`virtual-row ${entry.is_virtual ? 'virtual' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
+      className={`virtual-row ${entry.is_virtual ? 'virtual-entry' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
       style={{ height: rowHeight }}
       onClick={handleRowClick}
-      title="Click to view details"
+      title={entry.is_virtual ? 'This is a recurring entry instance' : 'Click to view details'}
     >
-      {displayColumns.map((column) => {
-        const cellValue = entry[column.COLUMN_NAME];
-        const formattedValue = formatCellValue(cellValue, column.COLUMN_NAME, column.DATA_TYPE);
-        
-        const cellClasses = [
-          'virtual-cell',
-          getColumnType(column.COLUMN_NAME, column.DATA_TYPE),
-          entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') ? 'incident virtual' : ''
-        ].filter(Boolean).join(' ');
+      {displayColumns.map(column => {
+        const value = entry[column.COLUMN_NAME];
+        const formattedValue = formatCellValue(value, column.COLUMN_NAME, column.DATA_TYPE);
         
         return (
           <div
             key={column.COLUMN_NAME}
-            className={cellClasses}
+            className={`virtual-cell ${getColumnType(column.COLUMN_NAME, column.DATA_TYPE)}`}
             style={{
               minWidth: getColumnMinWidth(column.COLUMN_NAME),
               flex: getColumnFlex(column.COLUMN_NAME)
             }}
-            title={`${column.COLUMN_NAME}: ${cellValue || 'No data'}${entry.is_virtual ? ' (Recurring)' : ''}`}
+            title={entry.is_virtual ? `🔄 Recurring: ${formattedValue}` : formattedValue}
           >
             {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
               <span className="virtual-icon">🔄</span>
@@ -205,19 +186,6 @@ const VirtualRow = React.memo(({
           </div>
         );
       })}
-      
-      {hasPermission('Administrator') && (
-        <div className="virtual-cell actions">
-          <button
-            onClick={handleDeleteClick}
-            disabled={!entry.id || entry.is_virtual}
-            className={`virtual-action-btn ${entry.is_virtual ? 'virtual' : 'delete'}`}
-            title={entry.is_virtual ? 'Cannot delete recurring instance' : 'Delete this entry'}
-          >
-            {entry.is_virtual ? '🔄 Recurring' : '🗑 Delete'}
-          </button>
-        </div>
-      )}
     </div>
   );
 });

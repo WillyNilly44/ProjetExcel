@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-
+import '../styles/components/EntryDetailModal.css';
 
 const EntryDetailModal = ({ 
   isOpen, 
@@ -10,7 +10,7 @@ const EntryDetailModal = ({
   formatColumnName, 
   formatCellValue, 
   onSave,
-  onDuplicate  // Add this new prop
+  onDuplicate
 }) => {
   const { hasPermission } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -112,6 +112,7 @@ const EntryDetailModal = ({
     const dataType = column.DATA_TYPE.toLowerCase();
     const lowerColumnName = columnName.toLowerCase();
 
+    // Read-only fields
     if (lowerColumnName.includes('id') || 
         lowerColumnName.includes('created') || 
         lowerColumnName.includes('updated') ||
@@ -123,31 +124,33 @@ const EntryDetailModal = ({
             <span className="empty-value">-</span>
           }
           {(lowerColumnName.includes('id') || lowerColumnName.includes('created') || lowerColumnName.includes('updated')) && 
-            <span className="readonly-indicator">🔒</span>
+            <span className="readonly-indicator">Read-only</span>
           }
         </div>
       );
     }
 
+    // Boolean/bit fields
     if (dataType === 'bit' || typeof value === 'boolean') {
       return (
         <select
           value={value ? '1' : '0'}
           onChange={(e) => handleInputChange(columnName, e.target.value === '1')}
-          className="detail-input"
+          className="detail-select"
         >
-          <option value="0"> No</option>
-          <option value="1"> Yes</option>
+          <option value="0">No</option>
+          <option value="1">Yes</option>
         </select>
       );
     }
 
+    // Status fields
     if (lowerColumnName.includes('status') || lowerColumnName.includes('completion')) {
       return (
         <select
           value={value || ''}
           onChange={(e) => handleInputChange(columnName, e.target.value)}
-          className="detail-input"
+          className="detail-select"
         >
           <option value="">Select status...</option>
           <option value="Not Started">Not Started</option>
@@ -160,12 +163,13 @@ const EntryDetailModal = ({
       );
     }
 
+    // Log type fields
     if (lowerColumnName.includes('log_type')) {
       return (
         <select
           value={value || ''}
           onChange={(e) => handleInputChange(columnName, e.target.value)}
-          className="detail-input"
+          className="detail-select"
         >
           <option value="">Select type...</option>
           <option value="Operational">Operational</option>
@@ -174,28 +178,20 @@ const EntryDetailModal = ({
       );
     }
 
-    if (dataType.includes('date') || dataType.includes('datetime') || lowerColumnName.includes('date')) {
-      let dateValue = '';
-      if (value) {
-        try {
-          const date = new Date(value);
-          dateValue = date.toISOString().split('T')[0];
-        } catch (e) {
-          dateValue = value;
-        }
-      }
-      
+    // Date fields
+    if (dataType.includes('date')) {
       return (
         <input
           type="date"
-          value={dateValue}
+          value={value ? new Date(value).toISOString().split('T')[0] : ''}
           onChange={(e) => handleInputChange(columnName, e.target.value)}
           className="detail-input"
         />
       );
     }
 
-    if (lowerColumnName.includes('time') && !lowerColumnName.includes('estimated') && !lowerColumnName.includes('actual')) {
+    // Time fields
+    if (dataType.includes('time') && !lowerColumnName.includes('estimated') && !lowerColumnName.includes('actual')) {
       return (
         <input
           type="time"
@@ -206,7 +202,10 @@ const EntryDetailModal = ({
       );
     }
 
-    if ((lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) && dataType.includes('decimal')) {
+    // Duration fields (estimated/actual time in hours)
+    if (lowerColumnName.includes('estimated_time') || 
+        lowerColumnName.includes('actual_time') || 
+        lowerColumnName.includes('expected_down_time')) {
       return (
         <input
           type="number"
@@ -220,6 +219,7 @@ const EntryDetailModal = ({
       );
     }
 
+    // Numeric fields
     if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
       return (
         <input
@@ -231,6 +231,7 @@ const EntryDetailModal = ({
       );
     }
 
+    // Text area for notes/descriptions
     if (lowerColumnName.includes('note') || lowerColumnName.includes('description') || lowerColumnName.includes('comment')) {
       return (
         <textarea
@@ -244,6 +245,7 @@ const EntryDetailModal = ({
       );
     }
 
+    // Default text input
     return (
       <input
         type="text"
@@ -256,13 +258,12 @@ const EntryDetailModal = ({
     );
   };
 
-  const renderFieldGroup = (title, columns, icon) => {
+  const renderFieldGroup = (title, columns) => {
     if (columns.length === 0) return null;
 
     return (
       <div className="detail-group">
         <h4 className="detail-group-title">
-          <span className="detail-icon">{icon}</span>
           {title}
         </h4>
         <div className="detail-fields">
@@ -280,7 +281,7 @@ const EntryDetailModal = ({
                 <div className="detail-label">
                   {formatColumnName(columnName)}
                   {column.IS_NULLABLE === 'NO' && <span className="required">*</span>}
-                  {isVirtualField && <span className="virtual-indicator">🔄</span>}
+                  {isVirtualField && <span className="virtual-indicator">(Recurring)</span>}
                 </div>
                 
                 {isEditing && canEdit ? (
@@ -319,44 +320,39 @@ const EntryDetailModal = ({
     return 'text';
   };
 
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="entry-detail-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="detail-header">
-          <div className="detail-header-main">
-            
-            <div className="detail-title">
-              <h3>{isEditing ? 'Edit Entry' : 'Entry Details'}</h3>
-              
-            </div>
-          </div>
-          <button onClick={onClose} className="detail-close-btn">
+        <div className="entry-detail-header">
+          <h3 className="entry-detail-title">
+            {isEditing ? 'Edit Entry' : 'Entry Details'}
+          </h3>
+          <button onClick={onClose} className="entry-detail-close">
             ✕
           </button>
         </div>
 
         {/* Content */}
-        <div className="detail-content">
-          {/* Admin status indicator */}
+        <div className="entry-detail-content">
+          {/* Admin Status Indicator */}
           {hasPermission('Administrator') && (
             <div className="admin-status-indicator">
-              🔐 Administrator session active
+              Administrator session active
             </div>
           )}
 
           {/* Save Error */}
           {saveError && (
             <div className="save-error">
-              ❌ {saveError}
+              Error: {saveError}
             </div>
           )}
 
           {/* Virtual Entry Info */}
           {entry.is_virtual && (
             <div className="virtual-info-panel">
-              <h4>🔄 Recurring Entry Information</h4>
+              <h4>Recurring Entry Information</h4>
               <div className="virtual-details">
                 <div className="virtual-detail">
                   <strong>Original Entry ID:</strong> {entry.original_id}
@@ -376,16 +372,16 @@ const EntryDetailModal = ({
 
           {/* Field Groups */}
           <div className="detail-groups">
-            {renderFieldGroup('Basic Information', columnGroups.basic, '')}
-            {renderFieldGroup('Technical Details', columnGroups.technical, '')}
-            {renderFieldGroup('Status & Completion', columnGroups.status, '')}
-            {renderFieldGroup('Dates & Times', columnGroups.dates, '')}
-            {renderFieldGroup('Notes & Comments', columnGroups.notes, '')}
+            {renderFieldGroup('Basic Information', columnGroups.basic)}
+            {renderFieldGroup('Technical Details', columnGroups.technical)}
+            {renderFieldGroup('Status & Completion', columnGroups.status)}
+            {renderFieldGroup('Dates & Times', columnGroups.dates)}
+            {renderFieldGroup('Notes & Comments', columnGroups.notes)}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="detail-footer">
+        <div className="entry-detail-footer">
           <div className="detail-footer-info">
             <span className="entry-id">ID: {entry.id}</span>
             {entry.is_virtual && (
@@ -395,10 +391,11 @@ const EntryDetailModal = ({
             )}
             {!hasPermission('Administrator') && !entry.is_virtual && (
               <span className="admin-required">
-                 Administrator permission required to edit
+                Administrator permission required to edit
               </span>
             )}
           </div>
+          
           <div className="detail-footer-actions">
             {isEditing ? (
               <>
@@ -407,14 +404,14 @@ const EntryDetailModal = ({
                   disabled={isSaving}
                   className="detail-btn primary"
                 >
-                  {isSaving ? '💾 Saving...' : '💾 Save Changes'}
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button 
                   onClick={handleCancel}
                   disabled={isSaving}
                   className="detail-btn secondary"
                 >
-                  ❌ Cancel
+                  Cancel
                 </button>
               </>
             ) : (
@@ -424,17 +421,16 @@ const EntryDetailModal = ({
                     onClick={() => setIsEditing(true)}
                     className="detail-btn edit"
                   >
-                    ✏️ Edit Entry
+                    Edit Entry
                   </button>
                 )}
-                {/* ADD THIS DUPLICATE BUTTON */}
                 {hasPermission('Operator') && !entry.is_virtual && (
                   <button
                     onClick={handleDuplicate}
                     className="detail-btn duplicate-btn"
                     title="Create a duplicate of this entry"
                   >
-                    📋 Duplicate
+                    Duplicate
                   </button>
                 )}
                 <button onClick={onClose} className="detail-btn secondary">

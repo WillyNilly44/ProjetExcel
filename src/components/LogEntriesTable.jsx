@@ -230,39 +230,6 @@ export default function LogEntriesTable() {
     }
   };
 
-  const handleDeleteEntry = async (entryId) => {
-    if (!window.confirm('Are you sure you want to delete this log entry? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/deleteentry', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: entryId })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        await fetchLogEntries();
-      } else {
-        throw new Error(result.error);
-      }
-
-    } catch (error) {
-      console.error('❌ Failed to delete entry:', error);
-      alert('Failed to delete entry: ' + error.message);
-    }
-  };
-
   const handleColumnAdded = async () => {
     try {
       // Refresh the log entries to get updated column structure
@@ -879,6 +846,55 @@ export default function LogEntriesTable() {
       }
     }
 
+    // Handle estimated/actual time (in hours) - CHECK THIS FIRST BEFORE TIME FIELDS
+    if (lowerColumnName.includes('estimated_time') || 
+        lowerColumnName.includes('actual_time') || 
+        lowerColumnName.includes('expected_down_time') || 
+        lowerColumnName.includes('downtime')) {
+      const hours = parseFloat(value);
+      if (!isNaN(hours)) {
+        if (hours === 0) return '0 hours';
+        if (hours < 1) {
+          const minutes = Math.round(hours * 60);
+          return `${minutes} min`;
+        } else if (hours >= 24) {
+          const days = Math.floor(hours / 24);
+          const remainingHours = hours % 24;
+          return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days} days`;
+        } else {
+          return hours % 1 === 0 ? `${hours} hours` : `${hours}h`;
+        }
+      }
+      return value.toString();
+    }
+
+    // Handle time fields (like log_start, log_end) - BUT NOT duration fields
+    if (lowerDataType.includes('time') || 
+        (lowerColumnName.includes('time') && 
+         !lowerColumnName.includes('estimated') && 
+         !lowerColumnName.includes('actual') && 
+         !lowerColumnName.includes('down') && 
+         !lowerColumnName.includes('duration'))) {
+      
+      // If it's already in HH:MM format, return as-is
+      if (typeof value === 'string' && /^\d{2}:\d{2}/.test(value)) {
+        return value;
+      }
+      
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+      } catch (e) {
+        return value.toString();
+      }
+    }
+
     // Handle date fields
     if (lowerDataType.includes('date') || lowerColumnName.includes('date')) {
       try {
@@ -910,45 +926,6 @@ export default function LogEntriesTable() {
         }
       } catch (e) {
         // Fall through to return original value
-      }
-    }
-
-    // Handle time fields
-    if (lowerDataType.includes('time') || (lowerColumnName.includes('time') && !lowerColumnName.includes('estimated') && !lowerColumnName.includes('actual'))) {
-      // If it's already in HH:MM format, return as-is
-      if (typeof value === 'string' && /^\d{2}:\d{2}/.test(value)) {
-        return value;
-      }
-      
-      try {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
-        }
-      } catch (e) {
-        return value.toString();
-      }
-    }
-
-    // Handle estimated/actual time (in hours)
-    if (lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) {
-      const hours = parseFloat(value);
-      if (!isNaN(hours)) {
-        if (hours === 0) return '0 hours';
-        if (hours < 1) {
-          const minutes = Math.round(hours * 60);
-          return `${minutes} min`;
-        } else if (hours >= 24) {
-          const days = Math.floor(hours / 24);
-          const remainingHours = hours % 24;
-          return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days} days`;
-        } else {
-          return hours % 1 === 0 ? `${hours} hours` : `${hours}h`;
-        }
       }
     }
 
@@ -1289,7 +1266,6 @@ export default function LogEntriesTable() {
                 formatColumnName={formatColumnName}
                 formatCellValue={formatCellValue}
                 onRowClick={handleRowClick}
-                onDeleteEntry={handleDeleteEntry}
                 hasPermission={hasPermission}
                 getColumnType={getColumnType}
               />
