@@ -16,6 +16,7 @@ import KPITab from './KPITab'; // Import KPITab component
 
 
 export default function LogEntriesTable() {
+  // All hooks
   const { hasPermission, user } = useAuth(); 
   const [activeTab, setActiveTab] = useState('kpi'); // Changed from 'dashboard' to 'kpi'
   const [data, setData] = useState([]);
@@ -262,90 +263,173 @@ export default function LogEntriesTable() {
     }
   };
 
-  const formatColumnName = (columnName) => {
-    return columnName
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+  const handleColumnAdded = async () => {
+    try {
+      // Refresh the log entries to get updated column structure
+      await fetchLogEntries();
+      
+      // Show success message
+      setConnectionStatus('✅ Column added successfully! Data refreshed.');
+      
+      // Clear the status message after a few seconds
+      setTimeout(() => {
+        setConnectionStatus('✅ Loaded');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Error refreshing data after column addition:', error);
+      setConnectionStatus('❌ Column added but failed to refresh data. Please reload the page.');
+    }
   };
 
-  const formatCellValue = (value, columnName, dataType) => {
-    if (value === null || value === undefined) return '-';
-    
-    const lowerColumnName = columnName.toLowerCase();
-    
-    if (lowerColumnName.includes('log_start') || lowerColumnName.includes('log_end') || 
-        lowerColumnName.includes('start_time') || lowerColumnName.includes('end_time')) {
-      if (!value) return '-';
-      
-      if (typeof value === 'string') {
-        if (value.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
-          const timeParts = value.split(':');
-          return `${timeParts[0].padStart(2, '0')}:${timeParts[1]}`;
-        }
-        
-        if (value.includes('T')) {
-          const timePart = value.split('T')[1];
-          if (timePart) {
-            return timePart.substring(0, 5);
-          }
-        }
-        
-        if (value.includes(' ')) {
-          const parts = value.split(' ');
-          if (parts.length > 1) {
-            return parts[1].substring(0, 5);
-          }
-        }
-        
-        if (value.length > 10 && value.includes(':')) {
-          const timeMatch = value.match(/(\d{1,2}):(\d{2})/);
-          if (timeMatch) {
-            return `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-          }
-        }
-      }
-      
-      return value;
-    }
-    
-    if ((dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date') || lowerColumnName.includes('created') || lowerColumnName.includes('updated')) && !lowerColumnName.includes('time') && !lowerColumnName.includes('start') && !lowerColumnName.includes('end')) {
-      try {
-        return new Date(value).toLocaleDateString();
-      } catch (e) {
-        return value;
-      }
-    }
-    
-    if (dataType === 'bit' || typeof value === 'boolean') {
-      return value ? '✅' : '❌';
-    }
-    
-    if ((lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) && typeof value === 'number') {
-      return `${value.toFixed(2)}h`;
-    }
-    
-    if (lowerColumnName.includes('duration') && typeof value === 'number') {
-      return `${value}min`;
-    }
- 
-    const stringValue = value.toString();
+  const handleSaveEditedEntry = async (editedEntry) => {
+    try {
 
-    let maxLength;
-    if (lowerColumnName.includes('note')) {
-      maxLength = 50; 
-    } else if (lowerColumnName.includes('ticket_number')) {
-      maxLength = 15; 
-    }  else if (lowerColumnName.includes('id') || lowerColumnName.includes('status')) {
-      maxLength = 20; 
+    
+    const response = await fetch('/api/updateentry', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(editedEntry)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ HTTP Error:', response.status, errorText);
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    
+    if (result.success) {
+ 
+      
+      // Refresh the data to show the updated entry
+      await fetchLogEntries();
+      
+      setConnectionStatus('✅ Entry updated successfully!');
+      setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
+      
+      return true;
     } else {
-      maxLength = 25; 
+      throw new Error(result.error || 'Failed to update entry');
     }
     
-    if (stringValue.length > maxLength) {
-      return `${stringValue.substring(0, maxLength)}...`;
-    }
+  } catch (error) {
+    console.error('❌ Error updating entry:', error);
+    setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
+    setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
+    return false;
+  }
+};
+
+  const handleDuplicateEntry = async (sourceEntry) => {
+    console.log('🔍 Duplicating entry automatically:', sourceEntry);
     
-    return stringValue;
+    if (!sourceEntry) {
+      alert('No entry selected for duplication');
+      return;
+    }
+
+    if (!user) {
+      alert('Cannot duplicate: User information not available');
+      return;
+    }
+
+    try {
+      // Create duplicate data
+      const duplicateData = { ...sourceEntry };
+      
+      // Remove fields that shouldn't be duplicated
+      delete duplicateData.id;
+      delete duplicateData.created_at;
+      delete duplicateData.updated_at;
+      delete duplicateData.is_virtual;
+      delete duplicateData.original_id;
+      delete duplicateData.week_offset;
+      delete duplicateData.target_day;
+      delete duplicateData.generated_on;
+      delete duplicateData.relative_to_current;
+      delete duplicateData.is_recurring;
+      delete duplicateData.recurrence_day;
+      delete duplicateData.day_of_the_week;
+      
+      // Set date fields to today
+      const today = new Date().toISOString().split('T')[0];
+      Object.keys(duplicateData).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('date') && !lowerKey.includes('time')) {
+          duplicateData[key] = today;
+        }
+      });
+
+      // Set current user as uploader
+      const uploaderField = Object.keys(duplicateData).find(key => 
+        key.toLowerCase().includes('uploader')
+      );
+      if (uploaderField && user.username) {
+        duplicateData[uploaderField] = user.username;
+      }
+
+      // Add "Original Log: id#" to notes
+      const noteFields = Object.keys(duplicateData).filter(key => 
+        key.toLowerCase().includes('note') || 
+        key.toLowerCase().includes('comment') || 
+        key.toLowerCase().includes('description')
+      );
+
+      if (noteFields.length > 0) {
+        const noteField = noteFields[0];
+        const existingNote = duplicateData[noteField] || '';
+        const originalLogText = `Original Log: ${sourceEntry.id}#`;
+        
+        if (existingNote.trim()) {
+          duplicateData[noteField] = `${existingNote.trim()} | ${originalLogText}`;
+        } else {
+          duplicateData[noteField] = originalLogText;
+        }
+      }
+
+      // Make sure it's NOT a recurrence
+      duplicateData.isRecurrence = false;
+      duplicateData.day_of_the_week = null;
+
+      console.log('✅ Duplicate data created:', duplicateData);
+
+      // Save directly to database (without opening modal)
+      const response = await fetch('/api/addentryrec', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(duplicateData)
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        // Close detail modal
+        setShowDetailModal(false);
+        setSelectedEntry(null);
+        
+        // Show success message
+        alert(`✅ Entry duplicated successfully! New entry created with today's date.`);
+        
+        // Refresh data to show the new entry
+        await fetchLogEntries();
+      } else {
+        throw new Error(result.error);
+      }
+
+    } catch (error) {
+      console.error('❌ Error duplicating entry:', error);
+      alert('Failed to duplicate entry: ' + error.message);
+    }
   };
 
   const getColumnStyle = (columnName, dataType) => {
@@ -741,6 +825,159 @@ export default function LogEntriesTable() {
     return Object.values(dateFilters).filter(value => value && value !== '').length;
   };
 
+  const formatColumnName = (columnName) => {
+    return columnName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const formatCellValue = (value, columnName, dataType) => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+
+    const lowerColumnName = columnName.toLowerCase();
+    const lowerDataType = dataType ? dataType.toLowerCase() : '';
+
+    // Handle boolean/bit values
+    if (lowerDataType === 'bit' || typeof value === 'boolean') {
+      return value ? '✅ Yes' : '❌ No';
+    }
+
+    // Handle status fields
+    if (lowerColumnName.includes('status')) {
+      const statusValue = value.toString().toLowerCase();
+      switch (statusValue) {
+        case 'completed':
+          return '✅ Completed';
+        case 'in progress':
+        case 'progress':
+          return '🔄 In Progress';
+        case 'not completed':
+          return '❌ Not Completed';
+        case 'scheduled':
+          return '📅 Scheduled';
+        case 'on hold':
+          return '⏸️ On Hold';
+        case 'cancelled':
+          return '🚫 Cancelled';
+        default:
+          return value.toString();
+      }
+    }
+
+    // Handle log type
+    if (lowerColumnName.includes('log_type')) {
+      const typeValue = value.toString().toLowerCase();
+      switch (typeValue) {
+        case 'operational':
+          return '🔧 Operational';
+        case 'application':
+          return '💻 Application';
+        default:
+          return value.toString();
+      }
+    }
+
+    // Handle date fields
+    if (lowerDataType.includes('date') || lowerColumnName.includes('date')) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+        }
+      } catch (e) {
+        // Fall through to return original value
+      }
+    }
+
+    // Handle datetime fields
+    if (lowerDataType.includes('datetime') || lowerColumnName.includes('datetime')) {
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        }
+      } catch (e) {
+        // Fall through to return original value
+      }
+    }
+
+    // Handle time fields
+    if (lowerDataType.includes('time') || (lowerColumnName.includes('time') && !lowerColumnName.includes('estimated') && !lowerColumnName.includes('actual'))) {
+      // If it's already in HH:MM format, return as-is
+      if (typeof value === 'string' && /^\d{2}:\d{2}/.test(value)) {
+        return value;
+      }
+      
+      try {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
+      } catch (e) {
+        return value.toString();
+      }
+    }
+
+    // Handle estimated/actual time (in hours)
+    if (lowerColumnName.includes('estimated_time') || lowerColumnName.includes('actual_time')) {
+      const hours = parseFloat(value);
+      if (!isNaN(hours)) {
+        if (hours === 0) return '0 hours';
+        if (hours < 1) {
+          const minutes = Math.round(hours * 60);
+          return `${minutes} min`;
+        } else if (hours >= 24) {
+          const days = Math.floor(hours / 24);
+          const remainingHours = hours % 24;
+          return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days} days`;
+        } else {
+          return hours % 1 === 0 ? `${hours} hours` : `${hours}h`;
+        }
+      }
+    }
+
+    // Handle numeric fields
+    if (lowerDataType.includes('int') || lowerDataType.includes('decimal') || lowerDataType.includes('float')) {
+      const num = parseFloat(value);
+      if (!isNaN(num)) {
+        return num.toLocaleString();
+      }
+    }
+
+    // Handle long text fields (truncate)
+    if (lowerColumnName.includes('note') || lowerColumnName.includes('description') || lowerColumnName.includes('comment')) {
+      const text = value.toString();
+      if (text.length > 100) {
+        return text.substring(0, 97) + '...';
+      }
+      return text;
+    }
+
+    // Handle district codes (uppercase)
+    if (lowerColumnName.includes('district')) {
+      return value.toString().toUpperCase();
+    }
+
+    // Default: return as string
+    return value.toString();
+  };
+
   // Early return for loading state
   if (isLoading) {
     return (
@@ -1099,7 +1336,9 @@ export default function LogEntriesTable() {
   columns={columns}
   formatColumnName={formatColumnName}
   formatCellValue={formatCellValue}
-  onSave={handleSaveEditedEntry}  // Changed from handleSaveEntry to handleSaveEditedEntry
+  onSave={handleSaveEditedEntry}
+  hasPermission={hasPermission}
+  onDuplicate={handleDuplicateEntry}  // Add this line
 />
         </>
       )}
@@ -1130,70 +1369,3 @@ function getColumnType(columnName, dataType) {
   
   return '';
 }
-
-/* filepath: c:\Users\William\Documents\ProjetExcel\src\components\LogEntriesTable.jsx */
-
-// Add this function after the handleDeleteEntry function (around line 250)
-const handleColumnAdded = async () => {
-
-  
-  try {
-    // Refresh the log entries to get updated column structure
-    await fetchLogEntries();
-    
-    // Show success message
-    setConnectionStatus('✅ Column added successfully! Data refreshed.');
-    
-    // Clear the status message after a few seconds
-    setTimeout(() => {
-      setConnectionStatus('✅ Loaded');
-    }, 3000);
-    
-  } catch (error) {
-    console.error('❌ Error refreshing data after column addition:', error);
-    setConnectionStatus('❌ Column added but failed to refresh data. Please reload the page.');
-  }
-};
-
-// Also add this function to handle saving edited entries from the detail modal
-const handleSaveEditedEntry = async (editedEntry) => {
-  try {
-
-    
-    const response = await fetch('/api/updateentry', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(editedEntry)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ HTTP Error:', response.status, errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    
-    if (result.success) {
- 
-      
-      // Refresh the data to show the updated entry
-      await fetchLogEntries();
-      
-      setConnectionStatus('✅ Entry updated successfully!');
-      setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
-      
-      return true;
-    } else {
-      throw new Error(result.error || 'Failed to update entry');
-    }
-    
-  } catch (error) {
-    console.error('❌ Error updating entry:', error);
-    setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
-    setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
-    return false;
-  }
-};

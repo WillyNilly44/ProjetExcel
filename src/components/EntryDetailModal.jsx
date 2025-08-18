@@ -2,7 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 
-const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, formatCellValue, onSave }) => {
+const EntryDetailModal = ({ 
+  isOpen, 
+  onClose, 
+  entry, 
+  columns, 
+  formatColumnName, 
+  formatCellValue, 
+  onSave,
+  onDuplicate  // Add this new prop
+}) => {
   const { hasPermission } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editedEntry, setEditedEntry] = useState({});
@@ -90,6 +99,12 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
     setEditedEntry({ ...entry });
     setIsEditing(false);
     setSaveError('');
+  };
+
+  const handleDuplicate = () => {
+    if (onDuplicate && typeof onDuplicate === 'function') {
+      onDuplicate(entry);
+    }
   };
 
   const renderFieldInput = (column, value) => {
@@ -409,7 +424,17 @@ const EntryDetailModal = ({ isOpen, onClose, entry, columns, formatColumnName, f
                     onClick={() => setIsEditing(true)}
                     className="detail-btn edit"
                   >
-                    Edit Entry
+                    ✏️ Edit Entry
+                  </button>
+                )}
+                {/* ADD THIS DUPLICATE BUTTON */}
+                {hasPermission('Operator') && !entry.is_virtual && (
+                  <button
+                    onClick={handleDuplicate}
+                    className="detail-btn duplicate-btn"
+                    title="Create a duplicate of this entry"
+                  >
+                    📋 Duplicate
                   </button>
                 )}
                 <button onClick={onClose} className="detail-btn secondary">
