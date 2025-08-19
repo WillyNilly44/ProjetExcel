@@ -15,21 +15,25 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     month: ''
   });
   const [showThresholdManager, setShowThresholdManager] = useState(false);
+  const [showAddKPIModal, setShowAddKPIModal] = useState(false);
+  const [showEditKPIModal, setShowEditKPIModal] = useState(false);
+  const [editingKPI, setEditingKPI] = useState(null);
+  const [newKPI, setNewKPI] = useState({
+    month: '',
+    week: '',
+    maintenance_1: 0,
+    maintenance_2: 0,
+    incidents_1: 0,
+    incidents_2: 0,
+    business_impacted: 0
+  });
+  const [saving, setSaving] = useState(false);
   const [thresholds, setThresholds] = useState({
     maintenance_yellow: 3,
     maintenance_red: 7,
     incident_yellow: 2,
     incident_red: 5,
     impact: 5
-  });
-  
-  const [kpiData, setKpiData] = useState({
-    totalEntries: 0,
-    completedTasks: 0,
-    pendingTasks: 0,
-    activeDistricts: 0,
-    recentActivity: [],
-    statusBreakdown: {}
   });
 
   // Load thresholds from database on component mount
@@ -56,12 +60,8 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
           };
           
           setThresholds(loadedThresholds);
-          
-          // Also save to localStorage as backup
           localStorage.setItem('columnThresholds', JSON.stringify(loadedThresholds));
-          
         } else {
-          // Fallback to localStorage if database doesn't have thresholds
           const savedThresholds = localStorage.getItem('columnThresholds');
           if (savedThresholds) {
             const parsedThresholds = JSON.parse(savedThresholds);
@@ -69,7 +69,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
           }
         }
       } else {
-        // Fallback to localStorage if API fails
         const savedThresholds = localStorage.getItem('columnThresholds');
         if (savedThresholds) {
           const parsedThresholds = JSON.parse(savedThresholds);
@@ -79,7 +78,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     } catch (error) {
       console.warn('⚠️ Failed to load thresholds from database, using defaults:', error);
       
-      // Try localStorage as final fallback
       const savedThresholds = localStorage.getItem('columnThresholds');
       if (savedThresholds) {
         try {
@@ -128,6 +126,174 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     }
   };
 
+  // Add new KPI to LOG_ENTRIES_DASHBOARD
+  const handleAddKPI = async () => {
+    if (!newKPI.month.trim() || !newKPI.week.trim()) {
+      alert('Month and Week are required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/addkpi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          month: newKPI.month,
+          week: newKPI.week,
+          maintenance_1: parseInt(newKPI.maintenance_1) || 0,
+          maintenance_2: parseInt(newKPI.maintenance_2) || 0,
+          incidents_1: parseInt(newKPI.incidents_1) || 0,
+          incidents_2: parseInt(newKPI.incidents_2) || 0,
+          business_impacted: parseInt(newKPI.business_impacted) || 0
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        await fetchDashboardData();
+        setShowAddKPIModal(false);
+        setNewKPI({
+          month: '',
+          week: '',
+          maintenance_1: 0,
+          maintenance_2: 0,
+          incidents_1: 0,
+          incidents_2: 0,
+          business_impacted: 0
+        });
+        alert('✅ KPI entry added successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to add KPI entry');
+      }
+    } catch (err) {
+      console.error('❌ Error adding KPI entry:', err);
+      alert('Failed to add KPI entry: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Edit existing KPI entry
+  const handleEditKPI = async () => {
+    if (!editingKPI.month.trim() || !editingKPI.week.trim()) {
+      alert('Month and Week are required');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/updatekpi', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: editingKPI.id,
+          month: editingKPI.month,
+          week: editingKPI.week,
+          maintenance_1: parseInt(editingKPI.maintenance_1) || 0,
+          maintenance_2: parseInt(editingKPI.maintenance_2) || 0,
+          incidents_1: parseInt(editingKPI.incidents_1) || 0,
+          incidents_2: parseInt(editingKPI.incidents_2) || 0,
+          business_impacted: parseInt(editingKPI.business_impacted) || 0
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        await fetchDashboardData();
+        setShowEditKPIModal(false);
+        setEditingKPI(null);
+        alert('✅ KPI entry updated successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to update KPI entry');
+      }
+    } catch (err) {
+      console.error('❌ Error updating KPI entry:', err);
+      alert('Failed to update KPI entry: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Delete KPI entry
+  const handleDeleteKPI = async (kpiId) => {
+    if (!confirm('Are you sure you want to delete this KPI entry? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/deletekpi', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: kpiId,
+          user: user
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        await fetchDashboardData();
+        alert('✅ KPI entry deleted successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to delete KPI entry');
+      }
+    } catch (err) {
+      console.error('❌ Error deleting KPI entry:', err);
+      alert('Failed to delete KPI entry: ' + err.message);
+    }
+  };
+
+  // Open edit modal
+  const openEditModal = (kpi) => {
+    setEditingKPI({
+      id: kpi.id,
+      month: kpi.month || '',
+      week: kpi.week || '',
+      maintenance_1: kpi.maintenance_1 || 0,
+      maintenance_2: kpi.maintenance_2 || 0,
+      incidents_1: kpi.incidents_1 || 0,
+      incidents_2: kpi.incidents_2 || 0,
+      business_impacted: kpi.business_impacted || 0
+    });
+    setShowEditKPIModal(true);
+  };
+
+  const handleKPIInputChange = (field, value) => {
+    setNewKPI(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleEditInputChange = (field, value) => {
+    setEditingKPI(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   // Load thresholds immediately when component mounts
   useEffect(() => {
     loadThresholds();
@@ -138,99 +304,17 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     fetchDashboardData();
   }, []);
 
-  useEffect(() => {
-    if (data && data.length > 0 && columns && columns.length > 0) {
-      calculateKPIs();
-    }
-  }, [data, columns]);
-
-  const calculateKPIs = () => {
-    // Find relevant columns
-    const statusColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('status')
-    );
-    const districtColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('district')
-    );
-    const dateColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('date') || 
-      col.COLUMN_NAME.toLowerCase().includes('created')
-    );
-
-    // Calculate basic metrics
-    const totalEntries = data.length;
-    
-    let completedTasks = 0;
-    let pendingTasks = 0;
-    const statusBreakdown = {};
-    const districts = new Set();
-
-    // Process each entry
-    data.forEach(entry => {
-      // Status analysis
-      if (statusColumn) {
-        const status = entry[statusColumn.COLUMN_NAME];
-        if (status) {
-          const statusStr = status.toString().toLowerCase();
-          statusBreakdown[status] = (statusBreakdown[status] || 0) + 1;
-          
-          if (statusStr.includes('completed') || statusStr.includes('done')) {
-            completedTasks++;
-          } else if (statusStr.includes('pending') || statusStr.includes('progress')) {
-            pendingTasks++;
-          }
-        }
-      }
-
-      // District analysis
-      if (districtColumn) {
-        const district = entry[districtColumn.COLUMN_NAME];
-        if (district) {
-          districts.add(district);
-        }
-      }
-    });
-
-    // Get recent activity (last 10 entries)
-    const recentActivity = data
-      .sort((a, b) => {
-        if (dateColumn) {
-          const dateA = new Date(a[dateColumn.COLUMN_NAME] || 0);
-          const dateB = new Date(b[dateColumn.COLUMN_NAME] || 0);
-          return dateB - dateA;
-        }
-        return 0;
-      })
-      .slice(0, 10);
-
-    setKpiData({
-      totalEntries,
-      completedTasks,
-      pendingTasks,
-      activeDistricts: districts.size,
-      recentActivity,
-      statusBreakdown
-    });
-  };
-
-  const getCompletionRate = () => {
-    const total = kpiData.completedTasks + kpiData.pendingTasks;
-    return total > 0 ? Math.round((kpiData.completedTasks / total) * 100) : 0;
-  };
-
   // Dashboard formatting functions
   const formatColumnName = (column) => {
     if (column.IS_AVERAGE_COLUMN && column.AVERAGE_VALUE) {
         const avgValue = parseFloat(column.AVERAGE_VALUE);
         const formattedValue = !isNaN(avgValue) ? avgValue.toFixed(2) : '0.00';        
         
-        // 1st and 3rd average columns are QTY, 2nd and 4th are Time
         if (column.COLUMN_NAME === "maintenance_1" || column.COLUMN_NAME === "incidents_1") {
           return `${formattedValue} Avg Qty`;
         } else if (column.COLUMN_NAME === "maintenance_2" || column.COLUMN_NAME === "incidents_2") {
-          return `${formattedValue} Avg Time`;
+          return `${formattedValue} Avg Count`;
         } else {
-          // Default for any additional average columns
           return `${formattedValue} Avg`;
         }
       }
@@ -301,24 +385,21 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
     const columnNameLower = columnName.toLowerCase();
 
-    // Apply maintenance thresholds
     if (columnNameLower.includes('maintenance')) {
       if (numValue <= thresholds.maintenance_yellow) return 'threshold-green';
       if (numValue <= thresholds.maintenance_red) return 'threshold-yellow';
       return 'threshold-red';
     }
     
-    // Apply incident thresholds
     if (columnNameLower.includes('incident')) {
       if (numValue <= thresholds.incident_yellow) return 'threshold-green';
       if (numValue <= thresholds.incident_red) return 'threshold-yellow';
       return 'threshold-red';
     }
 
-    // Apply impact thresholds
-    if (columnNameLower.includes('impact')) {
-      if (numValue <= 4) return 'threshold-green';
-      if (numValue <= 7) return 'threshold-yellow';
+    if (columnNameLower.includes('business') || columnNameLower.includes('impact')) {
+      if (numValue <= 2) return 'threshold-green';
+      if (numValue <= 5) return 'threshold-yellow';
       return 'threshold-red';
     }
 
@@ -342,7 +423,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
   const handleThresholdSave = (newThresholds) => {
     setThresholds(newThresholds);
-    // Save to localStorage as well
     localStorage.setItem('columnThresholds', JSON.stringify(newThresholds));
   };
 
@@ -416,6 +496,15 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       <div className="dashboard-section-header">
         <h2>📈 Performance Analytics</h2>
         <div className="dashboard-actions">
+          {hasPermission('Administrator') && (
+            <button 
+              onClick={() => setShowAddKPIModal(true)}
+              className="add-kpi-btn"
+              title="Add new KPI entry"
+            >
+              ➕ Add KPI Entry
+            </button>
+          )}
           <button 
             onClick={() => setShowThresholdManager(true)} 
             className="threshold-btn"
@@ -428,7 +517,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
           </button>
         </div>
       </div>
-
 
       {/* Dashboard Filters */}
       <div className="dashboard-filters">
@@ -485,6 +573,14 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       {dashboardData.length === 0 ? (
         <div className="no-data">
           <div className="no-data-text">📊 No analytics data found</div>
+          {hasPermission('Administrator') && (
+            <button 
+              onClick={() => setShowAddKPIModal(true)}
+              className="add-first-kpi-btn"
+            >
+              ➕ Add Your First KPI Entry
+            </button>
+          )}
         </div>
       ) : (
         <div className="dashboard-table-container">
@@ -510,6 +606,11 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
                         {formatColumnName(column)}
                       </th>
                     ))}
+                  {hasPermission('Administrator') && (
+                    <th className="table-header-cell actions-header">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -538,10 +639,270 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
                           </td>
                         );
                       })}
+                    {hasPermission('Administrator') && (
+                      <td className="table-cell actions-cell">
+                        <div className="action-buttons">
+                          <button
+                            onClick={() => openEditModal(entry)}
+                            className="edit-btn"
+                            title="Edit this KPI entry"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteKPI(entry.id)}
+                            className="delete-btn"
+                            title="Delete this KPI entry"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add KPI Modal */}
+      {showAddKPIModal && hasPermission('Administrator') && (
+        <div className="modal-overlay" onClick={() => setShowAddKPIModal(false)}>
+          <div className="add-kpi-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>➕ Add New KPI Entry</h3>
+              <button 
+                onClick={() => setShowAddKPIModal(false)}
+                className="modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-field">
+                  <label>📅 Month *</label>
+                  <input
+                    type="text"
+                    value={newKPI.month}
+                    onChange={(e) => handleKPIInputChange('month', e.target.value)}
+                    placeholder="e.g., January"
+                    maxLength={20}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>📆 Week Date Range *</label>
+                  <input
+                    type="text"
+                    value={newKPI.week}
+                    onChange={(e) => handleKPIInputChange('week', e.target.value)}
+                    placeholder="e.g., 14-20"
+                    maxLength={50}
+                    pattern="[0-9]{1,2}-[0-9]{1,2}"
+                  />
+                  <small className="help-text">
+                    Format: DD-DD (will be auto-converted to readable dates)
+                  </small>
+                </div>
+
+                <div className="form-field">
+                  <label>🔧 Maintenance (Quantity)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newKPI.maintenance_1}
+                    onChange={(e) => handleKPIInputChange('maintenance_1', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>🔧 Maintenance (Time)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newKPI.maintenance_2}
+                    onChange={(e) => handleKPIInputChange('maintenance_2', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>🚨 Incidents (Quantity)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newKPI.incidents_1}
+                    onChange={(e) => handleKPIInputChange('incidents_1', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>🚨 Incidents (Time)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newKPI.incidents_2}
+                    onChange={(e) => handleKPIInputChange('incidents_2', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field full-width">
+                  <label>🏢 Business Impacted</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={newKPI.business_impacted}
+                    onChange={(e) => handleKPIInputChange('business_impacted', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                onClick={() => setShowAddKPIModal(false)}
+                className="btn-secondary"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleAddKPI}
+                className="btn-primary"
+                disabled={saving || !newKPI.month.trim() || !newKPI.week.trim()}
+              >
+                {saving ? 'Adding...' : 'Add KPI Entry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit KPI Modal */}
+      {showEditKPIModal && hasPermission('Administrator') && editingKPI && (
+        <div className="modal-overlay" onClick={() => setShowEditKPIModal(false)}>
+          <div className="add-kpi-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>✏️ Edit KPI Entry</h3>
+              <button 
+                onClick={() => setShowEditKPIModal(false)}
+                className="modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-grid">
+                <div className="form-field">
+                  <label>📅 Month *</label>
+                  <input
+                    type="text"
+                    value={editingKPI.month}
+                    onChange={(e) => handleEditInputChange('month', e.target.value)}
+                    placeholder="e.g., January"
+                    maxLength={20}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>📆 Week Date Range *</label>
+                  <input
+                    type="text"
+                    value={editingKPI.week}
+                    onChange={(e) => handleEditInputChange('week', e.target.value)}
+                    placeholder="e.g., 14-20"
+                    maxLength={50}
+                    pattern="[0-9]{1,2}-[0-9]{1,2}"
+                  />
+                  <small className="help-text">
+                    Format: DD-DD (will be auto-converted to readable dates)
+                  </small>
+                </div>
+
+                <div className="form-field">
+                  <label>🔧 Maintenance (Quantity)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingKPI.maintenance_1}
+                    onChange={(e) => handleEditInputChange('maintenance_1', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>🔧 Maintenance (Time)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingKPI.maintenance_2}
+                    onChange={(e) => handleEditInputChange('maintenance_2', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>🚨 Incidents (Quantity)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingKPI.incidents_1}
+                    onChange={(e) => handleEditInputChange('incidents_1', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>🚨 Incidents (Time)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingKPI.incidents_2}
+                    onChange={(e) => handleEditInputChange('incidents_2', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="form-field full-width">
+                  <label>🏢 Business Impacted</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={editingKPI.business_impacted}
+                    onChange={(e) => handleEditInputChange('business_impacted', e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                onClick={() => setShowEditKPIModal(false)}
+                className="btn-secondary"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleEditKPI}
+                className="btn-primary"
+                disabled={saving || !editingKPI.month.trim() || !editingKPI.week.trim()}
+              >
+                {saving ? 'Updating...' : 'Update KPI Entry'}
+              </button>
+            </div>
           </div>
         </div>
       )}

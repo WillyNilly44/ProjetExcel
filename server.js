@@ -68,6 +68,9 @@ const deleteUserHandler = require('./api/deleteuser');
 const validateUserHandler = require('./api/validateuser');
 const getDashboardHandler = require('./api/getdashboard');
 const thresholdRoutes = require('./api/thresholds');
+const addKpiHandler = require('./api/addkpi');
+const updateKpiHandler = require('./api/updatekpi');
+const deleteKpiHandler = require('./api/deletekpi');
 
 app.post('/api/loginuser', async (req, res) => {
   const event = {
@@ -262,6 +265,36 @@ app.post('/api/getdashboard', async (req, res) => {
     headers: req.headers
   };
   const result = await getDashboardHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+app.post('/api/addkpi', async (req, res) => {
+  const event = {
+    httpMethod: 'POST',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await addKpiHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+app.put('/api/updatekpi', async (req, res) => {
+  const event = {
+    httpMethod: 'PUT',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await updateKpiHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+app.delete('/api/deletekpi', async (req, res) => {
+  const event = {
+    httpMethod: 'DELETE',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await deleteKpiHandler.handler(event, {});
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
