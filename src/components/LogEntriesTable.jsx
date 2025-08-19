@@ -38,7 +38,7 @@ export default function LogEntriesTable() {
     assigned: '',
     uploader: ''
   });
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
   const [showVirtualEntries, setShowVirtualEntries] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
