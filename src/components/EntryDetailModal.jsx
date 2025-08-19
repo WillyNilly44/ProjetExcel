@@ -20,9 +20,22 @@ const EntryDetailModal = ({
 
   useEffect(() => {
     if (entry) {
-      setEditedEntry({ ...entry });
+      // Deep copy the entry and preserve all data types
+      const safeCopy = {};
+      Object.keys(entry).forEach(key => {
+        const value = entry[key];
+        // Preserve the original value and data type
+        if (value !== null && value !== undefined) {
+          safeCopy[key] = value;
+        } else {
+          safeCopy[key] = '';
+        }
+      });
+      
+      setEditedEntry(safeCopy);
       setIsEditing(false);
       setSaveError('');
+    
     }
   }, [entry]);
 
@@ -61,6 +74,7 @@ const EntryDetailModal = ({
   const columnGroups = getColumnGroups();
 
   const handleInputChange = (columnName, value) => {
+    
     setEditedEntry(prev => ({
       ...prev,
       [columnName]: value
@@ -82,6 +96,7 @@ const EntryDetailModal = ({
     setSaveError('');
 
     try {
+      
       const success = await onSave(editedEntry);
       if (success) {
         setIsEditing(false);
@@ -96,7 +111,18 @@ const EntryDetailModal = ({
   };
 
   const handleCancel = () => {
-    setEditedEntry({ ...entry });
+    // Reset to original entry values
+    const safeCopy = {};
+    Object.keys(entry).forEach(key => {
+      const value = entry[key];
+      if (value !== null && value !== undefined) {
+        safeCopy[key] = value;
+      } else {
+        safeCopy[key] = '';
+      }
+    });
+    
+    setEditedEntry(safeCopy);
     setIsEditing(false);
     setSaveError('');
   };
@@ -119,7 +145,7 @@ const EntryDetailModal = ({
         entry.is_virtual) {
       return (
         <div className="detail-value readonly">
-          {value !== null && value !== undefined ? 
+          {value !== null && value !== undefined && value !== '' ? 
             formatCellValue(value, columnName, column.DATA_TYPE) : 
             <span className="empty-value">-</span>
           }
@@ -132,9 +158,10 @@ const EntryDetailModal = ({
 
     // Boolean/bit fields
     if (dataType === 'bit' || typeof value === 'boolean') {
+      const boolValue = value === true || value === 1 || value === '1' || value === 'true';
       return (
         <select
-          value={value ? '1' : '0'}
+          value={boolValue ? '1' : '0'}
           onChange={(e) => handleInputChange(columnName, e.target.value === '1')}
           className="detail-select"
         >
@@ -178,40 +205,23 @@ const EntryDetailModal = ({
       );
     }
 
-    // Date fields
-    if (dataType.includes('date')) {
-      return (
-        <input
-          type="date"
-          value={value ? new Date(value).toISOString().split('T')[0] : ''}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          className="detail-input"
-        />
-      );
-    }
-
-    // Time fields
-    if (dataType.includes('time') && !lowerColumnName.includes('estimated') && !lowerColumnName.includes('actual')) {
-      return (
-        <input
-          type="time"
-          value={value || ''}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          className="detail-input"
-        />
-      );
-    }
-
-    // Duration fields (estimated/actual time in hours)
+    // Duration fields (estimated/actual time in hours) - CHECK THIS FIRST!
     if (lowerColumnName.includes('estimated_time') || 
         lowerColumnName.includes('actual_time') || 
         lowerColumnName.includes('expected_down_time')) {
+    
+      // Ensure we have a number value
+      let numericValue = '';
+      if (value !== null && value !== undefined && value !== '') {
+        numericValue = parseFloat(value) || 0;
+      }
+      
       return (
         <input
           type="number"
           step="0.01"
           min="0"
-          value={value || ''}
+          value={numericValue}
           onChange={(e) => handleInputChange(columnName, parseFloat(e.target.value) || 0)}
           className="detail-input"
           placeholder="Hours (e.g., 2.5)"
@@ -219,13 +229,111 @@ const EntryDetailModal = ({
       );
     }
 
+    // Date fields
+    if (dataType.includes('date')) {
+      let dateValue = '';
+      if (value) {
+        try {
+          // Handle different date formats
+          if (typeof value === 'string' && value.includes('T')) {
+            // ISO format
+            dateValue = value.split('T')[0];
+          } else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Already in YYYY-MM-DD format
+            dateValue = value;
+          } else {
+            // Try to parse as date
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              dateValue = date.toISOString().split('T')[0];
+            }
+          }
+        } catch (e) {
+          console.warn('Date parsing error for', columnName, value, e);
+          dateValue = '';
+        }
+      }
+      
+      return (
+        <input
+          type="date"
+          value={dateValue}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          className="detail-input"
+        />
+      );
+    }
+
+    // Time fields (log_start, log_end) - IMPROVED HANDLING
+    if (dataType.includes('time') || 
+        (lowerColumnName.includes('time') && 
+         !lowerColumnName.includes('estimated') && 
+         !lowerColumnName.includes('actual') && 
+         !lowerColumnName.includes('expected') &&
+         !lowerColumnName.includes('down'))) {
+      
+      let timeValue = '';
+      
+      
+      if (value !== null && value !== undefined && value !== '') {
+        const valueStr = String(value);
+        
+        // If it's already in HH:MM or HH:MM:SS format
+        if (valueStr.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+          timeValue = valueStr.substring(0, 5); // Take only HH:MM part
+        }
+        // If it's a full datetime string, extract time part
+        else if (valueStr.includes('T')) {
+          try {
+            const date = new Date(valueStr);
+            if (!isNaN(date.getTime())) {
+              timeValue = date.toTimeString().substring(0, 5);
+            }
+          } catch (e) {
+            console.warn('DateTime parsing error for', columnName, value, e);
+          }
+        }
+        // If it's just a time string like "14:30:00" 
+        else if (valueStr.includes(':')) {
+          timeValue = valueStr.substring(0, 5);
+        }
+        // Try to parse as a date and extract time
+        else {
+          try {
+            const date = new Date(`1970-01-01T${valueStr}`);
+            if (!isNaN(date.getTime())) {
+              timeValue = date.toTimeString().substring(0, 5);
+            }
+          } catch (e) {
+            console.warn('Time parsing error for', columnName, value, e);
+            timeValue = valueStr;
+          }
+        }
+      }
+      
+      
+      return (
+        <input
+          type="time"
+          value={timeValue}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          className="detail-input"
+        />
+      );
+    }
+
     // Numeric fields
     if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
+      let numericValue = '';
+      if (value !== null && value !== undefined && value !== '') {
+        numericValue = value;
+      }
+      
       return (
         <input
           type="number"
-          value={value || ''}
-          onChange={(e) => handleInputChange(columnName, parseFloat(e.target.value) || 0)}
+          value={numericValue}
+          onChange={(e) => handleInputChange(columnName, e.target.value ? parseFloat(e.target.value) : '')}
           className="detail-input"
         />
       );
@@ -288,7 +396,7 @@ const EntryDetailModal = ({
                   renderFieldInput(column, value)
                 ) : (
                   <div className={`detail-value ${getValueType(columnName, column.DATA_TYPE)}`}>
-                    {value !== null && value !== undefined ? 
+                    {value !== null && value !== undefined && value !== '' ? 
                       formatCellValue(value, columnName, column.DATA_TYPE) : 
                       <span className="empty-value">-</span>
                     }

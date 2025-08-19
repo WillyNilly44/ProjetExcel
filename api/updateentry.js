@@ -44,17 +44,29 @@ exports.handler = async (event, context) => {
 
     await sql.connect(config);
 
+    // First, check what columns actually exist in the table
+    const columnCheckQuery = `
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'LOG_ENTRIES'
+    `;
+    
+    const columnCheckResult = await sql.query(columnCheckQuery);
+    const existingColumns = columnCheckResult.recordset.map(row => row.COLUMN_NAME.toLowerCase());
+    
 
     const updateFields = [];
     const params = [];
     
- 
+    // Exclude these fields from updates
     const excludeFields = ['id', 'created_at', 'updated_at', 'is_virtual', 'original_id'];
     
     Object.keys(entryData).forEach((key, index) => {
-      if (!excludeFields.includes(key.toLowerCase()) && entryData[key] !== undefined) {
-        updateFields.push(`${key} = @param${index}`);
-        params.push({ name: `param${index}`, value: entryData[key] });
+      if (!excludeFields.includes(key.toLowerCase()) && 
+          entryData[key] !== undefined && 
+          existingColumns.includes(key.toLowerCase())) {
+        updateFields.push(`[${key}] = @param${index}`);
+        params.push({ name: `param${index}`, value: entryData[key], columnName: key });
       }
     });
 
@@ -69,7 +81,13 @@ exports.handler = async (event, context) => {
       };
     }
 
-    updateFields.push(`updated_at = GETDATE()`);
+    // Only add updated timestamp if the column exists
+    if (existingColumns.includes('updated_at')) {
+      updateFields.push(`[updated_at] = GETDATE()`);
+    } else if (existingColumns.includes('updated_date')) {
+      updateFields.push(`[updated_date] = GETDATE()`);
+    }
+    // If neither exists, just don't add a timestamp update
 
     const query = `
       UPDATE LOG_ENTRIES 
@@ -77,20 +95,45 @@ exports.handler = async (event, context) => {
       WHERE id = @entryId
     `;
 
+
     const request = new sql.Request();
     request.input('entryId', sql.Int, entryId);
     
     params.forEach(param => {
       let sqlType = sql.NVarChar;
-      if (typeof param.value === 'number') {
-        sqlType = Number.isInteger(param.value) ? sql.Int : sql.Decimal;
-      } else if (typeof param.value === 'boolean') {
+      let value = param.value;
+      const columnName = param.columnName.toLowerCase();
+      
+      if (typeof value === 'number') {
+        sqlType = Number.isInteger(value) ? sql.Int : sql.Decimal(10, 2);
+      } else if (typeof value === 'boolean') {
         sqlType = sql.Bit;
-      } else if (param.value instanceof Date) {
+      } else if (value instanceof Date) {
         sqlType = sql.DateTime;
+      } else if (value === null || value === '') {
+        sqlType = sql.NVarChar;
+        value = null;
+      } else if (typeof value === 'string') {
+        // Handle time fields specifically
+        if (columnName.includes('time') && 
+            !columnName.includes('estimated') && 
+            !columnName.includes('actual') &&
+            !columnName.includes('expected') &&
+            !columnName.includes('down') &&
+            value.match(/^\d{2}:\d{2}(:\d{2})?$/)) {
+          sqlType = sql.Time;
+        }
+        // Handle date fields
+        else if (columnName.includes('date') && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          sqlType = sql.Date;
+        }
+        // Default to NVarChar for strings
+        else {
+          sqlType = sql.NVarChar;
+        }
       }
       
-      request.input(param.name, sqlType, param.value);
+      request.input(param.name, sqlType, value);
     });
 
     const result = await request.query(query);
@@ -102,7 +145,8 @@ exports.handler = async (event, context) => {
         success: true,
         message: 'Entry updated successfully',
         rowsAffected: result.rowsAffected[0],
-        entryId: entryId
+        entryId: entryId,
+        updatedFields: updateFields.length
       })
     };
 

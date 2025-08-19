@@ -252,47 +252,50 @@ export default function LogEntriesTable() {
   const handleSaveEditedEntry = async (editedEntry) => {
     try {
 
-    
-    const response = await fetch('/api/updateentry', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(editedEntry)
-    });
+      // Format the request to match the expected API structure
+      const requestData = {
+        action: 'update',
+        entryId: editedEntry.id,
+        entryData: editedEntry
+      };
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ HTTP Error:', response.status, errorText);
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+      const response = await fetch('/api/updateentry', {
+        method: 'POST', // Change from PUT to POST
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData) // Send structured data
+      });
 
-    const result = await response.json();
-    
-    if (result.success) {
- 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HTTP Error:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
       
-      // Refresh the data to show the updated entry
-      await fetchLogEntries();
+      if (result.success) {        
+        // Refresh the data to show the updated entry
+        await fetchLogEntries();
+        
+        setConnectionStatus('✅ Entry updated successfully!');
+        setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
+        
+        return true;
+      } else {
+        throw new Error(result.error || 'Failed to update entry');
+      }
       
-      setConnectionStatus('✅ Entry updated successfully!');
-      setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
-      
-      return true;
-    } else {
-      throw new Error(result.error || 'Failed to update entry');
+    } catch (error) {
+      console.error('❌ Error updating entry:', error);
+      setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
+      setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
+      return false;
     }
-    
-  } catch (error) {
-    console.error('❌ Error updating entry:', error);
-    setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
-    setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
-    return false;
-  }
-};
+  };
 
   const handleDuplicateEntry = async (sourceEntry) => {
-    console.log('🔍 Duplicating entry automatically:', sourceEntry);
     
     if (!sourceEntry) {
       alert('No entry selected for duplication');
@@ -362,7 +365,6 @@ export default function LogEntriesTable() {
       duplicateData.isRecurrence = false;
       duplicateData.day_of_the_week = null;
 
-      console.log('✅ Duplicate data created:', duplicateData);
 
       // Save directly to database (without opening modal)
       const response = await fetch('/api/addentryrec', {
@@ -1249,12 +1251,6 @@ export default function LogEntriesTable() {
               <div className="table-header">
                 <h3 className="table-title">📊 LOGS</h3>
                 <div className="table-info">
-                  <span className="record-count">
-                    {getFilteredData().length.toLocaleString()} records
-                    {getFilteredData().length > 1000 && (
-                      <span className="virtual-mode-indicator">⚡ Virtual Mode</span>
-                    )}
-                  </span>
                 </div>
               </div>
               
