@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import PDFExport from './PDFExport'; // Use the enhanced existing component
+import PDFExport from './PDFExport';
 
 const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission }) => {
   const { user } = useAuth();
@@ -58,14 +58,14 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     return mappedColumns;
   }, [columns]);
 
-  // Get current week's date range
+  // FIXED: Get current week's date range without timezone issues
   const getCurrentWeekRange = () => {
     const today = new Date();
     const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
     
     // Calculate start of week (Monday)
     const startOfWeek = new Date(today);
-    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1; // If Sunday, go back 6 days
+    const daysToMonday = currentDay === 0 ? 6 : currentDay - 1;
     startOfWeek.setDate(today.getDate() - daysToMonday);
     startOfWeek.setHours(0, 0, 0, 0);
     
@@ -74,10 +74,19 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
     
-    return { startOfWeek, endOfWeek };
+    // FIXED: Return as YYYY-MM-DD strings for comparison
+    const startDateString = startOfWeek.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    const endDateString = endOfWeek.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    
+    return { 
+      startOfWeek: startDateString, 
+      endOfWeek: endDateString,
+      startDate: startOfWeek,
+      endDate: endOfWeek
+    };
   };
 
-  // Filter data for current week
+  // FIXED: Filter data for current week using string comparison
   useEffect(() => {
     if (data && data.length > 0 && columns && columns.length > 0) {
       const { startOfWeek, endOfWeek } = getCurrentWeekRange();
@@ -92,26 +101,57 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
 
       if (dateColumn) {
         const filteredData = data.filter(entry => {
-          const entryDate = new Date(entry[dateColumn.COLUMN_NAME]);
-          return entryDate >= startOfWeek && entryDate <= endOfWeek;
+          let entryDateString = entry[dateColumn.COLUMN_NAME];
+          
+          // FIXED: Handle date strings without timezone conversion
+          if (typeof entryDateString === 'string') {
+            // Extract date part if it includes time
+            if (entryDateString.includes('T')) {
+              entryDateString = entryDateString.split('T')[0];
+            } else if (entryDateString.includes(' ')) {
+              entryDateString = entryDateString.split(' ')[0];
+            }
+            
+            // Compare as strings (YYYY-MM-DD format)
+            return entryDateString >= startOfWeek && entryDateString <= endOfWeek;
+          }
+          
+          // Fallback for Date objects (though we shouldn't have them)
+          try {
+            const entryDate = new Date(entryDateString);
+            const entryDateStr = entryDate.toLocaleDateString('en-CA');
+            return entryDateStr >= startOfWeek && entryDateStr <= endOfWeek;
+          } catch (e) {
+            console.warn('Date parsing error in dashboard filter:', e);
+            return false;
+          }
         });
         
-        // Sort by date (most recent first)
+        // FIXED: Sort by date using string comparison
         const sortedData = filteredData.sort((a, b) => {
-          const dateA = new Date(a[dateColumn.COLUMN_NAME]);
-          const dateB = new Date(b[dateColumn.COLUMN_NAME]);
-          return dateB - dateA;
+          let dateA = a[dateColumn.COLUMN_NAME];
+          let dateB = b[dateColumn.COLUMN_NAME];
+          
+          // Extract date part if needed
+          if (typeof dateA === 'string' && dateA.includes('T')) {
+            dateA = dateA.split('T')[0];
+          }
+          if (typeof dateB === 'string' && dateB.includes('T')) {
+            dateB = dateB.split('T')[0];
+          }
+          
+          // Compare as strings (YYYY-MM-DD format sorts correctly)
+          return dateB.localeCompare(dateA);
         });
         
-        setCurrentWeekData(sortedData.slice(0, 50)); // Show up to 50 entries for dashboard
+        setCurrentWeekData(sortedData.slice(0, 50));
       } else {
-        // If no date column, just show recent entries
         setCurrentWeekData(data.slice(0, 50));
       }
     }
   }, [data, columns]);
 
-  // Format combined date and time
+  // FIXED: Format combined date and time without timezone conversion
   const formatDateTime = (entry) => {
     const dateCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('log_date'));
     const timeCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('log_start'));
@@ -122,55 +162,66 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     let formattedDate = '';
     let formattedTime = '';
     
-    // Format date
+    // FIXED: Format date without timezone conversion
     if (dateValue) {
-      try {
-        const date = new Date(dateValue);
-        formattedDate = date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit'
-        });
-      } catch (e) {
+      if (typeof dateValue === 'string') {
+        // Extract date part if it includes time
+        let dateString = dateValue;
+        if (dateString.includes('T')) {
+          dateString = dateString.split('T')[0];
+        } else if (dateString.includes(' ')) {
+          dateString = dateString.split(' ')[0];
+        }
+        
+        // Format YYYY-MM-DD to MM/DD/YYYY without timezone conversion
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+          const [year, month, day] = dateString.split('-');
+          const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          
+          formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          });
+        } else {
+          formattedDate = dateString;
+        }
+      } else {
         formattedDate = dateValue.toString();
       }
     }
     
-    // Format time - EXTRACT ONLY TIME PORTION
+    // FIXED: Format time - EXTRACT ONLY TIME PORTION (same as before)
     if (timeValue) {
       try {
-        // Handle different time formats
         if (typeof timeValue === 'string') {
           // If it's a full datetime string (e.g., "2024-08-06T14:30:00")
           if (timeValue.includes('T')) {
             const timePart = timeValue.split('T')[1];
             if (timePart) {
-              // Extract HH:MM from HH:MM:SS or HH:MM:SS.000
-              const timeOnly = timePart.split('.')[0]; // Remove milliseconds if present
+              const timeOnly = timePart.split('.')[0]; // Remove milliseconds
               const timeParts = timeOnly.split(':');
               formattedTime = `${timeParts[0]}:${timeParts[1]}`; // HH:MM format
             }
           }
-          // If it's a date-time string with space (e.g., "2024-08-06 14:30:00")
+          // If it's a date-time string with space
           else if (timeValue.includes(' ')) {
             const parts = timeValue.split(' ');
             if (parts.length > 1) {
               const timePart = parts[1];
               const timeParts = timePart.split(':');
-              formattedTime = `${timeParts[0]}:${timeParts[1]}`; // HH:MM format
+              formattedTime = `${timeParts[0]}:${timeParts[1]}`;
             }
           }
-          // If it's already just time (e.g., "14:30:00" or "14:30")
+          // If it's already just time
           else if (timeValue.includes(':')) {
             const timeParts = timeValue.split(':');
-            formattedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1]}`; // HH:MM format
+            formattedTime = `${timeParts[0].padStart(2, '0')}:${timeParts[1]}`;
           }
-          // If it's just the time value as string
           else {
             formattedTime = timeValue;
           }
         } 
-        // Handle Date objects
         else if (timeValue instanceof Date) {
           formattedTime = timeValue.toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -178,9 +229,7 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
             hour12: false
           });
         }
-        // Handle other formats
         else {
-          // Try to parse as date and extract time
           const dateObj = new Date(timeValue);
           if (!isNaN(dateObj.getTime())) {
             formattedTime = dateObj.toLocaleTimeString('en-US', {
@@ -295,20 +344,28 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     };
   };
 
-  const { startOfWeek, endOfWeek } = getCurrentWeekRange();
+  const { startDate, endDate } = getCurrentWeekRange();
 
   return (
     <div className="dashboard-container">
-
       {/* Current Week Table */}
       <div className="dashboard-table-section">
         <div className="table-header">
           <h3 className="table-title">📊 Current Week Activities</h3>
+          <div className="table-subtitle">
+            {startDate.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric' 
+            })} - {endDate.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </div>
           <div className="table-info">
             <span className="record-count">
               {currentWeekData.length} entries this week
             </span>
-            {/* Use Enhanced PDFExport Component */}
             <PDFExport
               data={currentWeekData}
               mode="dashboard"
