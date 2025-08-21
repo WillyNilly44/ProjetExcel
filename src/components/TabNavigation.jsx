@@ -3,32 +3,32 @@ import React from 'react';
 const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
   const tabs = [
     {
+      id: 'kpi',
+      label: 'KPI',
+      icon: '📊',
+      description: 'Key Performance Indicators - Landing Page',
+      public: true
+    },
+    {
       id: 'dashboard',
       label: 'Dashboard',
-      icon: '📊',
-      description: 'View overview and analytics',
+      icon: '📈',
+      description: 'Current Week Overview',
       public: true
     },
     {
       id: 'logs',
-      label: 'Log Entries',
-      icon: '📝',
-      description: 'Manage maintenance logs',
-      public: true
-    },
-    {
-      id: 'kpi',
-      label: 'KPI Management',
-      icon: '📈',
-      description: 'Track key performance indicators',
+      label: 'Logs',
+      icon: '📋',
+      description: 'Log Entries Management',
       public: true
     },
     ...(hasPermission('Administrator') ? [
       {
         id: 'users',
-        label: 'User Management',
+        label: 'Users',
         icon: '👥',
-        description: 'Manage users and permissions',
+        description: 'User Management',
         public: false,
         requiredPermission: 'Administrator'
       }

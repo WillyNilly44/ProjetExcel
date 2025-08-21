@@ -74,7 +74,6 @@ const EntryDetailModal = ({
   const columnGroups = getColumnGroups();
 
   const handleInputChange = (columnName, value) => {
-    console.log(`🔧 Updating ${columnName}: ${value}`); // Add this debug log
     
     setEditedEntry(prev => ({
       ...prev,
@@ -173,18 +172,20 @@ const EntryDetailModal = ({
     }
 
     // Status fields
-    if (lowerColumnName.includes('status')) {
+    if (lowerColumnName.includes('status') || lowerColumnName.includes('completion')) {
       return (
         <select
-          value={editedEntry[columnName] || ''} // This should work correctly
-          onChange={(e) => handleInputChange(columnName, e.target.value)} // This should update properly
-          className="edit-field-select"
+          value={value || ''}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          className="detail-select"
         >
-          <option value="">Select Status</option>
-          <option value="Completed">✅ Completed</option>
-          <option value="Postponed">⏳ Postponed</option>
-          <option value="Cancelled">🚫 Cancelled</option>
-          <option value="Partially Completed">🔄 Partially Completed</option>
+          <option value="">Select status...</option>
+          <option value="Not Started">Not Started</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Completed">Completed</option>
+          <option value="Not Completed">Not Completed</option>
+          <option value="On Hold">On Hold</option>
+          <option value="Cancelled">Cancelled</option>
         </select>
       );
     }
