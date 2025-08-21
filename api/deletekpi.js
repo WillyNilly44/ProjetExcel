@@ -33,7 +33,6 @@ exports.handler = async (event, context) => {
   try {
     const { id, user } = JSON.parse(event.body);
 
-    console.log('📥 Received delete KPI request:', { id, user: user?.email });
 
     if (!id) {
       return {
@@ -116,11 +115,6 @@ exports.handler = async (event, context) => {
     deleteRequest.input('id', sql.Int, id);
     const result = await deleteRequest.query('DELETE FROM LOG_ENTRIES_DASHBOARD WHERE id = @id');
 
-    console.log('✅ Dashboard entry deleted successfully:', { 
-      id,
-      deletedEntry: kpiToDelete,
-      rowsAffected: result.rowsAffected 
-    });
 
     return {
       statusCode: 200,

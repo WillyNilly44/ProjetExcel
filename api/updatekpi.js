@@ -100,7 +100,6 @@ exports.handler = async (event, context) => {
       business_impacted 
     } = JSON.parse(event.body);
 
-    console.log('📥 Received update KPI data:', { id, month, week, maintenance_1, maintenance_2, incidents_1, incidents_2, business_impacted });
 
     if (!id) {
       return {
@@ -126,7 +125,6 @@ exports.handler = async (event, context) => {
 
     // Transform the week range to readable format
     const transformedWeek = transformWeekRange(week, month);
-    console.log(`🔄 Transformed week: "${week}" → "${transformedWeek}"`);
 
     await sql.connect(config);
 
@@ -160,7 +158,6 @@ exports.handler = async (event, context) => {
       WHERE id = @id
     `;
 
-    console.log('📝 Executing update query:', updateQuery);
 
     const request = new sql.Request();
     request.input('id', sql.Int, id);
@@ -174,13 +171,6 @@ exports.handler = async (event, context) => {
 
     const result = await request.query(updateQuery);
 
-    console.log('✅ Dashboard entry updated successfully:', { 
-      id,
-      month, 
-      originalWeek: week,
-      transformedWeek: transformedWeek,
-      rowsAffected: result.rowsAffected 
-    });
 
     return {
       statusCode: 200,

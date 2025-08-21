@@ -18,7 +18,7 @@ import KPITab from './KPITab'; // Import KPITab component
 export default function LogEntriesTable() {
   // All hooks
   const { hasPermission, user } = useAuth(); 
-  const [activeTab, setActiveTab] = useState('kpi'); // Changed from 'dashboard' to 'kpi'
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -296,7 +296,7 @@ export default function LogEntriesTable() {
   };
 
   const handleDuplicateEntry = async (sourceEntry) => {
-    
+  
     if (!sourceEntry) {
       alert('No entry selected for duplication');
       return;
@@ -325,12 +325,20 @@ export default function LogEntriesTable() {
       delete duplicateData.recurrence_day;
       delete duplicateData.day_of_the_week;
       
-      // Set date fields to today
-      const today = new Date().toISOString().split('T')[0];
+      // FIXED: Use the most reliable method for today's date
+      const todayString = new Date().toLocaleDateString('en-CA'); // This gives YYYY-MM-DD in local timezone
+      
+      console.log('🗓️ Today\'s date (toLocaleDateString):', todayString);
+      console.log('🕐 Current local time:', new Date().toString());
+      console.log('🌍 Browser timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+      
+      // Update date fields to today
       Object.keys(duplicateData).forEach(key => {
         const lowerKey = key.toLowerCase();
-        if (lowerKey.includes('date') && !lowerKey.includes('time')) {
-          duplicateData[key] = today;
+        if (lowerKey.includes('date') && !lowerKey.includes('time') && !lowerKey.includes('created') && !lowerKey.includes('updated')) {
+          const oldValue = duplicateData[key];
+          duplicateData[key] = todayString;
+          console.log(`📅 Updated ${key}: ${oldValue} → ${todayString}`);
         }
       });
 
@@ -365,8 +373,9 @@ export default function LogEntriesTable() {
       duplicateData.isRecurrence = false;
       duplicateData.day_of_the_week = null;
 
+      console.log('🔄 Final duplicate data to send:', duplicateData);
 
-      // Save directly to database (without opening modal)
+      // Save to database
       const response = await fetch('/api/addentryrec', {
         method: 'POST',
         headers: {
@@ -378,18 +387,26 @@ export default function LogEntriesTable() {
       const result = await response.json();
       
       if (!response.ok) {
+        console.error('❌ API Response:', result);
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       if (result.success) {
-        // Close detail modal
         setShowDetailModal(false);
         setSelectedEntry(null);
         
-        // Show success message
-        alert(`✅ Entry duplicated successfully! New entry created with today's date.`);
+        console.log('✅ Entry created successfully with ID:', result.id);
+        console.log('📊 Created entry data:', result.data);
         
-        // Refresh data to show the new entry
+        // DEBUG: Check what date was actually saved
+        if (result.data && result.data.log_date) {
+          console.log('🔍 Date sent to API:', todayString);
+          console.log('🔍 Date saved in DB:', result.data.log_date);
+          console.log('🔍 Dates match:', result.data.log_date === todayString);
+        }
+        
+        alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
+        
         await fetchLogEntries();
       } else {
         throw new Error(result.error);
@@ -896,24 +913,40 @@ export default function LogEntriesTable() {
         return value.toString();
       }
     }
-
-    // Handle date fields
+    
+    // SIMPLEST FIX: Handle date fields and always trim time components
     if (lowerDataType.includes('date') || lowerColumnName.includes('date')) {
-      try {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          });
-        }
-      } catch (e) {
-        // Fall through to return original value
+      let dateString = value.toString();
+      
+      // Remove time component if present (everything after T or space)
+      if (dateString.includes('T')) {
+        dateString = dateString.split('T')[0];
+      } else if (dateString.includes(' ') && dateString.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/)) {
+        dateString = dateString.split(' ')[0];
       }
+      
+      console.log(`📅 Processing date: ${value} → ${dateString}`);
+      
+      // If it's in YYYY-MM-DD format, format it nicely
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        
+        const formatted = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        
+        console.log(`📅 Formatted result: ${formatted}`);
+        return formatted;
+      }
+      
+      // For other formats, return the trimmed string
+      return dateString;
     }
 
-    // Handle datetime fields
+    // FIXED: Handle datetime fields
     if (lowerDataType.includes('datetime') || lowerColumnName.includes('datetime')) {
       try {
         const date = new Date(value);

@@ -27,7 +27,6 @@ const config = {
 };
 
 exports.handler = async (event, context) => {
-
   context.callbackWaitsForEmptyEventLoop = false;
   
   let pool;
@@ -43,9 +42,9 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    
     pool = await sql.connect(config);
     
+    // FIXED: Convert date fields to proper format when retrieving
     const query = `
       SELECT 
         le.*,
@@ -57,7 +56,7 @@ exports.handler = async (event, context) => {
     `;
     
     const result = await pool.request().query(query);
-    const data = result.recordset;
+    let data = result.recordset;
     
     const columnQuery = `
       SELECT 

@@ -2,13 +2,7 @@ import React from 'react';
 
 const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
   const tabs = [
-    {
-      id: 'kpi',
-      label: 'KPI',
-      icon: '📊',
-      description: 'Key Performance Indicators - Landing Page',
-      public: true
-    },
+
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -21,6 +15,13 @@ const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
       label: 'Logs',
       icon: '📋',
       description: 'Log Entries Management',
+      public: true
+    },
+    {
+      id: 'kpi',
+      label: 'KPI',
+      icon: '📊',
+      description: 'Key Performance Indicators - Landing Page',
       public: true
     },
     ...(hasPermission('Administrator') ? [
