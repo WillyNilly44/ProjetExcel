@@ -1,36 +1,28 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import Login from './Login';
+import MiniLogin from './MiniLogin'; // FIXED: Changed from './Login' to './MiniLogin'
 
-const ProtectedRoute = ({ children, requiredLevel = null }) => {
-  const { isAuthenticated, isLoading, hasPermission, user } = useAuth();
+const ProtectedRoute = ({ children }) => {
+  const { user, isLoading } = useAuth();
 
+  // Show loading state while checking authentication
   if (isLoading) {
     return (
       <div className="loading-container">
-        <div className="loading-spinner">🔄</div>
-        <div className="loading-text">Checking authentication...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
-  if (requiredLevel && !hasPermission(requiredLevel)) {
-    return (
-      <div className="access-denied">
-        <div className="access-denied-content">
-          <h1>🚫 Access Denied</h1>
-          <p>You don't have permission to access this feature.</p>
-          <p>Required level: <strong>{requiredLevel}</strong></p>
-          <p>Your level: <strong>{user?.level_Name || 'Unknown'}</strong></p>
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Loading...</p>
         </div>
       </div>
     );
   }
 
+  // If user is not authenticated, show login
+  if (!user) {
+    return <MiniLogin />;
+  }
+
+  // If user is authenticated, render the protected content
   return children;
 };
 

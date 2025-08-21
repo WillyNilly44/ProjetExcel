@@ -813,25 +813,27 @@ export default function LogEntriesTable() {
       return value ? '✅ Yes' : '❌ No';
     }
 
-    // Handle status fields
+    // UPDATED: Handle status fields with only your 4 specific options
     if (lowerColumnName.includes('status')) {
-      const statusValue = value.toString().toLowerCase();
+      const statusValue = value.toString().toLowerCase().trim();
       switch (statusValue) {
         case 'completed':
           return '✅ Completed';
-        case 'in progress':
-        case 'progress':
-          return '🔄 In Progress';
-        case 'not completed':
-          return '❌ Not Completed';
-        case 'scheduled':
-          return '📅 Scheduled';
-        case 'on hold':
-          return '⏸️ On Hold';
+        case 'postponed':
+          return '⏳ Postponed';
         case 'cancelled':
           return '🚫 Cancelled';
+        case 'partially completed':
+          return '🔄 Partially Completed';
+        // Handle any legacy or unexpected values
+        case 'in progress':
+        case 'progress':
+          return '🔄 Partially Completed'; // Map to your valid option
+        case 'not completed':
+          return '⏳ Postponed'; // Map to your valid option
         default:
-          return value.toString();
+          // For any unrecognized status, show as-is but with a warning indicator
+          return `⚠️ ${value.toString()}`;
       }
     }
 
