@@ -1278,6 +1278,7 @@ export default function LogEntriesTable() {
               formatCellValue={formatCellValue}
               onEventClick={handleRowClick}
               showVirtualEntries={showVirtualEntries}
+              dateFilters={dateFilters} // NEW: Pass date filters to calendar
             />
           ) : (
             <div className="table-container">

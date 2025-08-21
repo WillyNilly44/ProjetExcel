@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -9,9 +9,43 @@ const CalendarView = ({
   columns = [], 
   formatCellValue, 
   onEventClick,
-  showVirtualEntries = true 
+  showVirtualEntries = true,
+  dateFilters = {} // NEW: Accept date filters prop
 }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
+  const calendarRef = useRef(null); // NEW: Reference to FullCalendar component
+
+  // NEW: Effect to navigate calendar when filters change
+  useEffect(() => {
+    if (calendarRef.current && dateFilters.year && dateFilters.month) {
+      const calendarApi = calendarRef.current.getApi();
+      
+      // Create date for the filtered year and month
+      const targetDate = new Date(
+        parseInt(dateFilters.year), 
+        parseInt(dateFilters.month) - 1, // Month is 0-indexed
+        1 // First day of month
+      );
+      
+      console.log('📅 Navigating calendar to:', targetDate.toDateString());
+      console.log('🔍 Applied filters:', dateFilters);
+      
+      // Navigate to the target month
+      calendarApi.gotoDate(targetDate);
+    }
+  }, [dateFilters.year, dateFilters.month]); // Run when year or month filter changes
+
+  // NEW: Get initial date for calendar (use filtered date if available)
+  const getInitialDate = () => {
+    if (dateFilters.year && dateFilters.month) {
+      return new Date(
+        parseInt(dateFilters.year), 
+        parseInt(dateFilters.month) - 1, 
+        1
+      );
+    }
+    return new Date(); // Default to today
+  };
 
   const formatTimeForCalendar = (timeValue) => {
     if (!timeValue) return '00:00:00';
@@ -22,8 +56,6 @@ const CalendarView = ({
   };
 
   const calendarEvents = useMemo(() => {
-    
-
     if (!data || !Array.isArray(data) || data.length === 0) {
       return [];
     }
@@ -57,9 +89,9 @@ const CalendarView = ({
       });
 
       if (!dateColumn) {
+        console.warn('📅 No date column found for calendar events');
         return [];
       }
-
 
       const events = [];
       
@@ -81,7 +113,6 @@ const CalendarView = ({
             console.warn('📅 No date value for entry', entry.id || i);
             continue;
           }
-
 
           let eventDate;
           try {
@@ -113,7 +144,6 @@ const CalendarView = ({
           let backgroundColor = '#3788d8'; 
           let borderColor = '#3788d8';
 
-
           if (logTypeColumn && entry[logTypeColumn.COLUMN_NAME]) {
             const logType = String(entry[logTypeColumn.COLUMN_NAME]).toLowerCase();
             if (logType.includes('operational')) {
@@ -129,7 +159,6 @@ const CalendarView = ({
             backgroundColor = '#6c757d';
             borderColor = '#6c757d';
           }
-
 
           if (statusColumn && entry[statusColumn.COLUMN_NAME]) {
             const status = String(entry[statusColumn.COLUMN_NAME]).toLowerCase();
@@ -164,7 +193,8 @@ const CalendarView = ({
         }
       }
 
-      return events;
+      console.log(`📅 Generated ${events.length} calendar events`);
+      return events; 
 
     } catch (error) {
       console.error('📅 Fatal error in calendar processing:', error);
@@ -197,16 +227,23 @@ const CalendarView = ({
           }}>
             📅 No events to display in calendar view
             <br />
-            <small>Try adjusting your filters or check if data is loaded</small>
+            <small>
+              {dateFilters.year || dateFilters.month 
+                ? 'No events found for the selected time period' 
+                : 'Try adjusting your filters or check if data is loaded'
+              }
+            </small>
           </div>
         ) : (
           <FullCalendar
+            ref={calendarRef} // NEW: Add ref to access calendar API
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView={calendarView}
+            initialDate={getInitialDate()} // NEW: Set initial date based on filters
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
-              right: ''
+              right: 'dayGridMonth,timeGridWeek,timeGridDay' // NEW: Add view options
             }}
             events={calendarEvents}
             eventClick={handleEventClick}
@@ -232,6 +269,11 @@ const CalendarView = ({
               } catch (error) {
                 console.error('📅 Error setting event tooltip:', error);
               }
+            }}
+            // NEW: Handle view changes
+            viewDidMount={(info) => {
+              console.log('📅 Calendar view changed to:', info.view.type);
+              setCalendarView(info.view.type);
             }}
           />
         )}
