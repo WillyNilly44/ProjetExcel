@@ -100,7 +100,7 @@ exports.handler = async (event, context) => {
       SELECT * 
       FROM LOG_ENTRIES_DASHBOARD 
       ${whereClause}
-      ORDER BY id DESC
+      ORDER BY id 
     `;
 
     const dataRequest = new sql.Request();

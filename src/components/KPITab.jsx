@@ -7,6 +7,7 @@ import ThresholdManager from './ThresholdManager';
 const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState([]);
+  const [allDashboardData, setAllDashboardData] = useState([]);
   const [dashboardColumns, setDashboardColumns] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -90,6 +91,84 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     }
   };
 
+ // NEW: Sort KPI data by month (newest to oldest)
+  const sortKPIData = (data) => {
+    if (!data || data.length === 0) return data;
+
+    return data.sort((a, b) => {
+      // Get month values from both entries
+      const monthA = a.month || '';
+      const monthB = b.month || '';
+
+      // Parse the date information from month column
+      const dateA = parseMonthYear(monthA);
+      const dateB = parseMonthYear(monthB);
+
+      // Sort newest first (descending order)
+      return dateB.getTime() - dateA.getTime();
+    });
+  };
+
+  // NEW: Parse month-year string to Date object for comparison
+  const parseMonthYear = (monthString) => {
+    if (!monthString || typeof monthString !== 'string') {
+      return new Date(0); // Return very old date for invalid entries
+    }
+
+    try {
+      // Handle different month formats:
+      // "January 2025", "Jan 2025", "2025-01", "01/2025", etc.
+      
+      const cleanMonth = monthString.trim();
+      
+      // Check for "Month YYYY" format (e.g., "January 2025", "Jan 2025")
+      const monthYearMatch = cleanMonth.match(/^([A-Za-z]+)\s+(\d{4})$/);
+      if (monthYearMatch) {
+        const monthName = monthYearMatch[1];
+        const year = parseInt(monthYearMatch[2]);
+        const monthNumber = getMonthNumber(monthName);
+        return new Date(year, monthNumber - 1, 1); // First day of month
+      }
+
+      // Check for "YYYY-MM" format (e.g., "2025-01")
+      const yearMonthMatch = cleanMonth.match(/^(\d{4})-(\d{1,2})$/);
+      if (yearMonthMatch) {
+        const year = parseInt(yearMonthMatch[1]);
+        const month = parseInt(yearMonthMatch[2]);
+        return new Date(year, month - 1, 1);
+      }
+
+      // Check for "MM/YYYY" format (e.g., "01/2025")
+      const monthSlashYearMatch = cleanMonth.match(/^(\d{1,2})\/(\d{4})$/);
+      if (monthSlashYearMatch) {
+        const month = parseInt(monthSlashYearMatch[1]);
+        const year = parseInt(monthSlashYearMatch[2]);
+        return new Date(year, month - 1, 1);
+      }
+
+      // Check for "YYYY MM" format (e.g., "2025 01")
+      const yearSpaceMonthMatch = cleanMonth.match(/^(\d{4})\s+(\d{1,2})$/);
+      if (yearSpaceMonthMatch) {
+        const year = parseInt(yearSpaceMonthMatch[1]);
+        const month = parseInt(yearSpaceMonthMatch[2]);
+        return new Date(year, month - 1, 1);
+      }
+
+      // If no pattern matches, try to parse as a general date
+      const fallbackDate = new Date(cleanMonth);
+      if (!isNaN(fallbackDate.getTime())) {
+        return fallbackDate;
+      }
+
+      console.warn(`⚠️ Could not parse month format: "${monthString}"`);
+      return new Date(0); // Return very old date for unparseable entries
+
+    } catch (error) {
+      console.warn(`⚠️ Error parsing month "${monthString}":`, error);
+      return new Date(0);
+    }
+  };
+
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -101,7 +180,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ filters })
+        body: JSON.stringify({})
       });
 
       if (!response.ok) {
@@ -112,7 +191,14 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       const result = await response.json();
       
       if (result.success) {
-        setDashboardData(result.data || []);
+        // Store all data and apply sorting
+        const sortedAllData = sortKPIData(result.data || []);
+        setAllDashboardData(sortedAllData);
+        
+        // Apply current filters to get displayed data
+        const filteredData = applyClientSideFilters(sortedAllData, filters);
+        setDashboardData(filteredData);
+        
         setDashboardColumns(result.columns || []);
       } else {
         setError(result.error || 'Failed to load dashboard data');
@@ -124,6 +210,226 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Apply filters on the client side
+  const applyClientSideFilters = (data, currentFilters) => {
+    if (!data || data.length === 0) return data;
+
+    let filteredData = [...data];
+
+    // Filter by year if selected
+    if (currentFilters.year) {
+      filteredData = filteredData.filter(entry => {
+        const monthColumn = entry.month || '';
+        const yearFromMonth = extractYearFromMonth(monthColumn);
+        return yearFromMonth === parseInt(currentFilters.year);
+      });
+    }
+
+    // Filter by month if selected (and year is also selected)
+    if (currentFilters.year && currentFilters.month) {
+      filteredData = filteredData.filter(entry => {
+        const monthColumn = entry.month || '';
+        const monthFromColumn = extractMonthFromMonth(monthColumn);
+        return monthFromColumn === parseInt(currentFilters.month);
+      });
+    }
+
+    return filteredData;
+  };
+
+  // Extract year from month column
+  const extractYearFromMonth = (monthString) => {
+    if (!monthString || typeof monthString !== 'string') {
+      return null;
+    }
+
+    try {
+      const cleanMonth = monthString.trim();
+      
+      // Check for "Month YYYY" format (e.g., "January 2025", "Jan 2025")
+      const monthYearMatch = cleanMonth.match(/^([A-Za-z]+)\s+(\d{4})$/);
+      if (monthYearMatch) {
+        return parseInt(monthYearMatch[2]);
+      }
+
+      // Check for "YYYY-MM" format (e.g., "2025-01")
+      const yearMonthMatch = cleanMonth.match(/^(\d{4})-(\d{1,2})$/);
+      if (yearMonthMatch) {
+        return parseInt(yearMonthMatch[1]);
+      }
+
+      // Check for "MM/YYYY" format (e.g., "01/2025")
+      const monthSlashYearMatch = cleanMonth.match(/^(\d{1,2})\/(\d{4})$/);
+      if (monthSlashYearMatch) {
+        return parseInt(monthSlashYearMatch[2]);
+      }
+
+      // Check for "YYYY MM" format (e.g., "2025 01")
+      const yearSpaceMonthMatch = cleanMonth.match(/^(\d{4})\s+(\d{1,2})$/);
+      if (yearSpaceMonthMatch) {
+        return parseInt(yearSpaceMonthMatch[1]);
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`⚠️ Error extracting year from "${monthString}":`, error);
+      return null;
+    }
+  };
+
+  // Extract month number from month column
+  const extractMonthFromMonth = (monthString) => {
+    if (!monthString || typeof monthString !== 'string') {
+      return null;
+    }
+
+    try {
+      const cleanMonth = monthString.trim();
+      
+      // Check for "Month YYYY" format (e.g., "January 2025", "Jan 2025")
+      const monthYearMatch = cleanMonth.match(/^([A-Za-z]+)\s+(\d{4})$/);
+      if (monthYearMatch) {
+        const monthName = monthYearMatch[1];
+        return getMonthNumber(monthName);
+      }
+
+      // Check for "YYYY-MM" format (e.g., "2025-01")
+      const yearMonthMatch = cleanMonth.match(/^(\d{4})-(\d{1,2})$/);
+      if (yearMonthMatch) {
+        return parseInt(yearMonthMatch[2]);
+      }
+
+      // Check for "MM/YYYY" format (e.g., "01/2025")
+      const monthSlashYearMatch = cleanMonth.match(/^(\d{1,2})\/(\d{4})$/);
+      if (monthSlashYearMatch) {
+        return parseInt(monthSlashYearMatch[1]);
+      }
+
+      // Check for "YYYY MM" format (e.g., "2025 01")
+      const yearSpaceMonthMatch = cleanMonth.match(/^(\d{4})\s+(\d{1,2})$/);
+      if (yearSpaceMonthMatch) {
+        return parseInt(yearSpaceMonthMatch[2]);
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`⚠️ Error extracting month from "${monthString}":`, error);
+      return null;
+    }
+  };
+
+  // Convert month name to number
+  const getMonthNumber = (monthName) => {
+    const months = {
+      'january': 1, 'jan': 1,
+      'february': 2, 'feb': 2,
+      'march': 3, 'mar': 3,
+      'april': 4, 'apr': 4,
+      'may': 5,
+      'june': 6, 'jun': 6,
+      'july': 7, 'jul': 7,
+      'august': 8, 'aug': 8,
+      'september': 9, 'sep': 9, 'sept': 9,
+      'october': 10, 'oct': 10,
+      'november': 11, 'nov': 11,
+      'december': 12, 'dec': 12
+    };
+
+    const lowerMonth = monthName.toLowerCase();
+    return months[lowerMonth] || 1; // Default to January if not found
+  };
+
+  // FIXED: Single version of getAvailableYears that extracts from actual data
+  const getAvailableYears = () => {
+    if (!allDashboardData || allDashboardData.length === 0) {
+      return [];
+    }
+
+    const years = new Set();
+    
+    allDashboardData.forEach(entry => {
+      const monthColumn = entry.month || '';
+      const year = extractYearFromMonth(monthColumn);
+      if (year) {
+        years.add(year);
+      }
+    });
+
+    // Convert to array and sort newest first
+    return Array.from(years).sort((a, b) => b - a);
+  };
+
+  // FIXED: Single version of getAvailableMonths that works with selected year
+  const getAvailableMonths = (selectedYear) => {
+    if (!selectedYear || !allDashboardData || allDashboardData.length === 0) {
+      return [];
+    }
+
+    const months = new Set();
+    
+    allDashboardData.forEach(entry => {
+      const monthColumn = entry.month || '';
+      const year = extractYearFromMonth(monthColumn);
+      const month = extractMonthFromMonth(monthColumn);
+      
+      if (year === parseInt(selectedYear) && month) {
+        months.add(month);
+      }
+    });
+
+    // Convert to array with names and sort
+    const monthNames = [
+      { value: 1, name: 'January' },
+      { value: 2, name: 'February' },
+      { value: 3, name: 'March' },
+      { value: 4, name: 'April' },
+      { value: 5, name: 'May' },
+      { value: 6, name: 'June' },
+      { value: 7, name: 'July' },
+      { value: 8, name: 'August' },
+      { value: 9, name: 'September' },
+      { value: 10, name: 'October' },
+      { value: 11, name: 'November' },
+      { value: 12, name: 'December' }
+    ];
+
+    return monthNames
+      .filter(month => months.has(month.value))
+      .sort((a, b) => a.value - b.value);
+  };
+
+  // Handle filter changes with immediate filtering
+  const handleFilterChange = (filterType, value) => {
+    const newFilters = {
+      ...filters,
+      [filterType]: value
+    };
+
+    // If changing year, reset month
+    if (filterType === 'year') {
+      newFilters.month = '';
+    }
+
+    setFilters(newFilters);
+
+    // Apply filters immediately
+    const filteredData = applyClientSideFilters(allDashboardData, newFilters);
+    setDashboardData(filteredData);
+  };
+
+  // Clear filters function
+  const clearFilters = () => {
+    const clearedFilters = {
+      year: '',
+      month: ''
+    };
+    setFilters(clearedFilters);
+    
+    // Apply cleared filters immediately
+    const filteredData = applyClientSideFilters(allDashboardData, clearedFilters);
+    setDashboardData(filteredData);
   };
 
   // Add new KPI to LOG_ENTRIES_DASHBOARD
@@ -158,6 +464,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       }
 
       if (result.success) {
+        // Refresh data which will automatically sort
         await fetchDashboardData();
         setShowAddKPIModal(false);
         setNewKPI({
@@ -214,6 +521,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       }
 
       if (result.success) {
+        // Refresh data which will automatically sort
         await fetchDashboardData();
         setShowEditKPIModal(false);
         setEditingKPI(null);
@@ -254,6 +562,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       }
 
       if (result.success) {
+        // Refresh data which will automatically sort
         await fetchDashboardData();
         alert('✅ KPI entry deleted successfully!');
       } else {
@@ -304,75 +613,13 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     fetchDashboardData();
   }, []);
 
-  // Dashboard formatting functions
-  const formatColumnName = (column) => {
-    if (column.IS_AVERAGE_COLUMN && column.AVERAGE_VALUE) {
-        const avgValue = parseFloat(column.AVERAGE_VALUE);
-        const formattedValue = !isNaN(avgValue) ? avgValue.toFixed(2) : '0.00';        
-        
-        if (column.COLUMN_NAME === "maintenance_1" || column.COLUMN_NAME === "incidents_1") {
-          return `${formattedValue} Avg Qty`;
-        } else if (column.COLUMN_NAME === "maintenance_2" || column.COLUMN_NAME === "incidents_2") {
-          return `${formattedValue} Avg Count`;
-        } else {
-          return `${formattedValue} Avg`;
-        }
-      }
-      
-      return column.COLUMN_NAME
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  const formatDashboardCellValue = (value, columnName, dataType) => {
-    if (value === null || value === undefined) return '';
-    
-    const lowerColumnName = columnName.toLowerCase();
-    
-    if (dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date')) {
-      try {
-        return new Date(value).toLocaleDateString();
-      } catch (e) {
-        return value;
-      }
-    }
-    
-    if (dataType === 'bit' || typeof value === 'boolean') {
-      return value ? '✅' : '❌';
-    }
-  
-    if (typeof value === 'number') {
-      if (lowerColumnName.includes('count') || lowerColumnName.includes('total')) {
-        return value.toLocaleString();
-      }
-      if (lowerColumnName.includes('percentage') || lowerColumnName.includes('rate')) {
-        return `${value.toFixed(2)}%`;
-      }
-    }
-    
-    return value.toString();
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
-  };
-
+  // UPDATED: Apply filters function
   const applyFilters = () => {
-    fetchDashboardData();
+    const filteredData = applyClientSideFilters(allDashboardData, filters);
+    setDashboardData(filteredData);
   };
 
-  const clearFilters = () => {
-    setFilters({
-      year: '',
-      month: ''
-    });
-    setTimeout(() => {
-      fetchDashboardData();
-    }, 100);
-  };
+ 
 
   // Threshold functions with improved logic
   const getCellColorClass = (value, columnName) => {
@@ -426,46 +673,66 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     localStorage.setItem('columnThresholds', JSON.stringify(newThresholds));
   };
 
-  // Helper functions for filters
-  const getAvailableYears = () => {
-    const currentYear = new Date().getFullYear();
-    const startYear = 2018;
-    const years = [];
-    
-    for (let year = currentYear; year >= startYear; year--) {
-      years.push(year);
-    }
-    
-    return years;
+
+
+  
+  // Dashboard formatting functions
+  const formatColumnName = (column) => {
+    if (column.IS_AVERAGE_COLUMN && column.AVERAGE_VALUE) {
+        const avgValue = parseFloat(column.AVERAGE_VALUE);
+        const formattedValue = !isNaN(avgValue) ? avgValue.toFixed(2) : '0.00';        
+        
+        if (column.COLUMN_NAME === "maintenance_1" || column.COLUMN_NAME === "incidents_1") {
+          return `${formattedValue} Avg Qty`;
+        } else if (column.COLUMN_NAME === "maintenance_2" || column.COLUMN_NAME === "incidents_2") {
+          return `${formattedValue} Avg Count`;
+        } else {
+          return `${formattedValue} Avg`;
+        }
+      }
+      
+      return column.COLUMN_NAME
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  const getAvailableMonths = (selectedYear) => {
-    const months = [
-      { value: 1, name: 'January' },
-      { value: 2, name: 'February' },
-      { value: 3, name: 'March' },
-      { value: 4, name: 'April' },
-      { value: 5, name: 'May' },
-      { value: 6, name: 'June' },
-      { value: 7, name: 'July' },
-      { value: 8, name: 'August' },
-      { value: 9, name: 'September' },
-      { value: 10, name: 'October' },
-      { value: 11, name: 'November' },
-      { value: 12, name: 'December' }
-    ];
-
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
-
-    if (selectedYear === 2018) {
-      return months.filter(month => month.value >= 8);
-    } else if (selectedYear === currentYear) {
-      return months.filter(month => month.value <= currentMonth);
-    } else {
-      return months;
+  const formatDashboardCellValue = (value, columnName, dataType) => {
+    if (value === null || value === undefined) return '';
+    
+    const lowerColumnName = columnName.toLowerCase();
+    
+    if (dataType === 'datetime' || dataType === 'date' || lowerColumnName.includes('date')) {
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch (e) {
+        return value;
+      }
     }
+    
+    if (dataType === 'bit' || typeof value === 'boolean') {
+      return value ? '✅' : '❌';
+    }
+  
+    if (typeof value === 'number') {
+      if (lowerColumnName.includes('count') || lowerColumnName.includes('total')) {
+        return value.toLocaleString();
+      }
+      if (lowerColumnName.includes('percentage') || lowerColumnName.includes('rate')) {
+        return `${value.toFixed(2)}%`;
+      }
+    }
+    
+    return value.toString();
   };
+
+  // Load thresholds and fetch data on component mount
+  useEffect(() => {
+    loadThresholds();
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   if (isLoading) {
     return (
@@ -497,14 +764,17 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         <h2>📈 Performance Analytics</h2>
         <div className="dashboard-actions">
           {hasPermission('Administrator') && (
-            <button 
-              onClick={() => setShowAddKPIModal(true)}
-              className="add-kpi-btn"
-              title="Add new KPI entry"
-            >
-              ➕ Add KPI Entry
-            </button>
+            <>
+              <button 
+                onClick={() => setShowAddKPIModal(true)}
+                className="add-kpi-btn"
+                title="Add new KPI entry"
+              >
+                ➕ Add KPI Entry
+              </button>
+            </>
           )}
+          
           <button 
             onClick={() => setShowThresholdManager(true)} 
             className="threshold-btn"
@@ -523,9 +793,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         <div className="filter-header">
           <h3>🔍 Analytics Filters</h3>
           <div className="filter-actions">
-            <button onClick={applyFilters} className="apply-filters-btn">
-              ✅ Apply Filters
-            </button>
             <button onClick={clearFilters} className="clear-filters-btn">
               🗑 Clear All
             </button>
@@ -537,12 +804,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
             <label>📅 Year</label>
             <select
               value={filters.year}
-              onChange={(e) => {
-                handleFilterChange('year', e.target.value);
-                if (e.target.value !== filters.year) {
-                  handleFilterChange('month', '');
-                }
-              }}
+              onChange={(e) => handleFilterChange('year', e.target.value)}
               className="filter-select"
             >
               <option value="">All Years</option>
@@ -572,13 +834,26 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       {/* Dashboard Data Table */}
       {dashboardData.length === 0 ? (
         <div className="no-data">
-          <div className="no-data-text">📊 No analytics data found</div>
-          {hasPermission('Administrator') && (
+          <div className="no-data-text">
+            {allDashboardData.length === 0 ? 
+              '📊 No analytics data found' : 
+              '🔍 No data matches current filters'
+            }
+          </div>
+          {hasPermission('Administrator') && allDashboardData.length === 0 && (
             <button 
               onClick={() => setShowAddKPIModal(true)}
               className="add-first-kpi-btn"
             >
               ➕ Add Your First KPI Entry
+            </button>
+          )}
+          {allDashboardData.length > 0 && (
+            <button 
+              onClick={clearFilters}
+              className="btn-secondary"
+            >
+              🗑 Clear Filters
             </button>
           )}
         </div>
