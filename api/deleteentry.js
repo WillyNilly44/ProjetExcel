@@ -92,7 +92,6 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Failed to delete log entry:', error);
 
     return {
       statusCode: 500,

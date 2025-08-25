@@ -40,7 +40,6 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('❌ Error loading stored user:', error);
         localStorage.removeItem('logViewerUser');
         localStorage.removeItem('logViewerUserTimestamp');
       } finally {
@@ -58,7 +57,6 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('logViewerUser', JSON.stringify(user));
         localStorage.setItem('logViewerUserTimestamp', Date.now().toString());
       } catch (error) {
-        console.error('❌ Error saving user to localStorage:', error);
       }
     } else {
       // Clear localStorage when user logs out
@@ -92,7 +90,6 @@ export const AuthProvider = ({ children }) => {
         throw new Error(userData.error || 'Login failed');
       }
     } catch (error) {
-      console.error('❌ Login error:', error);
       return { success: false, error: error.message };
     }
   };
@@ -157,7 +154,6 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
     } catch (error) {
-      console.error('❌ Error refreshing user session:', error);
       logout();
       return false;
     }

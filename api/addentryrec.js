@@ -103,7 +103,6 @@ exports.handler = async (event, context) => {
     }
     
   } catch (error) {
-    console.error('❌ Database error:', error);
     
     return {
       statusCode: 500,

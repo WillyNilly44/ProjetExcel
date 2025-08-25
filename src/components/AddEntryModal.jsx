@@ -91,7 +91,6 @@ export default function AddEntryModal({
       resetForm();
       onClose();
     } catch (error) {
-      console.error('❌ Failed to save entry:', error);
       setErrors({ submit: error.message });
     } finally {
       setIsLoading(false);
@@ -148,7 +147,6 @@ export default function AddEntryModal({
           const existingDistricts = getExistingDistricts();
           setDistrictSuggestions(existingDistricts || []);
         } catch (error) {
-          console.warn('Could not load existing districts:', error);
           setDistrictSuggestions([]);
         }
       } else {
@@ -160,7 +158,6 @@ export default function AddEntryModal({
           const existingIncidents = getExistingIncidents();
           setIncidentSuggestions(existingIncidents || []);
         } catch (error) {
-          console.warn('Could not load existing incidents:', error);
           setIncidentSuggestions([]);
         }
       } else {

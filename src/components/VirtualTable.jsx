@@ -126,16 +126,6 @@ const VirtualTable = ({
           </div>
         </div>
       </div>
-      
-      {/* Stats Footer */}
-      <div className="virtual-table-stats">
-        <span>
-          Showing {startIndex + 1}-{Math.min(endIndex, data.length)} of {data.length.toLocaleString()} entries
-        </span>
-        {data.length > 1000 && (
-          <span className="performance-badge">⚡ Virtual Scrolling</span>
-        )}
-      </div>
     </div>
   );
 };

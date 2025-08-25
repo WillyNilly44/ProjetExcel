@@ -118,7 +118,6 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
       }
 
     } catch (error) {
-      console.error('❌ Failed to add column:', error);
       alert('Failed to add column: ' + error.message);
     } finally {
       setIsLoading(false);

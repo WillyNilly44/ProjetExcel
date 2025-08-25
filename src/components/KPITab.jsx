@@ -77,7 +77,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         }
       }
     } catch (error) {
-      console.warn('⚠️ Failed to load thresholds from database, using defaults:', error);
       
       const savedThresholds = localStorage.getItem('columnThresholds');
       if (savedThresholds) {
@@ -85,7 +84,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
           const parsedThresholds = JSON.parse(savedThresholds);
           setThresholds(parsedThresholds);
         } catch (parseError) {
-          console.warn('⚠️ Failed to parse localStorage thresholds, using defaults');
         }
       }
     }
@@ -160,11 +158,9 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         return fallbackDate;
       }
 
-      console.warn(`⚠️ Could not parse month format: "${monthString}"`);
       return new Date(0); // Return very old date for unparseable entries
 
     } catch (error) {
-      console.warn(`⚠️ Error parsing month "${monthString}":`, error);
       return new Date(0);
     }
   };
@@ -205,7 +201,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       }
 
     } catch (error) {
-      console.error('❌ Dashboard data fetch failed:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
@@ -274,7 +269,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
       return null;
     } catch (error) {
-      console.warn(`⚠️ Error extracting year from "${monthString}":`, error);
       return null;
     }
   };
@@ -315,7 +309,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
 
       return null;
     } catch (error) {
-      console.warn(`⚠️ Error extracting month from "${monthString}":`, error);
       return null;
     }
   };
@@ -481,7 +474,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         throw new Error(result.error || 'Failed to add KPI entry');
       }
     } catch (err) {
-      console.error('❌ Error adding KPI entry:', err);
       alert('Failed to add KPI entry: ' + err.message);
     } finally {
       setSaving(false);
@@ -530,7 +522,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         throw new Error(result.error || 'Failed to update KPI entry');
       }
     } catch (err) {
-      console.error('❌ Error updating KPI entry:', err);
       alert('Failed to update KPI entry: ' + err.message);
     } finally {
       setSaving(false);
@@ -569,7 +560,6 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         throw new Error(result.error || 'Failed to delete KPI entry');
       }
     } catch (err) {
-      console.error('❌ Error deleting KPI entry:', err);
       alert('Failed to delete KPI entry: ' + err.message);
     }
   };
@@ -780,7 +770,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
             className="threshold-btn"
             title="Manage color thresholds"
           >
-            🎨 Thresholds
+            Thresholds
           </button>
           <button onClick={fetchDashboardData} className="refresh-btn" disabled={isLoading}>
             {isLoading ? '⏳ Loading...' : '🔄 Refresh'}

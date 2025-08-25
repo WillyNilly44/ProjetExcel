@@ -69,7 +69,6 @@ const config = {
     };
 
   } catch (error) {
-    console.error('Login error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

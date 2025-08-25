@@ -87,7 +87,6 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Database error:', error);
     
     return {
       statusCode: 500,
@@ -105,7 +104,6 @@ exports.handler = async (event, context) => {
       try {
         await pool.close();
       } catch (closeError) {
-        console.error('⚠️ Error closing connection:', closeError);
       }
     }
   }

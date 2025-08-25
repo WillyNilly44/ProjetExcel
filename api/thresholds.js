@@ -32,7 +32,6 @@ router.get('/getthresholds', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error fetching thresholds:', error);
     res.status(500).json({
       success: false,
       error: `Database error: ${error.message}`
@@ -112,7 +111,6 @@ router.post('/savethresholds', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error saving thresholds:', error);
     res.status(500).json({
       success: false,
       error: `Database error: ${error.message}`

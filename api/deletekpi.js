@@ -130,7 +130,6 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Error deleting dashboard entry:', error);
     
     return {
       statusCode: 500,
@@ -145,7 +144,6 @@ exports.handler = async (event, context) => {
     try {
       await sql.close();
     } catch (closeError) {
-      console.error('⚠️ Error closing database connection:', closeError);
     }
   }
 };

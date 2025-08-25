@@ -27,8 +27,6 @@ const CalendarView = ({
         1 // First day of month
       );
       
-      console.log('📅 Navigating calendar to:', targetDate.toDateString());
-      console.log('🔍 Applied filters:', dateFilters);
       
       // Navigate to the target month
       calendarApi.gotoDate(targetDate);
@@ -89,7 +87,6 @@ const CalendarView = ({
       });
 
       if (!dateColumn) {
-        console.warn('📅 No date column found for calendar events');
         return [];
       }
 
@@ -100,7 +97,6 @@ const CalendarView = ({
         
         try {
           if (!entry || typeof entry !== 'object') {
-            console.warn('📅 Invalid entry at index', i);
             continue;
           }
 
@@ -110,7 +106,6 @@ const CalendarView = ({
 
           const dateValue = entry[dateColumn.COLUMN_NAME];
           if (!dateValue) {
-            console.warn('📅 No date value for entry', entry.id || i);
             continue;
           }
 
@@ -118,12 +113,10 @@ const CalendarView = ({
           try {
             const parsedDate = new Date(dateValue);
             if (isNaN(parsedDate.getTime())) {
-              console.warn('📅 Invalid date:', dateValue);
               continue;
             }
             eventDate = parsedDate.toISOString().split('T')[0];
           } catch (dateError) {
-            console.warn('📅 Date parsing error:', dateError, dateValue);
             continue;
           }
 
@@ -189,15 +182,12 @@ const CalendarView = ({
           events.push(event);
 
         } catch (entryError) {
-          console.error('📅 Error processing entry:', entryError, entry);
         }
       }
 
-      console.log(`📅 Generated ${events.length} calendar events`);
       return events; 
 
     } catch (error) {
-      console.error('📅 Fatal error in calendar processing:', error);
       return [];
     }
   }, [data, columns, showVirtualEntries, formatCellValue]);
@@ -209,7 +199,6 @@ const CalendarView = ({
         onEventClick(entry);
       }
     } catch (error) {
-      console.error('📅 Error handling event click:', error);
     }
   };
 
@@ -267,12 +256,10 @@ const CalendarView = ({
                 const status = info.event.extendedProps?.status || '';
                 info.el.title = `${info.event.title}\n${status}\nClick for details`;
               } catch (error) {
-                console.error('📅 Error setting event tooltip:', error);
               }
             }}
             // NEW: Handle view changes
             viewDidMount={(info) => {
-              console.log('📅 Calendar view changed to:', info.view.type);
               setCalendarView(info.view.type);
             }}
           />

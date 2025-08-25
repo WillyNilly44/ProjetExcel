@@ -184,7 +184,6 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Dashboard data fetch error:', error);
     
     let errorMessage = 'Failed to fetch dashboard data';
     

@@ -61,7 +61,6 @@ const config = {
     };
 
   } catch (error) {
-    console.error('Delete user error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

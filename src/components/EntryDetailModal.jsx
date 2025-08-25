@@ -249,7 +249,6 @@ const EntryDetailModal = ({
             }
           }
         } catch (e) {
-          console.warn('Date parsing error for', columnName, value, e);
           dateValue = '';
         }
       }
@@ -290,7 +289,6 @@ const EntryDetailModal = ({
               timeValue = date.toTimeString().substring(0, 5);
             }
           } catch (e) {
-            console.warn('DateTime parsing error for', columnName, value, e);
           }
         }
         // If it's just a time string like "14:30:00" 
@@ -305,7 +303,6 @@ const EntryDetailModal = ({
               timeValue = date.toTimeString().substring(0, 5);
             }
           } catch (e) {
-            console.warn('Time parsing error for', columnName, value, e);
             timeValue = valueStr;
           }
         }

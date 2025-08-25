@@ -32,7 +32,6 @@ function AppContent() {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ HTTP Error:', response.status, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -59,7 +58,6 @@ function AppContent() {
       }
 
     } catch (error) {
-      console.error('🚨 Request failed:', error);
       setConnectionStatus('❌ Request Failed');
       setConnectionInfo({
         error: error.message,
@@ -73,11 +71,34 @@ function AppContent() {
 
   // Format cell value function
   const formatCellValue = (value, columnName, dataType) => {
-    if (value === null || value === undefined || value === '') {
-      return '-';
+    if (value === null || value === undefined) {
+      return '';
     }
 
-    const lowerColumnName = columnName.toLowerCase();
+    const lowerColumnName = columnName ? columnName.toLowerCase() : '';
+    
+    // Handle log start and log end columns - show only time in 24-hour format
+    if (lowerColumnName.includes('log_start') || 
+        lowerColumnName.includes('log_end') || 
+        lowerColumnName === 'log start' ||
+        lowerColumnName === 'log end') {
+      
+      try {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return value.toString();
+        }
+        
+        return date.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+      } catch (error) {
+        return value.toString();
+      }
+    }
+
     const lowerDataType = dataType ? dataType.toLowerCase() : '';
 
     // Handle boolean/bit values

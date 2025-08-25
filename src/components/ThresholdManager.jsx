@@ -45,7 +45,6 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
       }
 
     } catch (error) {
-      console.error('❌ Failed to fetch thresholds:', error);
       setError(`Failed to load thresholds: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -88,7 +87,6 @@ const ThresholdManager = ({ isOpen, onClose, columns = [], onSave }) => {
       }
 
     } catch (error) {
-      console.error('❌ Failed to save thresholds:', error);
       setError(`Failed to save thresholds: ${error.message}`);
     } finally {
       setIsSaving(false);

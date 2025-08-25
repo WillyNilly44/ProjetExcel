@@ -270,7 +270,6 @@ const PDFExport = ({
       alert(`PDF exported successfully!\nEntries: ${currentData.length}\nFilename: ${filename}${fitMessage}`);
       
     } catch (error) {
-      console.error(`❌ ${mode} PDF export failed:`, error);
       alert(`Failed to export ${mode} PDF: ` + error.message);
     }
   };

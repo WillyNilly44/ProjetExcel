@@ -81,7 +81,6 @@ const config = {
     };
 
   } catch (error) {
-    console.error('Update user error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

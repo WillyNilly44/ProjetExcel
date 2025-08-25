@@ -80,7 +80,6 @@ const transformWeekRange = (weekRange, monthString) => {
     return `${startFormatted} to ${endFormatted}`;
 
   } catch (error) {
-    console.warn('⚠️ Error transforming week range:', error);
     return weekRange; // Return original on error
   }
 };
@@ -159,7 +158,6 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Error adding dashboard entry:', error);
     
     return {
       statusCode: 500,
@@ -174,7 +172,6 @@ exports.handler = async (event, context) => {
     try {
       await sql.close();
     } catch (closeError) {
-      console.error('⚠️ Error closing database connection:', closeError);
     }
   }
 };

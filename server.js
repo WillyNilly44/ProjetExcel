@@ -36,8 +36,7 @@ const config = {
 };
 
 if (!config.server || !config.database || !config.user || !config.password) {
-  console.error('❌ Missing required database environment variables!');
-  console.error('Required: AWS_RDS_HOST, AWS_RDS_DATABASE, AWS_RDS_USER, AWS_RDS_PASSWORD');
+
   process.exit(1);
 }
 
@@ -182,7 +181,6 @@ app.delete('/api/deleteentry', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Delete entry error:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -334,7 +332,6 @@ app.get('/api/getthresholds', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error fetching thresholds:', error);
     res.status(500).json({
       success: false,
       error: `Database error: ${error.message}`
@@ -423,7 +420,6 @@ app.post('/api/savethresholds', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error saving thresholds:', error);
     res.status(500).json({
       success: false,
       error: `Database error: ${error.message}`
@@ -579,7 +575,6 @@ app.post('/api/add-column', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Add column error:', error);
     
     // Handle specific SQL errors
     let errorMessage = error.message;

@@ -188,7 +188,6 @@ const ExcelExport = ({
       alert(`Excel export completed successfully!\n\nExported ${filteredCount} records with ${allColumns.length} columns to ${finalFilename}`);
       
     } catch (error) {
-      console.error('Excel export error:', error);
       alert('Export failed: ' + error.message);
     } finally {
       setIsExporting(false);

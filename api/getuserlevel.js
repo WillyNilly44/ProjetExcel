@@ -49,7 +49,6 @@ const config = {
     };
 
   } catch (error) {
-    console.error('Get levels error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

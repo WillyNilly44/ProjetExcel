@@ -47,7 +47,6 @@ const config = {
     };
 
   } catch (error) {
-    console.error('Get users error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ 

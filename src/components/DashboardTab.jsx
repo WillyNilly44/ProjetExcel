@@ -122,7 +122,6 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
             const entryDateStr = entryDate.toLocaleDateString('en-CA');
             return entryDateStr >= startOfWeek && entryDateStr <= endOfWeek;
           } catch (e) {
-            console.warn('Date parsing error in dashboard filter:', e);
             return false;
           }
         });
@@ -242,7 +241,6 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
           }
         }
       } catch (e) {
-        console.warn('Time parsing error:', e, timeValue);
         formattedTime = timeValue.toString();
       }
     }

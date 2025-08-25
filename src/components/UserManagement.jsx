@@ -61,7 +61,6 @@ const UserManagement = () => {
         setLevels(result.levels);
       }
     } catch (err) {
-      console.error('Failed to fetch levels:', err);
     }
   };
 

@@ -75,7 +75,6 @@ export default function LogEntriesTable({
           setColumnOrder(finalOrder);
           
         } catch (e) {
-          console.warn('⚠️ Failed to parse saved column preferences, using defaults');
           setVisibleColumns(allColumnNames);
           setColumnOrder(allColumnNames);
         }
@@ -165,7 +164,6 @@ export default function LogEntriesTable({
       }
 
     } catch (error) {
-      console.error('❌ Failed to save entry:', error);
       throw error;
     }
   };
@@ -184,7 +182,6 @@ export default function LogEntriesTable({
       }, 3000);
       
     } catch (error) {
-      console.error('❌ Error refreshing data after column addition:', error);
       setConnectionStatus('❌ Column added but failed to refresh data. Please reload the page.');
     }
   };
@@ -209,7 +206,6 @@ export default function LogEntriesTable({
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ HTTP Error:', response.status, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -228,7 +224,6 @@ export default function LogEntriesTable({
       }
       
     } catch (error) {
-      console.error('❌ Error updating entry:', error);
       setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
       setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
       return false;
@@ -267,10 +262,7 @@ export default function LogEntriesTable({
       
       // FIXED: Use the most reliable method for today's date
       const todayString = new Date().toLocaleDateString('en-CA'); // This gives YYYY-MM-DD in local timezone
-      
-      console.log('🗓️ Today\'s date (toLocaleDateString):', todayString);
-      console.log('🕐 Current local time:', new Date().toString());
-      console.log('🌍 Browser timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    
       
       // Update date fields to today
       Object.keys(duplicateData).forEach(key => {
@@ -278,7 +270,6 @@ export default function LogEntriesTable({
         if (lowerKey.includes('date') && !lowerKey.includes('time') && !lowerKey.includes('created') && !lowerKey.includes('updated')) {
           const oldValue = duplicateData[key];
           duplicateData[key] = todayString;
-          console.log(`📅 Updated ${key}: ${oldValue} → ${todayString}`);
         }
       });
 
@@ -313,7 +304,6 @@ export default function LogEntriesTable({
       duplicateData.isRecurrence = false;
       duplicateData.day_of_the_week = null;
 
-      console.log('🔄 Final duplicate data to send:', duplicateData);
 
       // Save to database
       const response = await fetch('/api/addentryrec', {
@@ -327,23 +317,12 @@ export default function LogEntriesTable({
       const result = await response.json();
       
       if (!response.ok) {
-        console.error('❌ API Response:', result);
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       if (result.success) {
         setShowDetailModal(false);
         setSelectedEntry(null);
-        
-        console.log('✅ Entry created successfully with ID:', result.id);
-        console.log('📊 Created entry data:', result.data);
-        
-        // DEBUG: Check what date was actually saved
-        if (result.data && result.data.log_date) {
-          console.log('🔍 Date sent to API:', todayString);
-          console.log('🔍 Date saved in DB:', result.data.log_date);
-          console.log('🔍 Dates match:', result.data.log_date === todayString);
-        }
         
         alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
         
@@ -353,7 +332,6 @@ export default function LogEntriesTable({
       }
 
     } catch (error) {
-      console.error('❌ Error duplicating entry:', error);
       alert('Failed to duplicate entry: ' + error.message);
     }
   };
@@ -394,7 +372,6 @@ export default function LogEntriesTable({
       localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
       localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
     } catch (e) {
-      console.error('❌ Failed to save column preferences:', e);
     }
   };
 

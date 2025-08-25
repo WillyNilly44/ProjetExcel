@@ -114,7 +114,6 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Failed to add log entry:', error);
 
     return {
       statusCode: 500,
