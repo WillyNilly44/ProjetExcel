@@ -4,26 +4,22 @@ import AddEntryModal from './AddEntryModal';
 import ColumnManager from './ColumnManager';
 import PDFExport from './PDFExport';
 import ToolbarDropdown from './ToolBarDropdown';
-import MiniLogin from './MiniLogin';
-import TabNavigation from './TabNavigation';
-import UserManagement from './UserManagement';
-import DashboardTab from './DashboardTab';
 import EntryDetailModal from './EntryDetailModal';
 import CalendarView from './CalendarView'; 
 import AddColumnModal from './AddColumnModal';
 import VirtualTable from './VirtualTable';
-import KPITab from './KPITab'; // Import KPITab component
 
-
-export default function LogEntriesTable() {
-  // All hooks
-  const { hasPermission, user } = useAuth(); 
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [data, setData] = useState([]);
-  const [columns, setColumns] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('Ready to load');
-  const [connectionInfo, setConnectionInfo] = useState(null);
+export default function LogEntriesTable({ 
+  data = [], 
+  columns = [], 
+  formatCellValue = (value) => value, // This is the prop - use this one
+  hasPermission = () => false,
+  isLoading = false,
+  connectionStatus = 'Ready to load',
+  connectionInfo = null,
+  onRefresh = () => {}
+}) {
+  const { user } = useAuth(); 
   const [showAddModal, setShowAddModal] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [columnOrder, setColumnOrder] = useState([]);
@@ -51,11 +47,8 @@ export default function LogEntriesTable() {
   });
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
 
-  // CONSOLIDATED useEffect - This fixes the hook rule violation
-  useEffect(() => {
-    // Initial data fetch
-    fetchLogEntries();
-  }, []); // Only run once on mount
+  // REMOVE: fetchLogEntries (now handled by App.jsx)
+  // REMOVE: tab-related logic
 
   // CONSOLIDATED useEffect for column management
   useEffect(() => {
@@ -97,59 +90,6 @@ export default function LogEntriesTable() {
       }
     }
   }, [columns, data]); // Run when columns or data change
-
-  const fetchLogEntries = async () => {
-    setIsLoading(true);
-    setConnectionStatus('Loading log entries...');
-    
-    try {
-      const response = await fetch('/api/dbconnection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ HTTP Error:', response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        setConnectionStatus(`✅ Loaded`);
-        setData(result.data || []);
-        setColumns(result.columns || []);
-        setConnectionInfo({
-          server: result.server,
-          database: result.database,
-          totalRecords: result.totalRecords,
-          columnCount: result.columns?.length || 0,
-          timestamp: result.timestamp
-        });
-      } else {
-        setConnectionStatus('❌ Failed to load data');
-        setConnectionInfo({
-          error: result.error,
-          code: result.code,
-          timestamp: result.timestamp
-        });
-      }
-
-    } catch (error) {
-      console.error('🚨 Request failed:', error);
-      setConnectionStatus('❌ Request Failed');
-      setConnectionInfo({
-        error: error.message,
-        type: 'Network/Request Error',
-        timestamp: new Date().toISOString()
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const loadFilterOptions = () => {
     if (!data || !columns || data.length === 0) return;
@@ -219,7 +159,7 @@ export default function LogEntriesTable() {
 
       if (result.success) {        
         alert(result.message);
-        await fetchLogEntries();
+        await onRefresh();
       } else {
         throw new Error(result.error);
       }
@@ -233,7 +173,7 @@ export default function LogEntriesTable() {
   const handleColumnAdded = async () => {
     try {
       // Refresh the log entries to get updated column structure
-      await fetchLogEntries();
+      await onRefresh();
       
       // Show success message
       setConnectionStatus('✅ Column added successfully! Data refreshed.');
@@ -277,7 +217,7 @@ export default function LogEntriesTable() {
       
       if (result.success) {        
         // Refresh the data to show the updated entry
-        await fetchLogEntries();
+        await onRefresh();
         
         setConnectionStatus('✅ Entry updated successfully!');
         setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
@@ -407,7 +347,7 @@ export default function LogEntriesTable() {
         
         alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
         
-        await fetchLogEntries();
+        await onRefresh();
       } else {
         throw new Error(result.error);
       }
@@ -755,10 +695,12 @@ export default function LogEntriesTable() {
     });
   };
 
+  // Connection status helper
   const getConnectionStatusClass = () => {
-    if (connectionStatus.includes('✅')) return 'success';
+    if (connectionStatus.includes('✅')) return 'connected';
     if (connectionStatus.includes('❌')) return 'error';
-    return 'neutral';
+    if (connectionStatus.includes('Loading')) return 'loading';
+    return 'disconnected';
   };
 
   const handleRowClick = (entry) => {
@@ -811,183 +753,27 @@ export default function LogEntriesTable() {
     return Object.values(dateFilters).filter(value => value && value !== '').length;
   };
 
+  // Helper function to format column names
   const formatColumnName = (columnName) => {
+    if (!columnName || typeof columnName !== 'string') {
+      return 'Unknown Column';
+    }
     return columnName
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  const formatCellValue = (value, columnName, dataType) => {
-    if (value === null || value === undefined || value === '') {
-      return '-';
-    }
-
-    const lowerColumnName = columnName.toLowerCase();
-    const lowerDataType = dataType ? dataType.toLowerCase() : '';
-
-    // Handle boolean/bit values
-    if (lowerDataType === 'bit' || typeof value === 'boolean') {
-      return value ? '✅ Yes' : '❌ No';
-    }
-
-    // Handle status fields
-    if (lowerColumnName.includes('status')) {
-      const statusValue = value.toString().toLowerCase();
-      switch (statusValue) {
-        case 'completed':
-          return '✅ Completed';
-        case 'in progress':
-        case 'progress':
-          return '🔄 In Progress';
-        case 'not completed':
-          return '❌ Not Completed';
-        case 'scheduled':
-          return '📅 Scheduled';
-        case 'on hold':
-          return '⏸️ On Hold';
-        case 'cancelled':
-          return '🚫 Cancelled';
-        default:
-          return value.toString();
-      }
-    }
-
-    // Handle log type
-    if (lowerColumnName.includes('log_type')) {
-      const typeValue = value.toString().toLowerCase();
-      switch (typeValue) {
-        case 'operational':
-          return '🔧 Operational';
-        case 'application':
-          return '💻 Application';
-        default:
-          return value.toString();
-      }
-    }
-
-    // Handle estimated/actual time (in hours) - CHECK THIS FIRST BEFORE TIME FIELDS
-    if (lowerColumnName.includes('estimated_time') || 
-        lowerColumnName.includes('actual_time') || 
-        lowerColumnName.includes('expected_down_time') || 
-        lowerColumnName.includes('downtime')) {
-      const hours = parseFloat(value);
-      if (!isNaN(hours)) {
-        if (hours === 0) return '0 hours';
-        if (hours < 1) {
-          const minutes = Math.round(hours * 60);
-          return `${minutes} min`;
-        } else if (hours >= 24) {
-          const days = Math.floor(hours / 24);
-          const remainingHours = hours % 24;
-          return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days} days`;
-        } else {
-          return hours % 1 === 0 ? `${hours} hours` : `${hours}h`;
-        }
-      }
-      return value.toString();
-    }
-
-    // Handle time fields (like log_start, log_end) - BUT NOT duration fields
-    if (lowerDataType.includes('time') || 
-        (lowerColumnName.includes('time') && 
-         !lowerColumnName.includes('estimated') && 
-         !lowerColumnName.includes('actual') && 
-         !lowerColumnName.includes('down') && 
-         !lowerColumnName.includes('duration'))) {
-      
-      // If it's already in HH:MM format, return as-is
-      if (typeof value === 'string' && /^\d{2}:\d{2}/.test(value)) {
-        return value;
-      }
-      
-      try {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
-        }
-      } catch (e) {
-        return value.toString();
-      }
-    }
+  // Helper function to get column type
+  const getColumnType = (columnName, dataType) => {
+    const lowerName = columnName ? columnName.toLowerCase() : '';
+    const lowerType = dataType ? dataType.toLowerCase() : '';
     
-    // SIMPLEST FIX: Handle date fields and always trim time components
-    if (lowerDataType.includes('date') || lowerColumnName.includes('date')) {
-      let dateString = value.toString();
-      
-      // Remove time component if present (everything after T or space)
-      if (dateString.includes('T')) {
-        dateString = dateString.split('T')[0];
-      } else if (dateString.includes(' ') && dateString.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/)) {
-        dateString = dateString.split(' ')[0];
-      }
-      
-      console.log(`📅 Processing date: ${value} → ${dateString}`);
-      
-      // If it's in YYYY-MM-DD format, format it nicely
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        const [year, month, day] = dateString.split('-');
-        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        
-        const formatted = date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
-        
-        console.log(`📅 Formatted result: ${formatted}`);
-        return formatted;
-      }
-      
-      // For other formats, return the trimmed string
-      return dateString;
-    }
-
-    // FIXED: Handle datetime fields
-    if (lowerDataType.includes('datetime') || lowerColumnName.includes('datetime')) {
-      try {
-        const date = new Date(value);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-        }
-      } catch (e) {
-        // Fall through to return original value
-      }
-    }
-
-    // Handle numeric fields
-    if (lowerDataType.includes('int') || lowerDataType.includes('decimal') || lowerDataType.includes('float')) {
-      const num = parseFloat(value);
-      if (!isNaN(num)) {
-        return num.toLocaleString();
-      }
-    }
-
-    // Handle long text fields (truncate)
-    if (lowerColumnName.includes('note') || lowerColumnName.includes('description') || lowerColumnName.includes('comment')) {
-      const text = value.toString();
-      if (text.length > 100) {
-        return text.substring(0, 97) + '...';
-      }
-      return text;
-    }
-
-    // Handle district codes (uppercase)
-    if (lowerColumnName.includes('district')) {
-      return value.toString().toUpperCase();
-    }
-
-    // Default: return as string
-    return value.toString();
+    if (lowerType === 'bit' || lowerType === 'boolean') return 'boolean';
+    if (lowerType.includes('int') || lowerType.includes('decimal') || lowerType.includes('float')) return 'number';
+    if (lowerType.includes('date') || lowerType.includes('time')) return 'date';
+    if (lowerName.includes('status')) return 'status';
+    
+    return 'text';
   };
 
   // Early return for loading state
@@ -1003,356 +789,321 @@ export default function LogEntriesTable() {
 
   return (
     <div className="log-entries-container">
-      <MiniLogin />
-      <TabNavigation 
-        activeTab={activeTab} 
-        onTabChange={setActiveTab} 
-        hasPermission={hasPermission}
-      />
-
-      {/* KPI Tab - Landing Page */}
-      {activeTab === 'kpi' && (
-        <KPITab 
-          data={data}
-          columns={columns}
-          formatCellValue={formatCellValue}
-          hasPermission={hasPermission}
-        />
-      )}
-
-      {/* Dashboard Tab */}
-      {activeTab === 'dashboard' && (
-        <DashboardTab 
-          data={data}
-          columns={columns}
-          formatCellValue={formatCellValue}
-          hasPermission={hasPermission}
-        />
-      )}
-
-      {/* Logs Tab */}
-      {activeTab === 'logs' && (
-        <>
-          {/* Status Header */}
-          <div className="status-header">
-            <div>
-              <h2> Log Viewing Tool</h2>
-              <div className={`status-text ${getConnectionStatusClass()}`}>
-                {connectionStatus}
-              </div>
-            </div>
-            
-            <div className="toolbar-container">
-              {/* Add View Toggle Buttons */}
-              <div className="view-toggle">
-                <button
-                  className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
-                  onClick={() => setViewMode('table')}
-                  title="Table View"
-                >
-                  📋 Table
-                </button>
-                <button
-                  className={`view-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
-                  onClick={() => setViewMode('calendar')}
-                  title="Calendar View"
-                >
-                  📅 Calendar
-                </button>
-              </div>
-
-              <ToolbarDropdown
-                isLoading={isLoading}
-                columnsLength={columns.length}
-                showVirtualEntries={showVirtualEntries}
-                setShowVirtualEntries={setShowVirtualEntries}
-                showFilters={showFilters}
-                setShowFilters={setShowFilters}
-                setShowColumnManager={setShowColumnManager}
-                setShowAddModal={setShowAddModal}
-                setShowAddColumnModal={setShowAddColumnModal}
-                fetchLogEntries={fetchLogEntries}
-                exportComponent={
-                  <PDFExport
-                    data={getFilteredData()}
-                    columns={columns}
-                    filters={dateFilters}
-                    showVirtualEntries={showVirtualEntries}
-                    formatColumnName={formatColumnName}
-                    formatCellValue={formatCellValue}
-                    getDisplayColumns={getDisplayColumns}
-                    disabled={isLoading || columns.length === 0}
-                    compact={true}
-                  />
-                }
-                hasPermission={hasPermission}
-                data={data}
-                columns={columns}
-                dateFilters={dateFilters}
-                formatColumnName={formatColumnName}
-                formatCellValue={formatCellValue}
-                getDisplayColumns={getDisplayColumns}
-                getFilteredData={getFilteredData}
-              />
-            </div>
+      {/* REMOVE: MiniLogin and TabNavigation - now in App.jsx */}
+      
+      {/* Status Header */}
+      <div className="status-header">
+        <div>
+          <h2>📋 Log Viewing Tool</h2>
+          <div className={`status-text ${getConnectionStatusClass()}`}>
+            {connectionStatus}
+          </div>
+        </div>
+        
+        <div className="toolbar-container">
+          {/* Add View Toggle Buttons */}
+          <div className="view-toggle">
+            <button
+              className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+              title="Table View"
+            >
+              📋 Table
+            </button>
+            <button
+              className={`view-toggle-btn ${viewMode === 'calendar' ? 'active' : ''}`}
+              onClick={() => setViewMode('calendar')}
+              title="Calendar View"
+            >
+              📅 Calendar
+            </button>
           </div>
 
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="filter-panel">
-              <div className="filter-header">
-                <h3 className="filter-title">🔍 Filters</h3>
-                <div className="filter-actions">
-                  {getActiveFilterCount() > 0 && (
-                    <span className="active-filter-count">
-                      {getActiveFilterCount()} filter{getActiveFilterCount() > 1 ? 's' : ''} active
-                    </span>
-                  )}
-                  <button onClick={clearFilters} className="filter-clear-btn">
-                    🗑 Clear All
-                  </button>
-                </div>
-              </div>
-              
-              <div className="filter-grid">
-                {/* Date Filters Row */}
-                <div className="filter-section">
-                  <h4 className="filter-section-title">📅 Date Filters</h4>
-                  <div className="filter-row">
-                    {/* Log Type Filter */}
-                    <div className="filter-group">
-                      <label>🏷️ Log Type</label>
-                      <select
-                        value={dateFilters.logType}
-                        onChange={(e) => handleFilterChange('logType', e.target.value)}
-                        className="filter-select"
-                      >
-                        <option value="">All Types</option>
-                        <option value="operational">Operational</option>
-                        <option value="application">Application</option>
-                      </select>
-                    </div>
-                    
-                    {/* Year Filter */}
-                    <div className="filter-group">
-                      <label>📅 Year</label>
-                      <select
-                        value={dateFilters.year}
-                        onChange={(e) => handleFilterChange('year', e.target.value)}
-                        className="filter-select"
-                      >
-                        <option value="">All Years</option>
-                        {getAvailableYears().map(year => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Month Filter */}
-                    <div className="filter-group">
-                      <label>📊 Month</label>
-                      <select
-                        value={dateFilters.month}
-                        onChange={(e) => handleFilterChange('month', e.target.value)}
-                        disabled={!dateFilters.year}
-                        className="filter-select"
-                      >
-                        <option value="">All Months</option>
-                        <option value="1">January</option>
-                        <option value="2">February</option>
-                        <option value="3">March</option>
-                        <option value="4">April</option>
-                        <option value="5">May</option>
-                        <option value="6">June</option>
-                        <option value="7">July</option>
-                        <option value="8">August</option>
-                        <option value="9">September</option>
-                        <option value="10">October</option>
-                        <option value="11">November</option>
-                        <option value="12">December</option>
-                      </select>
-                    </div>
-                    
-                    {/* Week Filter */}
-                    <div className="filter-group">
-                      <label>📍 Week</label>
-                      <select
-                        value={dateFilters.week}
-                        onChange={(e) => handleFilterChange('week', e.target.value)}
-                        disabled={!dateFilters.year || !dateFilters.month}
-                        className="filter-select"
-                      >
-                        <option value="">All Weeks</option>
-                        {dateFilters.year && dateFilters.month && 
-                          getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
-                            <option key={week.number} value={week.number}>
-                              {week.label}
-                            </option>
-                          ))
-                        }
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Content Filters Row */}
-                <div className="filter-section">
-                  <h4 className="filter-section-title">📋 Content Filters</h4>
-                  <div className="filter-row">
-                    {/* District Filter */}
-                    <div className="filter-group">
-                      <label>🏢 District</label>
-                      <select
-                        value={dateFilters.district}
-                        onChange={(e) => handleFilterChange('district', e.target.value)}
-                        className="filter-select"
-                      >
-                        <option value="">All Districts</option>
-                        {filterOptions.districts.map(district => (
-                          <option key={district} value={district}>{district}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Incident Filter */}
-                    <div className="filter-group">
-                      <label>🚨 Incident</label>
-                      <select
-                        value={dateFilters.incident}
-                        onChange={(e) => handleFilterChange('incident', e.target.value)}
-                        className="filter-select"
-                      >
-                        <option value="">All Incidents</option>
-                        {filterOptions.incidents.map(incident => (
-                          <option key={incident} value={incident}>
-                            {incident.length > 30 ? `${incident.substring(0, 30)}...` : incident}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Assigned Filter */}
-                    <div className="filter-group">
-                      <label>👤 Assigned To</label>
-                      <select
-                        value={dateFilters.assigned}
-                        onChange={(e) => handleFilterChange('assigned', e.target.value)}
-                        className="filter-select"
-                      >
-                        <option value="">All Assignees</option>
-                        {filterOptions.assignees.map(assignee => (
-                          <option key={assignee} value={assignee}>{assignee}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Uploader Filter */}
-                    <div className="filter-group">
-                      <label>📝 Uploader</label>
-                      <select
-                        value={dateFilters.uploader}
-                        onChange={(e) => handleFilterChange('uploader', e.target.value)}
-                        className="filter-select"
-                      >
-                        <option value="">All Uploaders</option>
-                        {filterOptions.uploaders.map(uploader => (
-                          <option key={uploader} value={uploader}>{uploader}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Data Display - Table or Calendar */}
-          {!data || data.length === 0 ? (
-            <div className="no-data">
-              <div className="no-data-text">📝 No log entries found</div>
-            </div>
-          ) : viewMode === 'calendar' ? (
-            <CalendarView
-              data={getFilteredData()}
-              columns={columns}
-              formatCellValue={formatCellValue}
-              onEventClick={handleRowClick}
-              showVirtualEntries={showVirtualEntries}
-              dateFilters={dateFilters} // NEW: Pass date filters to calendar
-            />
-          ) : (
-            <div className="table-container">
-              <div className="table-header">
-                <h3 className="table-title">📊 LOGS</h3>
-                <div className="table-info">
-                </div>
-              </div>
-              
-              {/* Use VirtualTable for better performance */}
-              <VirtualTable
+          <ToolbarDropdown
+            isLoading={isLoading}
+            columnsLength={columns.length}
+            showVirtualEntries={showVirtualEntries}
+            setShowVirtualEntries={setShowVirtualEntries}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            setShowColumnManager={setShowColumnManager}
+            setShowAddModal={setShowAddModal}
+            setShowAddColumnModal={setShowAddColumnModal}
+            fetchLogEntries={onRefresh} // Use the prop
+            exportComponent={
+              <PDFExport
                 data={getFilteredData()}
                 columns={columns}
-                getDisplayColumns={getDisplayColumns}
+                filters={dateFilters}
+                showVirtualEntries={showVirtualEntries}
                 formatColumnName={formatColumnName}
                 formatCellValue={formatCellValue}
-                onRowClick={handleRowClick}
-                hasPermission={hasPermission}
-                getColumnType={getColumnType}
+                getDisplayColumns={getDisplayColumns}
+                disabled={isLoading || columns.length === 0}
+                compact={true}
               />
+            }
+            hasPermission={hasPermission}
+            data={data}
+            columns={columns}
+            dateFilters={dateFilters}
+            formatColumnName={formatColumnName}
+            formatCellValue={formatCellValue}
+            getDisplayColumns={getDisplayColumns}
+            getFilteredData={getFilteredData}
+          />
+        </div>
+      </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="filter-panel">
+          <div className="filter-header">
+            <h3 className="filter-title">🔍 Filters</h3>
+            <div className="filter-actions">
+              {getActiveFilterCount() > 0 && (
+                <span className="active-filter-count">
+                  {getActiveFilterCount()} filter{getActiveFilterCount() > 1 ? 's' : ''} active
+                </span>
+              )}
+              <button onClick={clearFilters} className="filter-clear-btn">
+                🗑 Clear All
+              </button>
             </div>
-          )}
+          </div>
+          
+          <div className="filter-grid">
+            {/* Date Filters Row */}
+            <div className="filter-section">
+              <h4 className="filter-section-title">📅 Date Filters</h4>
+              <div className="filter-row">
+                {/* Log Type Filter */}
+                <div className="filter-group">
+                  <label>🏷️ Log Type</label>
+                  <select
+                    value={dateFilters.logType}
+                    onChange={(e) => handleFilterChange('logType', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Types</option>
+                    <option value="operational">Operational</option>
+                    <option value="application">Application</option>
+                  </select>
+                </div>
+                
+                {/* Year Filter */}
+                <div className="filter-group">
+                  <label>📅 Year</label>
+                  <select
+                    value={dateFilters.year}
+                    onChange={(e) => handleFilterChange('year', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Years</option>
+                    {getAvailableYears().map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
 
-          {/* Conditionally render modals based on permissions */}
-          {hasPermission('Operator') && (
-            <AddEntryModal 
-              isOpen={showAddModal}
-              onClose={() => setShowAddModal(false)}
-              onSave={handleSaveEntry}
-              columns={columns}
-              getExistingDistricts={getExistingDistricts}
-              getExistingIncidents={getExistingIncidents}
-              currentUser={user} 
-            />
-          )}
-          <ColumnManager 
-                isOpen={showColumnManager}
-                onClose={() => setShowColumnManager(false)}
-                columns={columns}
-                visibleColumns={visibleColumns}
-                columnOrder={columnOrder}
-                onSave={handleColumnManagerSave}
-              />
+                {/* Month Filter */}
+                <div className="filter-group">
+                  <label>📊 Month</label>
+                  <select
+                    value={dateFilters.month}
+                    onChange={(e) => handleFilterChange('month', e.target.value)}
+                    disabled={!dateFilters.year}
+                    className="filter-select"
+                  >
+                    <option value="">All Months</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
+                </div>
+                
+                {/* Week Filter */}
+                <div className="filter-group">
+                  <label>📍 Week</label>
+                  <select
+                    value={dateFilters.week}
+                    onChange={(e) => handleFilterChange('week', e.target.value)}
+                    disabled={!dateFilters.year || !dateFilters.month}
+                    className="filter-select"
+                  >
+                    <option value="">All Weeks</option>
+                    {dateFilters.year && dateFilters.month && 
+                      getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
+                        <option key={week.number} value={week.number}>
+                          {week.label}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
 
-          {hasPermission('Administrator') && (
-            <>
-              
+            {/* Content Filters Row */}
+            <div className="filter-section">
+              <h4 className="filter-section-title">📋 Content Filters</h4>
+              <div className="filter-row">
+                {/* District Filter */}
+                <div className="filter-group">
+                  <label>🏢 District</label>
+                  <select
+                    value={dateFilters.district}
+                    onChange={(e) => handleFilterChange('district', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Districts</option>
+                    {filterOptions.districts.map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <AddColumnModal
-                isOpen={showAddColumnModal}
-                onClose={() => setShowAddColumnModal(false)}
-                onColumnAdded={handleColumnAdded}
-              />
-            </>
-          )}
+                {/* Incident Filter */}
+                <div className="filter-group">
+                  <label>🚨 Incident</label>
+                  <select
+                    value={dateFilters.incident}
+                    onChange={(e) => handleFilterChange('incident', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Incidents</option>
+                    {filterOptions.incidents.map(incident => (
+                      <option key={incident} value={incident}>
+                        {incident.length > 30 ? `${incident.substring(0, 30)}...` : incident}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          <EntryDetailModal
-  isOpen={showDetailModal}
-  onClose={handleCloseDetailModal}
-  entry={selectedEntry}
-  columns={columns}
-  formatColumnName={formatColumnName}
-  formatCellValue={formatCellValue}
-  onSave={handleSaveEditedEntry}
-  hasPermission={hasPermission}
-  onDuplicate={handleDuplicateEntry}  // Add this line
-/>
+                {/* Assigned Filter */}
+                <div className="filter-group">
+                  <label>👤 Assigned To</label>
+                  <select
+                    value={dateFilters.assigned}
+                    onChange={(e) => handleFilterChange('assigned', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Assignees</option>
+                    {filterOptions.assignees.map(assignee => (
+                      <option key={assignee} value={assignee}>{assignee}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Uploader Filter */}
+                <div className="filter-group">
+                  <label>📝 Uploader</label>
+                  <select
+                    value={dateFilters.uploader}
+                    onChange={(e) => handleFilterChange('uploader', e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="">All Uploaders</option>
+                    {filterOptions.uploaders.map(uploader => (
+                      <option key={uploader} value={uploader}>{uploader}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Data Display - Table or Calendar */}
+      {!data || data.length === 0 ? (
+        <div className="no-data">
+          <div className="no-data-text">📝 No log entries found</div>
+        </div>
+      ) : viewMode === 'calendar' ? (
+        <CalendarView
+          data={getFilteredData()}
+          columns={columns}
+          formatCellValue={formatCellValue}
+          onEventClick={handleRowClick}
+          showVirtualEntries={showVirtualEntries}
+          dateFilters={dateFilters} // NEW: Pass date filters to calendar
+        />
+      ) : (
+        <div className="table-container">
+          <div className="table-header">
+            <h3 className="table-title">📊 LOGS</h3>
+            <div className="table-info">
+            </div>
+          </div>
+          
+          {/* Use VirtualTable for better performance */}
+          <VirtualTable
+            data={getFilteredData()}
+            columns={columns}
+            getDisplayColumns={getDisplayColumns}
+            formatColumnName={formatColumnName}
+            formatCellValue={formatCellValue}
+            onRowClick={handleRowClick}
+            hasPermission={hasPermission}
+            getColumnType={getColumnType}
+          />
+        </div>
+      )}
+
+      {/* Conditionally render modals based on permissions */}
+      {hasPermission('Operator') && (
+        <AddEntryModal 
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSave={handleSaveEntry}
+          columns={columns}
+          getExistingDistricts={getExistingDistricts}
+          getExistingIncidents={getExistingIncidents}
+          currentUser={user} 
+        />
+      )}
+      <ColumnManager 
+            isOpen={showColumnManager}
+            onClose={() => setShowColumnManager(false)}
+            columns={columns}
+            visibleColumns={visibleColumns}
+            columnOrder={columnOrder}
+            onSave={handleColumnManagerSave}
+          />
+
+      {hasPermission('Administrator') && (
+        <>
+          
+
+          <AddColumnModal
+            isOpen={showAddColumnModal}
+            onClose={() => setShowAddColumnModal(false)}
+            onColumnAdded={handleColumnAdded}
+          />
         </>
       )}
 
-      {/* User Management Tab */}
-      {activeTab === 'users' && (
-        <UserManagement />
-      )}
+      <EntryDetailModal
+isOpen={showDetailModal}
+onClose={handleCloseDetailModal}
+entry={selectedEntry}
+columns={columns}
+formatColumnName={formatColumnName}
+formatCellValue={formatCellValue}
+onSave={handleSaveEditedEntry}
+hasPermission={hasPermission}
+onDuplicate={handleDuplicateEntry}  // Add this line
+/>
     </div>
   );
 }
