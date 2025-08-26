@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LogEntriesTable from './components/LogEntriesTable';
 import TabNavigation from './components/TabNavigation';
@@ -9,7 +9,7 @@ import MiniLogin from './components/MiniLogin';
 import './styles/index.css';
 
 function AppContent() {
-  const { isLoading, hasPermission } = useAuth();
+  const { isLoading, user, hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -31,6 +31,7 @@ function AppContent() {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
@@ -162,6 +163,7 @@ function AppContent() {
     return value.toString();
   };
 
+  // Fetch data when component mounts
   useEffect(() => {
     fetchLogEntries();
   }, []);
