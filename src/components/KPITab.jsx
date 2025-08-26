@@ -20,7 +20,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
   const [showEditKPIModal, setShowEditKPIModal] = useState(false);
   const [editingKPI, setEditingKPI] = useState(null);
   const [newKPI, setNewKPI] = useState({
-    month: '',
+    month: '', // Auto-set to current month/year
     week: '',
     maintenance_1: 0,
     maintenance_2: 0,
@@ -663,7 +663,26 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     localStorage.setItem('columnThresholds', JSON.stringify(newThresholds));
   };
 
+// Add this helper function near the top of your component (after the imports)
+const getCurrentMonthYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.toLocaleString('default', { month: 'long' });
+  return `${month} ${year}`;
+};
 
+const getMonthOptions = () => {
+  const currentYear = new Date().getFullYear();
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  return months.map(month => ({
+    value: `${month} ${currentYear}`,
+    label: `${month} ${currentYear}`
+  }));
+};
 
   
   // Dashboard formatting functions
@@ -950,13 +969,17 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
               <div className="form-grid">
                 <div className="form-field">
                   <label>📅 Month *</label>
-                  <input
-                    type="text"
+                  <select
                     value={newKPI.month}
                     onChange={(e) => handleKPIInputChange('month', e.target.value)}
-                    placeholder="e.g., January"
-                    maxLength={20}
-                  />
+                    className="filter-select"
+                  >
+                    {getMonthOptions().map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-field">
