@@ -1,21 +1,23 @@
-/* Update table spacing - make it more compact */
+/* ===================================
+   TABLE STYLES - CONSOLIDATED
+   =================================== */
 
-/* Table container with compact spacing */
+/* ===== GENERAL TABLE CONTAINERS ===== */
 .table-container,
 .dashboard-table-container,
 .users-table-container {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-lg);
+  background-color: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: var(--shadow-md);
-  margin: var(--space-md) 0;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  margin: 16px 0;
 }
 
 .table-header {
-  background-color: var(--bg-tertiary);
-  padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--border-medium);
+  background-color: #1f2937;
+  padding: 16px 24px;
+  border-bottom: 1px solid #374151;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -23,144 +25,54 @@
 
 .table-title {
   margin: 0;
-  color: var(--text-primary);
-  font-size: var(--font-size-lg);
+  color: #f9fafb;
+  font-size: 18px;
   font-weight: 600;
 }
 
 .table-info {
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  background-color: var(--bg-primary);
-  padding: var(--space-1) var(--space-xs);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-light);
+  color: #d1d5db;
+  font-size: 14px;
+  background-color: #374151;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #4b5563;
 }
 
 .table-scroll-container {
   overflow-x: auto;
   max-height: 600px;
   overflow-y: auto;
-  margin: var(--space-sm);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
+  margin: 8px;
+  border-radius: 6px;
+  border: 1px solid #374151;
 }
 
-/* Table header cells with compact spacing */
-.table-header-cell {
-  padding: var(--space-sm) var(--space-md);
-  text-align: left;
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--border-medium);
-  background-color: var(--bg-tertiary);
-  border-right: 1px solid var(--border-light);
-}
-
-/* Table cells with compact spacing */
-.table-cell {
-  padding: var(--space-xs) var(--space-sm);
-  border-bottom: 1px solid var(--border-light);
-  border-right: 1px solid var(--border-light);
-  vertical-align: top;
-  color: var(--text-primary);
-  transition: all var(--transition-base);
-}
-
-.table-cell.actions {
-  width: 100px;
-  text-align: center;
-  padding: var(--space-xs) var(--space-sm);
-}
-
-/* Cell content with minimal spacing */
-.cell-content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-  padding: var(--space-1) 0;
-}
-
-.cell-content.note {
-  max-width: 200px;
-  white-space: normal;
-  line-height: var(--leading-normal);
-}
-
-/* Update the table container section */
-
-/* Table container with better spacing */
-.table-container,
-.dashboard-table-container,
-.users-table-container {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  box-shadow: var(--shadow-md);
-  margin: var(--space-xl) 0;
-}
-
-.table-header {
-  background-color: var(--bg-tertiary);
-  padding: var(--space-lg) var(--space-xl);
-  border-bottom: 1px solid var(--border-medium);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-}
-
-.table-info {
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  background-color: var(--bg-primary);
-  padding: var(--space-2) var(--space-sm);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
-}
-
-.table-scroll-container {
-  overflow-x: auto;
-  max-height: 600px;
-  overflow-y: auto;
-  margin: var(--space-md);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-light);
-}
-
-/* Data table with better spacing */
+/* ===== STANDARD DATA TABLES ===== */
 .data-table,
 .users-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: var(--font-size-sm);
-  background-color: var(--bg-primary);
+  font-size: 14px;
+  background-color: #111827;
 }
 
 .table-head {
-  background-color: var(--bg-tertiary);
+  background-color: #1f2937;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .table-header-cell {
-  padding: var(--space-md) var(--space-lg);
+  padding: 12px 16px;
   text-align: left;
   font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--border-medium);
-  background-color: var(--bg-tertiary);
-  border-right: 1px solid var(--border-light);
+  color: #f9fafb;
+  border-bottom: 2px solid #4b5563;
+  background-color: #1f2937;
+  border-right: 1px solid #374151;
 }
 
 .table-header-cell:last-child {
@@ -168,41 +80,53 @@
 }
 
 .table-header-cell:hover {
-  background-color: var(--bg-secondary);
-  color: var(--primary);
+  background-color: #374151;
+  color: #ffffff;
   cursor: pointer;
-  transition: all var(--transition-base);
+  transition: all 0.2s ease;
 }
 
-/* Table rows with better spacing */
+.table-header-actions {
+  width: 120px;
+  text-align: center;
+}
+
+/* ===== TABLE ROWS ===== */
 .table-row {
-  border-bottom: 1px solid var(--border-light);
-  transition: all var(--transition-base);
+  border-bottom: 1px solid #374151;
+  transition: all 0.2s ease;
 }
 
 .table-row.even {
-  background-color: var(--bg-primary);
+  background-color: #111827;
 }
 
 .table-row.odd {
-  background-color: rgba(30, 41, 59, 0.3);
+  background-color: #0f172a;
 }
 
-.table-row:hover:not(.editing) {
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+.table-row:hover {
+  background-color: #1e293b !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* Table cells with better spacing */
+.table-row.virtual-entry {
+  background-color: #1e1b4b;
+  border-left: 4px solid #6366f1;
+}
+
+.table-row.virtual-entry:hover {
+  background-color: #312e81;
+}
+
+/* ===== TABLE CELLS ===== */
 .table-cell {
-  padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--border-light);
-  border-right: 1px solid var(--border-light);
-  vertical-align: top;
-  color: var(--text-primary);
-  transition: all var(--transition-base);
+  padding: 12px 16px;
+  color: #e5e7eb;
+  border-right: 1px solid #374151;
+  vertical-align: middle;
+  transition: all 0.2s ease;
 }
 
 .table-cell:last-child {
@@ -210,1428 +134,539 @@
 }
 
 .table-cell.actions {
+  text-align: center;
   width: 120px;
-  text-align: center;
-  padding: var(--space-sm) var(--space-md);
 }
 
-/* Cell content with better spacing */
-.cell-content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-  padding: var(--space-1) 0;
-}
-
-.cell-content.note {
-  max-width: 250px;
-  white-space: normal;
-  line-height: var(--leading-relaxed);
-}
-
-/* Table container */
-.table-container,
-.dashboard-table-container,
-.users-table-container {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-
-.table-header {
-  background-color: var(--bg-secondary);
-  padding: var(--space-md);
-  border-bottom: 1px solid var(--border-light);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-title {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: var(--font-size-lg);
-}
-
-.table-info {
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.table-scroll-container {
-  overflow-x: auto;
-  max-height: 600px;
-  overflow-y: auto;
-}
-
-/* Data table */
-.data-table,
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-sm);
-  background-color: var(--bg-primary);
-}
-
-.table-head {
-  background-color: var(--bg-tertiary);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.table-header-cell {
-  padding: 12px var(--space-sm);
-  text-align: left;
-  font-weight: 600;
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--border-medium);
-  background-color: var(--bg-tertiary);
-}
-
-/* Add these styles for table headers */
-.table-header-cell:hover {
-  background-color: var(--bg-secondary);
-  color: var(--primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.table-header-actions {
-  width: 80px;
-  text-align: center;
-}
-
-/* Table rows */
-.table-row {
-  border-bottom: 1px solid var(--border-light);
-  transition: background-color 0.2s ease;
-}
-
-.table-row.even {
-  background-color: var(--bg-primary);
-}
-
-.table-row.odd {
-  background-color: var(--bg-secondary);
-}
-
-.table-row:hover:not(.editing) {
-  background-color: var(--bg-tertiary); /* Changed from #f3f4f6 */
-  color: var(--text-primary); /* Ensure text stays readable */
-}
-
-/* Ensure hover doesn't affect text color negatively */
-.table-row:hover:not(.editing) .table-cell {
-  color: var(--text-primary); /* Keep text readable on hover */
-}
-
-.table-row:hover:not(.editing) .virtual-text {
-  color: #1e40af; /* Keep virtual text blue but readable */
-}
-
-.table-row:hover:not(.editing) .normal-text {
-  color: var(--text-primary); /* Normal text stays readable */
-}
-
-/* Virtual row hover improvements */
-.table-row.virtual:hover:not(.editing) {
-  background-color: rgba(59, 130, 246, 0.15); /* Subtle blue tint */
-}
-
-.table-row.virtual.even:hover:not(.editing) {
-  background-color: rgba(59, 130, 246, 0.1);
-}
-
-.table-row.virtual.odd:hover:not(.editing) {
-  background-color: rgba(59, 130, 246, 0.2);
-}
-
-.table-row:hover:not(.editing) {
-  background-color: #f3f4f6;
-}
-
-.table-row.editing {
-  background-color: #fef3c7;
-}
-
-.table-row.virtual {
-  border-left: 4px solid var(--info);
-  opacity: 0.95;
-}
-
-.table-row.virtual.even {
-  background-color: #dbeafe;
-}
-
-.table-row.virtual.odd {
-  background-color: #bfdbfe;
-}
-
-.table-row.clickable-row {
-  cursor: pointer;
-}
-
-/* Table cells */
-.table-cell {
-  padding: var(--space-sm);
-  border-bottom: 1px solid var(--border-light);
-  vertical-align: top;
-  color: var(--text-primary);
-}
-
-.table-cell.center {
-  text-align: center;
-}
-
-.table-cell.numeric {
+.table-cell.number {
   text-align: right;
   font-family: 'Courier New', monospace;
   font-weight: 600;
 }
 
-.table-cell.status {
-  font-weight: 500;
-  color: var(--success);
+.table-cell.date {
+  font-family: 'Courier New', monospace;
+  color: #93c5fd;
 }
 
-.table-cell.note {
+.table-cell.text {
   max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.table-cell.actions {
-  width: 80px;
-  text-align: center;
-  padding: var(--space-sm);
-}
-
-.table-cell.actions.virtual {
-  background-color: #bfdbfe;
-}
-
-.table-cell.incident.virtual {
-  background-color: #93c5fd;
-}
-
-/* Cell content wrapper */
+/* ===== CELL CONTENT ===== */
 .cell-content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  position: relative;
-}
-
-.cell-content.note {
-  max-width: 200px;
-}
-
-/* Virtual entry indicators */
-.virtual-icon {
-  font-size: var(--font-size-sm);
-  color: #1e40af;
-  margin-right: 6px;
-  font-weight: bold;
-}
-
-.virtual-text {
-  font-weight: 600;
-  color: #1e40af;
-}
-
-.normal-text {
-  font-weight: normal;
-  color: inherit;
-}
-
-/* Loading and empty states */
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Better loading and empty state styling */
-.loading-cell:hover,
-.empty-cell:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.no-data {
-  text-align: center;
-  padding: 40px;
-}
-
-.no-data-text {
-  font-size: var(--font-size-lg);
-  color: var(--text-secondary);
-}
-
-/* Threshold colors */
-.threshold-green {
-  background-color: var(--success) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-.threshold-yellow {
-  background-color: var(--warning) !important;
-  color: black !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-.threshold-red {
-  background-color: var(--danger) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-/* Ensure threshold colors override other styles */
-.table-cell.threshold-green,
-.table-cell.threshold-yellow,
-.table-cell.threshold-red {
-  border: 2px solid rgba(0,0,0,0.1) !important;
-}
-
-/* Add transition for smooth color changes */
-.table-cell {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Responsive tables */
-@media (max-width: 768px) {
-  .table-scroll-container {
-    overflow-x: auto;
-  }
-  
-  .data-table {
-    min-width: 600px;
-  }
-  
-  .table-header-cell,
-  .table-cell {
-    padding: 6px 4px;
-    font-size: var(--font-size-xs);
-  }
-}
-
-/* Action button hover improvements */
-.action-btn:hover:not(:disabled) {
-  background-color: var(--danger);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
-
-.action-btn.virtual:hover {
-  background-color: var(--info);
-  color: white;
-}
-
-/* Cell content hover - make sure text stays readable */
-.table-cell:hover .cell-content {
-  color: inherit; /* Don't change text color on cell hover */
-}
-
-/* Specific hover for different cell types */
-.table-cell.status:hover {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--success);
-}
-
-.table-cell.note:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.table-cell.actions:hover {
-  background-color: transparent; /* Don't change action cell background */
-}
-
-/* Clickable row improvements */
-.table-row.clickable-row {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.table-row.clickable-row:hover:not(.editing) {
-  background-color: var(--bg-tertiary);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Ensure virtual indicators stay visible on hover */
-.table-row:hover .virtual-icon {
-  color: #1e40af; /* Keep blue but readable */
-}
-
-/* Threshold colors - make sure they work on hover too */
-.table-cell.threshold-green:hover {
-  background-color: #047857 !important; /* Darker green on hover */
-  color: white !important;
-}
-
-.table-cell.threshold-yellow:hover {
-  background-color: #d97706 !important; /* Darker yellow on hover */
-  color: white !important;
-}
-
-.table-cell.threshold-red:hover {
-  background-color: #dc2626 !important; /* Darker red on hover */
-  color: white !important;
-}
-
-/* Editing row - make sure it doesn't get hover effects */
-.table-row.editing {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  border: 2px solid var(--primary) !important;
-}
-
-.table-row.editing:hover {
-  background-color: rgba(59, 130, 246, 0.1) !important; /* Keep same color */
-  transform: none !important; /* No transform when editing */
-  box-shadow: none !important; /* No shadow when editing */
-}
-
-/* Better focus states */
-.table-row:focus-within {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  background-color: rgba(59, 130, 246, 0.05);
-}
-
-/* Inline editing improvements */
-.inline-input,
-.inline-select {
-  width: 100%;
-  padding: 4px 8px;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  transition: border-color 0.2s ease;
-}
-
-.inline-input:focus,
-.inline-select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  background-color: var(--bg-primary);
-}
-
-.inline-input:hover:not(:focus),
-.inline-select:hover:not(:focus) {
-  border-color: var(--primary);
-  background-color: var(--bg-primary);
-}
-
-/* Edit actions in table */
-.edit-actions {
-  display: flex;
-  gap: var(--space-xs);
-  justify-content: center;
-}
-
-.edit-actions .btn {
-  padding: 4px 8px;
-  font-size: var(--font-size-xs);
-  border-radius: var(--radius-sm);
-}
-
-/* Virtual Table Styles */
-.virtual-table-container {
-  width: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  background-color: var(--bg-primary, #ffffff);
-  border: 1px solid var(--border-color, #e5e7eb);
-}
-
-.virtual-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: var(--bg-secondary, #f9fafb);
-  border-bottom: 2px solid var(--border-color, #e5e7eb);
-}
-
-.virtual-header-row {
-  display: flex;
-  min-height: 50px;
-  align-items: center;
-}
-
-.virtual-header-cell {
-  padding: 12px 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-primary, #374151);
-  border-right: 1px solid var(--border-color, #e5e7eb);
-  background-color: var(--bg-secondary, #f9fafb);
   display: flex;
   align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 12px;
+  gap: 8px;
 }
 
-.virtual-header-cell:last-child {
-  border-right: none;
-}
-
-.virtual-header-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-.virtual-table-scroll {
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb, #d1d5db) var(--scrollbar-track, #f3f4f6);
-}
-
-.virtual-table-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-track {
-  background: var(--scrollbar-track, #f3f4f6);
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb, #d1d5db);
-  border-radius: 4px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb-hover, #9ca3af);
-}
-
-.virtual-row {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border-bottom: 1px solid var(--border-light, #f3f4f6);
-  transition: background-color 0.2s ease;
-}
-
-.virtual-row:hover {
-  background-color: var(--bg-hover, #f0f9ff);
-}
-
-.virtual-row.even {
-  background-color: var(--bg-primary, #ffffff);
-}
-
-.virtual-row.odd {
-  background-color: var(--bg-alt, #f9fafb);
-}
-
-.virtual-row.virtual {
-  background-color: var(--bg-virtual, #fef3c7);
-  font-style: italic;
-}
-
-.virtual-row.virtual:hover {
-  background-color: var(--bg-virtual-hover, #fde68a);
-}
-
-.virtual-cell {
-  padding: 12px 8px;
-  border-right: 1px solid var(--border-light, #f3f4f6);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  line-height: 1.4;
-  display: flex;
-  align-items: center;
-}
-
-.virtual-cell:last-child {
-  border-right: none;
-}
-
-.virtual-cell.center {
-  justify-content: center;
-}
-
-.virtual-cell.status {
+.cell-value {
+  color: #f3f4f6;
   font-weight: 500;
-  color: var(--color-success, #059669);
 }
 
-.virtual-cell.note {
-  font-size: 13px;
-  line-height: 1.3;
-}
-
-.virtual-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-/* Loading and empty states */
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Better loading and empty state styling */
-.loading-cell:hover,
-.empty-cell:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.no-data {
-  text-align: center;
-  padding: 40px;
-}
-
-.no-data-text {
-  font-size: var(--font-size-lg);
-  color: var(--text-secondary);
-}
-
-/* Threshold colors */
-.threshold-green {
-  background-color: var(--success) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-.threshold-yellow {
-  background-color: var(--warning) !important;
-  color: black !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-.threshold-red {
-  background-color: var(--danger) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-/* Ensure threshold colors override other styles */
-.table-cell.threshold-green,
-.table-cell.threshold-yellow,
-.table-cell.threshold-red {
-  border: 2px solid rgba(0,0,0,0.1) !important;
-}
-
-/* Add transition for smooth color changes */
-.table-cell {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Responsive tables */
-@media (max-width: 768px) {
-  .table-scroll-container {
-    overflow-x: auto;
-  }
-  
-  .data-table {
-    min-width: 600px;
-  }
-  
-  .table-header-cell,
-  .table-cell {
-    padding: 6px 4px;
-    font-size: var(--font-size-xs);
-  }
-}
-
-/* Action button hover improvements */
-.action-btn:hover:not(:disabled) {
-  background-color: var(--danger);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
-
-.action-btn.virtual:hover {
-  background-color: var(--info);
-  color: white;
-}
-
-/* Cell content hover - make sure text stays readable */
-.table-cell:hover .cell-content {
-  color: inherit; /* Don't change text color on cell hover */
-}
-
-/* Specific hover for different cell types */
-.table-cell.status:hover {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--success);
-}
-
-.table-cell.note:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.table-cell.actions:hover {
-  background-color: transparent; /* Don't change action cell background */
-}
-
-/* Clickable row improvements */
-.table-row.clickable-row {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.table-row.clickable-row:hover:not(.editing) {
-  background-color: var(--bg-tertiary);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Ensure virtual indicators stay visible on hover */
-.table-row:hover .virtual-icon {
-  color: #1e40af; /* Keep blue but readable */
-}
-
-/* Threshold colors - make sure they work on hover too */
-.table-cell.threshold-green:hover {
-  background-color: #047857 !important; /* Darker green on hover */
-  color: white !important;
-}
-
-.table-cell.threshold-yellow:hover {
-  background-color: #d97706 !important; /* Darker yellow on hover */
-  color: white !important;
-}
-
-.table-cell.threshold-red:hover {
-  background-color: #dc2626 !important; /* Darker red on hover */
-  color: white !important;
-}
-
-/* Editing row - make sure it doesn't get hover effects */
-.table-row.editing {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  border: 2px solid var(--primary) !important;
-}
-
-.table-row.editing:hover {
-  background-color: rgba(59, 130, 246, 0.1) !important; /* Keep same color */
-  transform: none !important; /* No transform when editing */
-  box-shadow: none !important; /* No shadow when editing */
-}
-
-/* Better focus states */
-.table-row:focus-within {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  background-color: rgba(59, 130, 246, 0.05);
-}
-
-/* Inline editing improvements */
-.inline-input,
-.inline-select {
-  width: 100%;
-  padding: 4px 8px;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  transition: border-color 0.2s ease;
-}
-
-.inline-input:focus,
-.inline-select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  background-color: var(--bg-primary);
-}
-
-.inline-input:hover:not(:focus),
-.inline-select:hover:not(:focus) {
-  border-color: var(--primary);
-  background-color: var(--bg-primary);
-}
-
-/* Edit actions in table */
-.edit-actions {
-  display: flex;
-  gap: var(--space-xs);
-  justify-content: center;
-}
-
-.edit-actions .btn {
-  padding: 4px 8px;
-  font-size: var(--font-size-xs);
-  border-radius: var(--radius-sm);
-}
-
-/* Virtual Table Styles - Dark Theme */
-.virtual-table-container {
-  width: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-  background-color: #111827; /* Very dark background */
-  border: 1px solid #374151; /* Dark border */
-}
-
-.virtual-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: #1f2937; /* Dark gray header */
-  border-bottom: 2px solid #4b5563; /* Darker border */
-}
-
-.virtual-header-row {
-  display: flex;
-  min-height: 50px;
-  align-items: center;
-}
-
-.virtual-header-cell {
-  padding: 12px 8px;
-  font-weight: 700; /* Bolder text */
-  font-size: 12px;
-  color: #f9fafb; /* Light text */
-  border-right: 1px solid #4b5563; /* Dark border */
-  background-color: #1f2937; /* Dark background */
-  display: flex;
-  align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.virtual-header-cell:last-child {
-  border-right: none;
-}
-
-.virtual-header-cell:hover {
-  background-color: #374151; /* Lighter on hover */
-  color: #ffffff; /* Pure white on hover */
-}
-
-.virtual-header-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-.virtual-table-scroll {
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #6b7280 #1f2937; /* Dark scrollbar */
-  background-color: #111827; /* Dark background */
-}
-
-.virtual-table-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-track {
-  background: #1f2937; /* Dark track */
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb {
-  background-color: #6b7280; /* Dark thumb */
-  border-radius: 4px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af; /* Lighter on hover */
-}
-
-.virtual-row {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border-bottom: 1px solid #374151; /* Dark border */
-  transition: background-color 0.2s ease;
-  min-height: 50px;
-}
-
-.virtual-row:hover {
-  background-color: #1e3a8a; /* Dark blue on hover */
-  box-shadow: inset 0 0 0 1px #3b82f6; /* Blue glow */
-}
-
-.virtual-row.even {
-  background-color: #1f2937; /* Dark gray */
-}
-
-.virtual-row.odd {
-  background-color: #111827; /* Very dark gray */
-}
-
-.virtual-row.virtual {
-  background-color: #365314; /* Dark green for virtual */
-  font-style: italic;
-}
-
-.virtual-row.virtual:hover {
-  background-color: #4ade80; /* Brighter green on hover */
-  color: #111827; /* Dark text on bright background */
-}
-
-.virtual-cell {
-  padding: 12px 8px;
-  border-right: 1px solid #374151; /* Dark border */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  line-height: 1.4;
-  display: flex;
-  align-items: center;
-  color: #e5e7eb; /* Light gray text */
-}
-
-.virtual-cell:last-child {
-  border-right: none;
-}
-
-.virtual-cell.center {
-  justify-content: center;
-}
-
-.virtual-cell.status {
-  font-weight: 600;
-  color: #10b981; /* Green for status */
-  text-align: center;
-  justify-content: center;
-}
-
-.virtual-cell.note {
-  font-size: 13px;
-  line-height: 1.3;
-  color: #d1d5db; /* Lighter gray for notes */
-}
-
-.virtual-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-/* Loading and empty states */
-.loading-cell,
-.empty-cell {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Better loading and empty state styling */
-.loading-cell:hover,
-.empty-cell:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.no-data {
-  text-align: center;
-  padding: 40px;
-}
-
-.no-data-text {
-  font-size: var(--font-size-lg);
-  color: var(--text-secondary);
-}
-
-/* Threshold colors */
-.threshold-green {
-  background-color: var(--success) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-.threshold-yellow {
-  background-color: var(--warning) !important;
-  color: black !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-.threshold-red {
-  background-color: var(--danger) !important;
-  color: white !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-}
-
-/* Ensure threshold colors override other styles */
-.table-cell.threshold-green,
-.table-cell.threshold-yellow,
-.table-cell.threshold-red {
-  border: 2px solid rgba(0,0,0,0.1) !important;
-}
-
-/* Add transition for smooth color changes */
-.table-cell {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Responsive tables */
-@media (max-width: 768px) {
-  .table-scroll-container {
-    overflow-x: auto;
-  }
-  
-  .data-table {
-    min-width: 600px;
-  }
-  
-  .table-header-cell,
-  .table-cell {
-    padding: 6px 4px;
-    font-size: var(--font-size-xs);
-  }
-}
-
-/* Action button hover improvements */
-.action-btn:hover:not(:disabled) {
-  background-color: var(--danger);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
-
-.action-btn.virtual:hover {
-  background-color: var(--info);
-  color: white;
-}
-
-/* Cell content hover - make sure text stays readable */
-.table-cell:hover .cell-content {
-  color: inherit; /* Don't change text color on cell hover */
-}
-
-/* Specific hover for different cell types */
-.table-cell.status:hover {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: var(--success);
-}
-
-.table-cell.note:hover {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.table-cell.actions:hover {
-  background-color: transparent; /* Don't change action cell background */
-}
-
-/* Clickable row improvements */
-.table-row.clickable-row {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.table-row.clickable-row:hover:not(.editing) {
-  background-color: var(--bg-tertiary);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Ensure virtual indicators stay visible on hover */
-.table-row:hover .virtual-icon {
-  color: #1e40af; /* Keep blue but readable */
-}
-
-/* Threshold colors - make sure they work on hover too */
-.table-cell.threshold-green:hover {
-  background-color: #047857 !important; /* Darker green on hover */
-  color: white !important;
-}
-
-.table-cell.threshold-yellow:hover {
-  background-color: #d97706 !important; /* Darker yellow on hover */
-  color: white !important;
-}
-
-.table-cell.threshold-red:hover {
-  background-color: #dc2626 !important; /* Darker red on hover */
-  color: white !important;
-}
-
-/* Editing row - make sure it doesn't get hover effects */
-.table-row.editing {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  border: 2px solid var(--primary) !important;
-}
-
-.table-row.editing:hover {
-  background-color: rgba(59, 130, 246, 0.1) !important; /* Keep same color */
-  transform: none !important; /* No transform when editing */
-  box-shadow: none !important; /* No shadow when editing */
-}
-
-/* Better focus states */
-.table-row:focus-within {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  background-color: rgba(59, 130, 246, 0.05);
-}
-
-/* Inline editing improvements */
-.inline-input,
-.inline-select {
-  width: 100%;
-  padding: 4px 8px;
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  transition: border-color 0.2s ease;
-}
-
-.inline-input:focus,
-.inline-select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  background-color: var(--bg-primary);
-}
-
-.inline-input:hover:not(:focus),
-.inline-select:hover:not(:focus) {
-  border-color: var(--primary);
-  background-color: var(--bg-primary);
-}
-
-/* Edit actions in table */
-.edit-actions {
-  display: flex;
-  gap: var(--space-xs);
-  justify-content: center;
-}
-
-.edit-actions .btn {
-  padding: 4px 8px;
-  font-size: var(--font-size-xs);
-  border-radius: var(--radius-sm);
-}
-
-/* Virtual Table Styles - Dark Theme */
-.virtual-table-container {
-  width: 100%;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-  background-color: #111827; /* Very dark background */
-  border: 1px solid #374151; /* Dark border */
-}
-
-.virtual-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: #1f2937; /* Dark gray header */
-  border-bottom: 2px solid #4b5563; /* Darker border */
-}
-
-.virtual-header-row {
-  display: flex;
-  min-height: 50px;
-  align-items: center;
-}
-
-.virtual-header-cell {
-  padding: 12px 8px;
-  font-weight: 700; /* Bolder text */
-  font-size: 12px;
-  color: #f9fafb; /* Light text */
-  border-right: 1px solid #4b5563; /* Dark border */
-  background-color: #1f2937; /* Dark background */
-  display: flex;
-  align-items: center;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.virtual-header-cell:last-child {
-  border-right: none;
-}
-
-.virtual-header-cell:hover {
-  background-color: #374151; /* Lighter on hover */
-  color: #ffffff; /* Pure white on hover */
-}
-
-.virtual-header-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-.virtual-table-scroll {
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #6b7280 #1f2937; /* Dark scrollbar */
-  background-color: #111827; /* Dark background */
-}
-
-.virtual-table-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-track {
-  background: #1f2937; /* Dark track */
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb {
-  background-color: #6b7280; /* Dark thumb */
-  border-radius: 4px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af; /* Lighter on hover */
-}
-
-.virtual-row {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  border-bottom: 1px solid #374151; /* Dark border */
-  transition: background-color 0.2s ease;
-  min-height: 50px;
-}
-
-.virtual-row:hover {
-  background-color: #1e3a8a; /* Dark blue on hover */
-  box-shadow: inset 0 0 0 1px #3b82f6; /* Blue glow */
-}
-
-.virtual-row.even {
-  background-color: #1f2937; /* Dark gray */
-}
-
-.virtual-row.odd {
-  background-color: #111827; /* Very dark gray */
-}
-
-.virtual-row.virtual {
-  background-color: #365314; /* Dark green for virtual */
-  font-style: italic;
-}
-
-.virtual-row.virtual:hover {
-  background-color: #4ade80; /* Brighter green on hover */
-  color: #111827; /* Dark text on bright background */
-}
-
-.virtual-cell {
-  padding: 12px 8px;
-  border-right: 1px solid #374151; /* Dark border */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  line-height: 1.4;
-  display: flex;
-  align-items: center;
-  color: #e5e7eb; /* Light gray text */
-}
-
-.virtual-cell:last-child {
-  border-right: none;
-}
-
-.virtual-cell.center {
-  justify-content: center;
-}
-
-.virtual-cell.status {
-  font-weight: 600;
-  color: #10b981; /* Green for status */
-  text-align: center;
-  justify-content: center;
-}
-
-.virtual-cell.note {
-  font-size: 13px;
-  line-height: 1.3;
-  color: #d1d5db; /* Lighter gray for notes */
-}
-
-.virtual-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-.virtual-icon {
-  margin-right: 4px;
-  font-size: 12px;
-  color: #10b981; /* Green icon */
-}
-
-.virtual-text {
-  font-style: italic;
-  opacity: 0.9;
-  color: #10b981; /* Green for virtual text */
-}
-
-.normal-text {
-  font-style: normal;
-  color: #e5e7eb; /* Light gray for normal text */
-}
-
-/* Virtual Action Button - Dark Theme */
-/* .virtual-action-btn {
-  padding: 4px 8px;
-  font-size: 11px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s ease;
+/* ===== VIRTUAL ENTRY INDICATORS ===== */
+.virtual-indicator {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  background-color: #6366f1;
+  color: white;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.virtual-action-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+.virtual-indicator::before {
+  content: "🔮";
+  font-size: 8px;
 }
 
-.virtual-action-btn.delete {
+/* ===== THRESHOLD COLORS ===== */
+.threshold-normal {
+  background-color: #059669;
+  color: white;
+}
+
+.threshold-warning {
+  background-color: #d97706;
+  color: white;
+}
+
+.threshold-critical {
   background-color: #dc2626;
   color: white;
 }
 
-.virtual-action-btn.delete:hover:not(:disabled) {
-  background-color: #b91c1c;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+.threshold-high {
+  background-color: #7c3aed;
+  color: white;
 }
 
-.virtual-action-btn.virtual {
-  background-color: #4b5563;
-  color: #d1d5db;
-  cursor: not-allowed;
-} */
+.threshold-value {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  display: inline-block;
+  min-width: 60px;
+  text-align: center;
+}
 
-.table-info {
+/* ===== INLINE EDITING ===== */
+.editable-cell {
+  position: relative;
+  cursor: pointer;
+}
+
+.editable-cell:hover {
+  background-color: #374151;
+  outline: 2px solid #6366f1;
+  outline-offset: -2px;
+}
+
+.cell-editor {
+  background-color: #1f2937;
+  color: #f9fafb;
+  border: 2px solid #6366f1;
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 14px;
+  width: 100%;
+  min-width: 120px;
+}
+
+.cell-editor:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.edit-save,
+.edit-cancel {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-save {
+  background-color: #059669;
+  color: white;
+  border: none;
+}
+
+.edit-save:hover {
+  background-color: #047857;
+}
+
+.edit-cancel {
+  background-color: #6b7280;
+  color: white;
+  border: none;
+}
+
+.edit-cancel:hover {
+  background-color: #4b5563;
+}
+
+/* ===== LOADING AND EMPTY STATES ===== */
+.table-loading {
+  text-align: center;
+  padding: 40px;
+  color: #9ca3af;
+  font-size: 16px;
+}
+
+.table-empty {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #4b5563;
+  border-radius: 50%;
+  border-top-color: #6366f1;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== ACTION BUTTONS ===== */
+.action-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  margin: 0 2px;
+}
+
+.action-btn.edit {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.action-btn.edit:hover {
+  background-color: #2563eb;
+}
+
+.action-btn.delete {
+  background-color: #ef4444;
+  color: white;
+}
+
+.action-btn.delete:hover {
+  background-color: #dc2626;
+}
+
+.action-btn.view {
+  background-color: #6b7280;
+  color: white;
+}
+
+.action-btn.view:hover {
+  background-color: #4b5563;
+}
+
+/* ===== VIRTUAL TABLE STYLES ===== */
+.virtual-table-container {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  background-color: #111827;
+  border: 1px solid #374151;
+}
+
+.virtual-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #1f2937;
+  border-bottom: 2px solid #4b5563;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.virtual-header-row {
+  display: flex;
+  min-height: 50px;
+  align-items: center;
+}
+
+.virtual-header-cell {
+  padding: 12px 8px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #f9fafb;
+  border-right: 1px solid #4b5563;
+  background-color: #1f2937;
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #e5e7eb; /* Light text for dark theme */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.record-count {
-  font-weight: 500;
-  color: #e5e7eb; /* Light text */
+.virtual-header-cell:last-child {
+  border-right: none;
 }
 
-/* Responsive Design - Dark Theme */
+.virtual-header-cell:hover {
+  background-color: #374151;
+  color: #ffffff;
+}
+
+.virtual-header-cell.actions {
+  flex: 0 0 120px;
+  justify-content: center;
+}
+
+.virtual-table-scroll {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 #1f2937;
+  background-color: #111827;
+}
+
+.virtual-table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.virtual-table-scroll::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
+.virtual-table-scroll::-webkit-scrollbar-thumb {
+  background-color: #6b7280;
+  border-radius: 4px;
+}
+
+.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+.virtual-row {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px solid #374151;
+  transition: background-color 0.2s ease;
+  min-height: 50px;
+}
+
+.virtual-row:hover {
+  background-color: #1e3a8a;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+}
+
+.virtual-row.even {
+  background-color: #1f2937;
+}
+
+.virtual-row.odd {
+  background-color: #111827;
+}
+
+.virtual-row.virtual-entry {
+  background-color: #365314;
+  font-style: italic;
+}
+
+.virtual-row.virtual-entry:hover {
+  background-color: #4ade80;
+  color: #111827;
+}
+
+.virtual-cell {
+  padding: 12px 8px;
+  border-right: 1px solid #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  color: #e5e7eb;
+}
+
+.virtual-cell:last-child {
+  border-right: none;
+}
+
+.virtual-cell.center {
+  justify-content: center;
+}
+
+.virtual-cell.status {
+  font-weight: 600;
+  color: #10b981;
+  text-align: center;
+  justify-content: center;
+}
+
+.virtual-cell.note {
+  font-size: 13px;
+  line-height: 1.3;
+  color: #d1d5db;
+}
+
+.virtual-cell.actions {
+  flex: 0 0 120px;
+  justify-content: center;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+.table-scroll-container::-webkit-scrollbar,
+.virtual-table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track,
+.virtual-table-scroll::-webkit-scrollbar-track {
+  background-color: #1f2937;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb,
+.virtual-table-scroll::-webkit-scrollbar-thumb {
+  background-color: #6b7280;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover,
+.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
-  .virtual-table-container {
+  .table-container {
+    margin: 8px 0;
+    border-radius: 6px;
+  }
+  
+  .table-header {
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .table-title {
+    font-size: 16px;
+  }
+  
+  .table-info {
     font-size: 12px;
-    background-color: #111827; /* Keep dark on mobile */
+    padding: 6px 10px;
+  }
+  
+  .virtual-table-container {
+    border-radius: 6px;
   }
   
   .virtual-header-cell,
   .virtual-cell {
     padding: 8px 4px;
-    color: #e5e7eb; /* Light text on mobile */
+    font-size: 11px;
   }
   
   .virtual-row {
     min-height: 45px;
-    border-bottom: 1px solid #374151; /* Dark border on mobile */
   }
   
-  .virtual-action-btn {
+  .table-header-cell,
+  .table-cell {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .action-btn {
     padding: 4px 8px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-scroll-container {
+    margin: 4px;
+  }
+  
+  .virtual-header-cell,
+  .virtual-cell {
+    padding: 6px 2px;
+    font-size: 10px;
+  }
+  
+  .virtual-row {
+    min-height: 40px;
+  }
+  
+  .table-header-cell,
+  .table-cell {
+    padding: 6px 8px;
     font-size: 11px;
   }
 }
 
-/* Dark theme for status colors with better contrast */
-.virtual-cell.status .normal-text,
-.virtual-cell.status .virtual-text {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: capitalize;
+/* ===== FOCUS STATES ===== */
+.table-row:focus,
+.virtual-row:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: -2px;
 }
 
-/* Status-specific colors for dark theme */
-.virtual-cell.status .normal-text[style*="color: #10b981"],
-.virtual-cell.status .virtual-text[style*="color: #10b981"] {
-  background-color: #10b981 !important;
-  color: white !important;
+.action-btn:focus {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
 }
 
-.virtual-cell.status .normal-text[style*="color: #f59e0b"],
-.virtual-cell.status .virtual-text[style*="color: #f59e0b"] {
-  background-color: #f59e0b !important;
-  color: white !important;
-}
-
-.virtual-cell.status .normal-text[style*="color: #ef4444"],
-.virtual-cell.status .virtual-text[style*="color: #ef4444"] {
-  background-color: #ef4444 !important;
-  color: white !important;
-}
-
-/* Table container - Dark Theme */
+/* ===== TRANSITION EFFECTS ===== */
 .table-container,
-.dashboard-table-container,
-.users-table-container {
-  background-color: #111827; /* Dark background */
-  border: 1px solid #374151; /* Dark border */
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4); /* Darker shadow */
-  margin: var(--space-md) 0;
+.virtual-table-container {
+  transition: box-shadow 0.3s ease;
 }
 
-.table-header {
-  background-color: #1f2937; /* Dark gray header */
-  padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid #374151; /* Dark border */
+.table-container:hover,
+.virtual-table-container:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== VIRTUAL TABLE EMPTY STATES ===== */
+.virtual-table-empty {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  min-height: 300px;
+  background-color: #111827;
+  border: 1px solid #374151;
+  border-radius: 8px;
 }
 
-.table-title {
-  margin: 0;
-  color: #f9fafb; /* Light text */
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+.empty-state {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 16px;
+  padding: 40px;
 }
 
-.table-info {
-  color: #d1d5db; /* Light gray text */
-  font-size: var(--font-size-sm);
-  background-color: #374151; /* Dark background */
-  padding: var(--space-2) var(--space-sm);
-  border-radius: var(--radius-md);
-  border: 1px solid #4b5563; /* Dark border */
+/* ===== VIRTUAL ICONS AND TEXT ===== */
+.virtual-icon {
+  margin-right: 4px;
+  font-size: 12px;
+  color: #10b981;
+}
+
+.virtual-text {
+  font-style: italic;
+  opacity: 0.9;
+  color: #10b981;
+}
+
+.normal-text {
+  font-style: normal;
+  color: #e5e7eb;
+}
+
+/* Responsive Design for Virtual Table */
+@media (max-width: 768px) {
+  .virtual-table-container {
+    font-size: 12px;
+  }
+  
+  .virtual-header-cell,
+  .virtual-cell {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+  
+  .virtual-row {
+    min-height: 45px;
+  }
 }
