@@ -72,6 +72,18 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
       return;
     }
 
+    // Check user permissions before making the request
+    if (!user) {
+      alert('❌ You must be logged in to add columns');
+      return;
+    }
+
+    console.log('User data:', { 
+      username: user.username, 
+      level_Name: user.level_Name,
+      id: user.id 
+    });
+
     setIsLoading(true);
 
     try {
@@ -85,8 +97,9 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
           columnData,
           user: {
             id: user?.id,
+            username: user?.username,
             email: user?.email,
-            name: user?.name
+            level_Name: user?.level_Name
           }
         })
       });
@@ -118,7 +131,21 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
       }
 
     } catch (error) {
-      alert('Failed to add column: ' + error.message);
+      console.error('Add column error:', error);
+      
+      let errorMessage = 'Failed to add column';
+      
+      if (error.message.includes('authentication required')) {
+        errorMessage = '❌ Authentication failed. Please log out and log back in.';
+      } else if (error.message.includes('Admin privileges required')) {
+        errorMessage = '❌ ' + error.message;
+      } else if (error.message.includes('already exists')) {
+        errorMessage = '❌ ' + error.message;
+      } else {
+        errorMessage = '❌ ' + error.message;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
