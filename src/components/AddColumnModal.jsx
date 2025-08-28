@@ -78,7 +78,14 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
       return;
     }
 
-    console.log('User data:', { 
+    // Check if user has admin privileges on the frontend first
+    const adminLevels = ['Administrator', 'Super Admin'];
+    if (!adminLevels.includes(user.level_Name)) {
+      alert(`❌ Admin privileges required to add columns. Your level: ${user.level_Name}`);
+      return;
+    }
+
+    console.log('User data being sent:', { 
       username: user.username, 
       level_Name: user.level_Name,
       id: user.id 
@@ -87,7 +94,6 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
     setIsLoading(true);
 
     try {
-
       const response = await fetch('/api/add-column', {
         method: 'POST',
         headers: {
@@ -97,7 +103,7 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
           columnData,
           user: {
             id: user?.id,
-            username: user?.username,
+            username: user?.username || user?.email, // Use email as fallback for username
             email: user?.email,
             level_Name: user?.level_Name
           }
@@ -132,15 +138,18 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
 
     } catch (error) {
       console.error('Add column error:', error);
+      console.error('Current user object:', user);
       
       let errorMessage = 'Failed to add column';
       
-      if (error.message.includes('authentication required')) {
-        errorMessage = '❌ Authentication failed. Please log out and log back in.';
+      if (error.message.includes('authentication required') || error.message.includes('User not found')) {
+        errorMessage = '❌ Authentication failed. Please refresh the page and try again.';
       } else if (error.message.includes('Admin privileges required')) {
         errorMessage = '❌ ' + error.message;
       } else if (error.message.includes('already exists')) {
         errorMessage = '❌ ' + error.message;
+      } else if (error.message.includes('User not found in database')) {
+        errorMessage = '❌ Your user account was not found in the database. Please contact an administrator.';
       } else {
         errorMessage = '❌ ' + error.message;
       }
