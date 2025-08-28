@@ -71,7 +71,7 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     
     // Calculate end of week (Sunday)
     const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setDate(startOfWeek.getDate() + 10);
     endOfWeek.setHours(23, 59, 59, 999);
     
     // FIXED: Return as YYYY-MM-DD strings for comparison
