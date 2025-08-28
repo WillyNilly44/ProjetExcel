@@ -79,33 +79,33 @@ const VirtualTable = ({
   
   return (
     <div className="virtual-table-container" ref={containerRef}>
-      {/* Header */}
-      <div className="virtual-table-header">
-        <div className="virtual-header-row">
-          {displayColumns.map((column, index) => (
-            <div
-              key={column.COLUMN_NAME}
-              className={`virtual-header-cell ${getColumnType(column.COLUMN_NAME, column.DATA_TYPE)}`}
-              style={{
-                minWidth: getColumnMinWidth(column.COLUMN_NAME),
-                flex: getColumnFlex(column.COLUMN_NAME)
-              }}
-              title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
-            >
-              {formatColumnName(column.COLUMN_NAME)}
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Scrollable Content */}
+      {/* Scrollable Content with Header */}
       <div
         ref={scrollElementRef}
         className="virtual-table-scroll"
         style={{ height: containerHeight }}
         onScroll={handleScroll}
       >
-        <div style={{ height: totalHeight, position: 'relative' }}>
+        {/* Sticky Header */}
+        <div className="virtual-table-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+          <div className="virtual-header-row">
+            {displayColumns.map((column, index) => (
+              <div
+                key={column.COLUMN_NAME}
+                className={`virtual-header-cell ${getColumnType(column.COLUMN_NAME, column.DATA_TYPE)}`}
+                style={{
+                  minWidth: getColumnMinWidth(column.COLUMN_NAME),
+                  flex: getColumnFlex(column.COLUMN_NAME)
+                }}
+                title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
+              >
+                {formatColumnName(column.COLUMN_NAME)}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div style={{ height: totalHeight, position: 'relative', marginTop: '0' }}>
           <div style={{ transform: `translateY(${offsetY}px)` }}>
             {visibleData.map((entry, virtualIndex) => {
               const actualIndex = startIndex + virtualIndex;
