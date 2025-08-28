@@ -163,9 +163,10 @@ export default function ColumnManager({
           display: 'flex',
           gap: '12px',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexWrap: 'wrap'
         }}>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
               onClick={handleSelectAll}
               style={{
@@ -193,6 +194,36 @@ export default function ColumnManager({
               }}
             >
               ❌ Select None
+            </button>
+            <button
+              onClick={handleClose} 
+              style={{
+                padding: '6px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px',
+                backgroundColor: 'white',
+                color: '#374151',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              style={{
+                padding: '6px 12px',
+                border: 'none',
+                borderRadius: '4px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}
+            >
+              💾 Apply Changes
             </button>
           </div>
           <div style={{ fontSize: '14px', color: '#6b7280' }}>
@@ -292,47 +323,6 @@ export default function ColumnManager({
               </div>
             );
           })}
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: '24px',
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
-          gap: '16px',
-          justifyContent: 'flex-end',
-          backgroundColor: '#f8fafc'
-        }}>
-          <button
-            onClick={handleClose} 
-            style={{
-              padding: '12px 24px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              backgroundColor: 'white',
-              color: '#374151',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            style={{
-              padding: '12px 24px',
-              border: 'none',
-              borderRadius: '8px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            💾 Apply Changes
-          </button>
         </div>
       </div>
     </div>
