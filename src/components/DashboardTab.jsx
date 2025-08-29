@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import PDFExport from './PDFExport';
+import EntryDetailModal from './EntryDetailModal'; // Add this import
 
 const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission }) => {
   const { user } = useAuth();
   const [currentWeekData, setCurrentWeekData] = useState([]);
+  
+  // Add modal state management for detail window
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // Define specific columns for dashboard
   const dashboardColumns = useMemo(() => {
@@ -342,6 +347,172 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
     };
   };
 
+  // Add handlers for detail modal (similar to LogEntriesTable)
+  const handleRowClick = (entry) => {
+    setSelectedEntry(entry);
+    setShowDetailModal(true);
+  };
+
+  const handleCloseDetailModal = () => {
+    setShowDetailModal(false);
+    setSelectedEntry(null);
+  };
+
+  // Add save edited entry handler (similar to LogEntriesTable)
+  const handleSaveEditedEntry = async (editedEntry) => {
+    try {
+      const requestData = {
+        action: 'update',
+        entryId: editedEntry.id,
+        entryData: editedEntry
+      };
+
+      const response = await fetch('/api/updateentry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {        
+        // Refresh would need to be handled by parent component
+        // For now, just close the modal and show success
+        alert('✅ Entry updated successfully! Please refresh the page to see changes.');
+        setShowDetailModal(false);
+        setSelectedEntry(null);
+        return true;
+      } else {
+        throw new Error(result.error || 'Failed to update entry');
+      }
+      
+    } catch (error) {
+      alert(`❌ Failed to update entry: ${error.message}`);
+      return false;
+    }
+  };
+
+  // Add duplicate entry handler (similar to LogEntriesTable)
+  const handleDuplicateEntry = async (sourceEntry) => {
+    if (!sourceEntry) {
+      alert('No entry selected for duplication');
+      return;
+    }
+
+    if (!user) {
+      alert('Cannot duplicate: User information not available');
+      return;
+    }
+
+    try {
+      // Create duplicate data
+      const duplicateData = { ...sourceEntry };
+      
+      // Remove fields that shouldn't be duplicated
+      delete duplicateData.id;
+      delete duplicateData.created_at;
+      delete duplicateData.updated_at;
+      delete duplicateData.is_virtual;
+      delete duplicateData.original_id;
+      delete duplicateData.week_offset;
+      delete duplicateData.target_day;
+      delete duplicateData.generated_on;
+      delete duplicateData.relative_to_current;
+      delete duplicateData.is_recurring;
+      delete duplicateData.recurrence_day;
+      delete duplicateData.day_of_the_week;
+      
+      // Use today's date
+      const todayString = new Date().toLocaleDateString('en-CA');
+      
+      // Update date fields to today
+      Object.keys(duplicateData).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('date') && !lowerKey.includes('time') && !lowerKey.includes('created') && !lowerKey.includes('updated')) {
+          duplicateData[key] = todayString;
+        }
+      });
+
+      // Set current user as uploader
+      const uploaderField = Object.keys(duplicateData).find(key => 
+        key.toLowerCase().includes('uploader')
+      );
+      if (uploaderField && user.username) {
+        duplicateData[uploaderField] = user.username;
+      }
+
+      // Add "Original Log: id#" to notes
+      const noteFields = Object.keys(duplicateData).filter(key => 
+        key.toLowerCase().includes('note') || 
+        key.toLowerCase().includes('comment') || 
+        key.toLowerCase().includes('description')
+      );
+
+      if (noteFields.length > 0) {
+        const noteField = noteFields[0];
+        const existingNote = duplicateData[noteField] || '';
+        const originalLogText = `Original Log: ${sourceEntry.id}#`;
+        
+        if (existingNote.trim()) {
+          duplicateData[noteField] = `${existingNote.trim()} | ${originalLogText}`;
+        } else {
+          duplicateData[noteField] = originalLogText;
+        }
+      }
+
+      // Make sure it's NOT a recurrence
+      duplicateData.isRecurrence = false;
+      duplicateData.day_of_the_week = null;
+
+      // Save to database
+      const response = await fetch('/api/addentryrec', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(duplicateData)
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        setShowDetailModal(false);
+        setSelectedEntry(null);
+        
+        alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
+        
+        // Note: Would need parent component refresh mechanism
+        alert('Please refresh the dashboard to see the new entry.');
+      } else {
+        throw new Error(result.error);
+      }
+
+    } catch (error) {
+      alert('Failed to duplicate entry: ' + error.message);
+    }
+  };
+
+  // Helper function to format column names (add this)
+  const formatColumnName = (columnName) => {
+    if (!columnName || typeof columnName !== 'string') {
+      return 'Unknown Column';
+    }
+    return columnName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
   const { startDate, endDate } = getCurrentWeekRange();
 
   return (
@@ -403,7 +574,9 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
                   {currentWeekData.map((entry, index) => (
                     <tr 
                       key={entry.id || index} 
-                      className={`table-row ${index % 2 === 0 ? 'even' : 'odd'}`}
+                      className={`table-row ${index % 2 === 0 ? 'even' : 'odd'} clickable-row`}
+                      onClick={() => handleRowClick(entry)} // Add click handler
+                      title="Click to view details" // Add hover tooltip
                     >
                       <td className="table-cell row-number">{index + 1}</td>
                       {dashboardColumns.map((column) => {
@@ -433,6 +606,19 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
           </div>
         )}
       </div>
+
+      {/* Add Entry Detail Modal */}
+      <EntryDetailModal
+        isOpen={showDetailModal}
+        onClose={handleCloseDetailModal}
+        entry={selectedEntry}
+        columns={columns}
+        formatColumnName={formatColumnName}
+        formatCellValue={formatCellValue}
+        onSave={handleSaveEditedEntry}
+        hasPermission={hasPermission}
+        onDuplicate={handleDuplicateEntry}
+      />
     </div>
   );
 };
