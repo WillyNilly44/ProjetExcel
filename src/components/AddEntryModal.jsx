@@ -577,7 +577,7 @@ export default function AddEntryModal({
   if (!isOpen) return null;
 
   const filteredColumns = columns.filter(column => 
-    !['id', 'created_at', 'updated_at'].includes(column.COLUMN_NAME.toLowerCase())
+    !['id', 'created_at', 'updated_at', 'uploader'].includes(column.COLUMN_NAME.toLowerCase())
   );
 
   return (

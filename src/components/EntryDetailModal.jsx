@@ -12,7 +12,7 @@ const EntryDetailModal = ({
   onSave,
   onDuplicate
 }) => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth(); // Add 'user' here
   const [isEditing, setIsEditing] = useState(false);
   const [editedEntry, setEditedEntry] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -43,33 +43,57 @@ const EntryDetailModal = ({
 
   const canEdit = hasPermission('Administrator') && !entry.is_virtual;
 
-  const getColumnGroups = () => {
-    const groups = {
-      basic: [],
-      dates: [],
-      status: [],
-      technical: [],
-      notes: []
-    };
+  /**
+ * Determine if a field should be excluded from updates
+ * These fields should not be modified during edit operations
+ */
+const isSystemManagedField = (columnName) => {
+  const name = columnName.toLowerCase();
+  
+  const systemFields = [
+    'uploader',     // Should not change when editing
+    'uploaded_by',  // Alternative uploader field name
+    'created_by',   // Original creator should not change
+    'user_id',      // User reference should not change
+    'created_at',   // Creation timestamp should not change
+    'updated_at'    // Update timestamp is managed by server
+  ];
+  
+  return systemFields.some(field => name.includes(field));
+};
 
-    columns.forEach(column => {
-      const name = column.COLUMN_NAME.toLowerCase();
-      
-      if (name.includes('date') || name.includes('time') || name.includes('created') || name.includes('updated')) {
-        groups.dates.push(column);
-      } else if (name.includes('status') || name.includes('completion')) {
-        groups.status.push(column);
-      } else if (name.includes('note') || name.includes('description') || name.includes('comment')) {
-        groups.notes.push(column);
-      } else if (name.includes('ticket') || name.includes('incident') || name.includes('log_type') || name.includes('priority')) {
-        groups.technical.push(column);
-      } else {
-        groups.basic.push(column);
-      }
-    });
-
-    return groups;
+const getColumnGroups = () => {
+  const groups = {
+    basic: [],
+    dates: [],
+    status: [],
+    technical: [],
+    notes: []
   };
+
+  // Filter out system-managed fields including uploader
+  const visibleColumns = columns.filter(column => 
+    !isSystemManagedField(column.COLUMN_NAME)
+  );
+
+  visibleColumns.forEach(column => {
+    const name = column.COLUMN_NAME.toLowerCase();
+    
+    if (name.includes('date') || name.includes('time') || name.includes('created') || name.includes('updated')) {
+      groups.dates.push(column);
+    } else if (name.includes('status') || name.includes('completion')) {
+      groups.status.push(column);
+    } else if (name.includes('note') || name.includes('description') || name.includes('comment')) {
+      groups.notes.push(column);
+    } else if (name.includes('ticket') || name.includes('incident') || name.includes('log_type') || name.includes('priority')) {
+      groups.technical.push(column);
+    } else {
+      groups.basic.push(column);
+    }
+  });
+
+  return groups;
+};
 
   const columnGroups = getColumnGroups();
 
@@ -96,14 +120,46 @@ const EntryDetailModal = ({
     setSaveError('');
 
     try {
+      // Create a clean copy of editedEntry, excluding system-managed fields
+      const cleanedEntry = {};
       
-      const success = await onSave(editedEntry);
+      Object.keys(editedEntry).forEach(key => {
+        // Only include fields that are not system-managed
+        if (!isSystemManagedField(key)) {
+          cleanedEntry[key] = editedEntry[key];
+        }
+      });
+      
+      // Always include the ID for the update operation
+      cleanedEntry.id = editedEntry.id || entry.id;
+      
+      // UPDATE: Add current user as uploader when editing
+      // This ensures the uploader field reflects who last modified the entry
+      if (hasPermission('Administrator')) {
+        // Find the uploader field name (could be different variations)
+        const uploaderField = columns.find(col => {
+          const name = col.COLUMN_NAME.toLowerCase();
+          return name.includes('uploader') || 
+                 name.includes('uploaded_by') || 
+                 name.includes('modified_by');
+        });
+        
+        if (uploaderField && user && user.username) {
+          cleanedEntry[uploaderField.COLUMN_NAME] = user.username;
+          console.log(`Setting ${uploaderField.COLUMN_NAME} to:`, user.username);
+        }
+      }
+      
+      console.log('Sending cleaned entry data:', cleanedEntry); // Debug log
+      
+      const success = await onSave(cleanedEntry);
       if (success) {
         setIsEditing(false);
       } else {
         setSaveError('Failed to save entry');
       }
     } catch (error) {
+      console.error('Error in handleSave:', error); // Add error logging
       setSaveError('Error saving entry: ' + error.message);
     } finally {
       setIsSaving(false);
@@ -378,7 +434,8 @@ const EntryDetailModal = ({
             const isVirtualField = entry.is_virtual && (
               columnName.toLowerCase().includes('id') ||
               columnName.toLowerCase().includes('created') ||
-              columnName.toLowerCase().includes('updated')
+              columnName.toLowerCase().includes('updated') ||
+              columnName.toLowerCase().includes('uploader')
             );
 
             return (
