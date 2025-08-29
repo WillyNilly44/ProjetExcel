@@ -2,179 +2,126 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [columnData, setColumnData] = useState({
-    name: '',
-    dataType: 'nvarchar',
-    maxLength: 255,
+  const { user, token } = useAuth(); // Make sure we get the token
+  const [formData, setFormData] = useState({
+    columnName: '',
+    dataType: 'VARCHAR(255)',
     isNullable: true,
-    defaultValue: '',
-    description: ''
+    defaultValue: ''
   });
-
-  const dataTypes = [
-    { value: 'nvarchar', label: 'Text (NVARCHAR)', hasLength: true, defaultLength: 255 },
-    { value: 'int', label: 'Integer (INT)', hasLength: false },
-    { value: 'decimal', label: 'Decimal (DECIMAL)', hasLength: true, defaultLength: '10,2' },
-    { value: 'datetime', label: 'Date/Time (DATETIME)', hasLength: false },
-    { value: 'date', label: 'Date (DATE)', hasLength: false },
-    { value: 'time', label: 'Time (TIME)', hasLength: false },
-    { value: 'bit', label: 'Yes/No (BIT)', hasLength: false },
-    { value: 'text', label: 'Long Text (TEXT)', hasLength: false }
-  ];
-
-  const handleInputChange = (field, value) => {
-    setColumnData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleDataTypeChange = (dataType) => {
-    const typeInfo = dataTypes.find(t => t.value === dataType);
-    setColumnData(prev => ({
-      ...prev,
-      dataType: dataType,
-      maxLength: typeInfo?.hasLength ? (typeInfo.defaultLength || 255) : null
-    }));
-  };
-
-  const validateColumnData = () => {
-    if (!columnData.name.trim()) {
-      alert('❌ Column name is required');
-      return false;
-    }
-
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(columnData.name)) {
-      alert('❌ Column name must start with a letter or underscore and contain only letters, numbers, and underscores');
-      return false;
-    }
-
-    if (columnData.name.length > 50) {
-      alert('❌ Column name must be 50 characters or less');
-      return false;
-    }
-
-    const typeInfo = dataTypes.find(t => t.value === columnData.dataType);
-    if (typeInfo?.hasLength && !columnData.maxLength) {
-      alert('❌ Max length is required for this data type');
-      return false;
-    }
-
-    return true;
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateColumnData()) {
-      return;
-    }
-
-    // Check user permissions before making the request
+    // Clear any previous errors
+    setError('');
+    
+    // Validate user authentication
     if (!user) {
-      alert('❌ You must be logged in to add columns');
+      setError('Authentication required. Please log in again.');
       return;
     }
 
-    // Check if user has admin privileges on the frontend first
-    const adminLevels = ['Administrator', 'Super Admin'];
-    if (!adminLevels.includes(user.level_Name)) {
-      alert(`❌ Admin privileges required to add columns. Your level: ${user.level_Name}`);
+
+    if (!user.level_Name || user.level_Name !== 'Administrator') {
+      setError('Administrator privileges required to add columns.');
       return;
     }
 
-    console.log('User data being sent:', { 
-      username: user.username, 
-      level_Name: user.level_Name,
-      id: user.id 
-    });
-
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
-      const response = await fetch('/api/add-column', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          columnData,
-          user: {
-            id: user?.id,
-            username: user?.username || user?.email, // Use email as fallback for username
-            email: user?.email,
-            level_Name: user?.level_Name
-          }
-        })
+      // Prepare the request with authentication headers
+      const requestHeaders = {
+        'Content-Type': 'application/json'
+      };
+
+      // Add authentication token if available
+      if (token) {
+        requestHeaders['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Add user information to request body for server-side validation
+      const requestBody = {
+        ...formData,
+        user: {
+          username: user.username,
+          role: user.level_Name
+        }
+      };
+
+      console.log('Sending add column request:', {
+        headers: requestHeaders,
+        body: requestBody
       });
+
+      const response = await fetch('/api/addcolumn', {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody)
+      });
+
+      // Check if response is OK
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, use the status text
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
       if (result.success) {
-        alert(`✅ Column "${columnData.name}" added successfully!`);
-        
         // Reset form
-        setColumnData({
-          name: '',
-          dataType: 'nvarchar',
-          maxLength: 255,
+        setFormData({
+          columnName: '',
+          dataType: 'VARCHAR(255)',
           isNullable: true,
-          defaultValue: '',
-          description: ''
+          defaultValue: ''
         });
-
-        // Close modal and refresh data
+        
+        // Close modal and notify parent
         onClose();
         onColumnAdded();
+        
+        alert('✅ Column added successfully!');
       } else {
         throw new Error(result.error || 'Failed to add column');
       }
 
     } catch (error) {
       console.error('Add column error:', error);
-      console.error('Current user object:', user);
-      
-      let errorMessage = 'Failed to add column';
-      
-      if (error.message.includes('authentication required') || error.message.includes('User not found')) {
-        errorMessage = '❌ Authentication failed. Please refresh the page and try again.';
-      } else if (error.message.includes('Admin privileges required')) {
-        errorMessage = '❌ ' + error.message;
-      } else if (error.message.includes('already exists')) {
-        errorMessage = '❌ ' + error.message;
-      } else if (error.message.includes('User not found in database')) {
-        errorMessage = '❌ Your user account was not found in the database. Please contact an administrator.';
-      } else {
-        errorMessage = '❌ ' + error.message;
-      }
-      
-      alert(errorMessage);
+      setError(`Failed to add column: ${error.message}`);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleCancel = () => {
-    setColumnData({
-      name: '',
-      dataType: 'nvarchar',
-      maxLength: 255,
+    setFormData({
+      columnName: '',
+      dataType: 'VARCHAR(255)',
       isNullable: true,
-      defaultValue: '',
-      description: ''
+      defaultValue: ''
     });
     onClose();
   };
 
   if (!isOpen) return null;
-
-  const selectedType = dataTypes.find(t => t.value === columnData.dataType);
 
   return (
     <div className="modal-overlay">
@@ -184,7 +131,7 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
           <button 
             onClick={handleCancel}
             className="modal-close"
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
             ✕
           </button>
@@ -199,11 +146,11 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
             <input
               id="columnName"
               type="text"
-              value={columnData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+              value={formData.columnName}
+              onChange={(e) => setFormData({ ...formData, columnName: e.target.value })}
               placeholder="e.g., new_field_name"
               className="form-input"
-              disabled={isLoading}
+              disabled={isSubmitting}
               maxLength={50}
             />
             <small className="form-help">
@@ -218,51 +165,30 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
             </label>
             <select
               id="dataType"
-              value={columnData.dataType}
-              onChange={(e) => handleDataTypeChange(e.target.value)}
+              value={formData.dataType}
+              onChange={(e) => setFormData({ ...formData, dataType: e.target.value })}
               className="form-select"
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
-              {dataTypes.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
+              <option value="VARCHAR(255)">Text (VARCHAR)</option>
+              <option value="INT">Integer (INT)</option>
+              <option value="DECIMAL">Decimal (DECIMAL)</option>
+              <option value="DATETIME">Date/Time (DATETIME)</option>
+              <option value="DATE">Date (DATE)</option>
+              <option value="TIME">Time (TIME)</option>
+              <option value="BIT">Yes/No (BIT)</option>
+              <option value="TEXT">Long Text (TEXT)</option>
             </select>
           </div>
-
-          {/* Max Length (for applicable types) */}
-          {selectedType?.hasLength && (
-            <div className="form-group">
-              <label htmlFor="maxLength">
-                {columnData.dataType === 'decimal' ? 'Precision,Scale' : 'Max Length'} <span className="required">*</span>
-              </label>
-              <input
-                id="maxLength"
-                type={columnData.dataType === 'decimal' ? 'text' : 'number'}
-                value={columnData.maxLength}
-                onChange={(e) => handleInputChange('maxLength', e.target.value)}
-                placeholder={columnData.dataType === 'decimal' ? 'e.g., 10,2' : 'e.g., 255'}
-                className="form-input"
-                disabled={isLoading}
-              />
-              <small className="form-help">
-                {columnData.dataType === 'decimal' 
-                  ? 'Format: precision,scale (e.g., 10,2 for numbers up to 10 digits with 2 decimal places)'
-                  : 'Maximum number of characters'
-                }
-              </small>
-            </div>
-          )}
 
           {/* Nullable */}
           <div className="form-group">
             <label className="checkbox-label">
               <input
                 type="checkbox"
-                checked={columnData.isNullable}
-                onChange={(e) => handleInputChange('isNullable', e.target.checked)}
-                disabled={isLoading}
+                checked={formData.isNullable}
+                onChange={(e) => setFormData({ ...formData, isNullable: e.target.checked })}
+                disabled={isSubmitting}
               />
               Allow NULL values
             </label>
@@ -277,11 +203,11 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
             <input
               id="defaultValue"
               type="text"
-              value={columnData.defaultValue}
-              onChange={(e) => handleInputChange('defaultValue', e.target.value)}
+              value={formData.defaultValue}
+              onChange={(e) => setFormData({ ...formData, defaultValue: e.target.value })}
               placeholder="Optional default value"
               className="form-input"
-              disabled={isLoading}
+              disabled={isSubmitting}
             />
             <small className="form-help">
               Default value for new entries (leave blank for none)
@@ -289,12 +215,14 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
           </div>
         </form>
 
+        {error && <div className="form-error">{error}</div>}
+
         <div className="modal-footer">
           <button
             type="button"
             onClick={handleCancel}
             className="btn btn-cancel"
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
             Cancel
           </button>
@@ -302,9 +230,9 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
             type="submit"
             onClick={handleSubmit}
             className="btn btn-primary"
-            disabled={isLoading}
+            disabled={isSubmitting}
           >
-            {isLoading ? '⏳ Adding Column...' : '✅ Add Column'}
+            {isSubmitting ? '⏳ Adding Column...' : '✅ Add Column'}
           </button>
         </div>
       </div>
