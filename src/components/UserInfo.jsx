@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 const UserInfo = () => {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, getRoleDisplay } = useAuth(); // Add getRoleDisplay
   const [showDropdown, setShowDropdown] = useState(false);
 
   if (!user) return null;
@@ -42,11 +42,8 @@ const UserInfo = () => {
         </div>
         <div className="user-details">
           <div className="user-name">{user.name}</div>
-          <div 
-            className="user-level"
-            style={{ color: getLevelColor(user.level_Name) }}
-          >
-            {user.level_Name}
+          <div className="user-role" title={`Role: ${user.role}`}>
+            {getRoleDisplay()} {/* Change this line */}
           </div>
         </div>
         <div className={`user-dropdown-arrow ${showDropdown ? 'up' : 'down'}`}>
