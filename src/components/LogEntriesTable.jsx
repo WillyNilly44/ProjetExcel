@@ -12,7 +12,7 @@ import VirtualTable from './VirtualTable';
 export default function LogEntriesTable({ 
   data = [], 
   columns = [], 
-  formatCellValue = (value) => value, // This is the prop - use this one
+  formatCellValue = (value) => value,
   hasPermission = () => false,
   isLoading = false,
   connectionStatus = 'Ready to load',
@@ -46,9 +46,7 @@ export default function LogEntriesTable({
     uploaders: []
   });
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
-
-  // REMOVE: fetchLogEntries (now handled by App.jsx)
-  // REMOVE: tab-related logic
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
 
   // CONSOLIDATED useEffect for column management
   useEffect(() => {
@@ -88,7 +86,7 @@ export default function LogEntriesTable({
         loadFilterOptions();
       }
     }
-  }, [columns, data]); // Run when columns or data change
+  }, [columns, data]);
 
   const loadFilterOptions = () => {
     if (!data || !columns || data.length === 0) return;
@@ -140,241 +138,41 @@ export default function LogEntriesTable({
     setFilterOptions(options);
   };
 
-  const handleSaveEntry = async (formData) => {
-    try {
-      const response = await fetch('/api/addentryrec', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (result.success) {        
-        alert(result.message);
-        await onRefresh();
+  // Sorting functions
+  const handleSort = (columnName) => {
+    let direction = 'asc';
+    
+    if (sortConfig.key === columnName) {
+      if (sortConfig.direction === 'asc') {
+        direction = 'desc';
+      } else if (sortConfig.direction === 'desc') {
+        direction = null; // Remove sorting
       } else {
-        throw new Error(result.error);
+        direction = 'asc';
       }
-
-    } catch (error) {
-      throw error;
-    }
-  };
-
-  const handleColumnAdded = async () => {
-    try {
-      // Refresh the log entries to get updated column structure
-      await onRefresh();
-      
-      // Show success message
-      setConnectionStatus('✅ Column added successfully! Data refreshed.');
-      
-      // Clear the status message after a few seconds
-      setTimeout(() => {
-        setConnectionStatus('✅ Loaded');
-      }, 3000);
-      
-    } catch (error) {
-      setConnectionStatus('❌ Column added but failed to refresh data. Please reload the page.');
-    }
-  };
-
-  const handleSaveEditedEntry = async (editedEntry) => {
-    try {
-
-      // Format the request to match the expected API structure
-      const requestData = {
-        action: 'update',
-        entryId: editedEntry.id,
-        entryData: editedEntry
-      };
-
-      const response = await fetch('/api/updateentry', {
-        method: 'POST', // Change from PUT to POST
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestData) // Send structured data
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {        
-        // Refresh the data to show the updated entry
-        await onRefresh();
-        
-        setConnectionStatus('✅ Entry updated successfully!');
-        setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
-        
-        return true;
-      } else {
-        throw new Error(result.error || 'Failed to update entry');
-      }
-      
-    } catch (error) {
-      setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
-      setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
-      return false;
-    }
-  };
-
-  const handleDuplicateEntry = async (sourceEntry) => {
-  
-    if (!sourceEntry) {
-      alert('No entry selected for duplication');
-      return;
-    }
-
-    if (!user) {
-      alert('Cannot duplicate: User information not available');
-      return;
-    }
-
-    try {
-      // Create duplicate data
-      const duplicateData = { ...sourceEntry };
-      
-      // Remove fields that shouldn't be duplicated
-      delete duplicateData.id;
-      delete duplicateData.created_at;
-      delete duplicateData.updated_at;
-      delete duplicateData.is_virtual;
-      delete duplicateData.original_id;
-      delete duplicateData.week_offset;
-      delete duplicateData.target_day;
-      delete duplicateData.generated_on;
-      delete duplicateData.relative_to_current;
-      delete duplicateData.is_recurring;
-      delete duplicateData.recurrence_day;
-      delete duplicateData.day_of_the_week;
-      
-      // FIXED: Use the most reliable method for today's date
-      const todayString = new Date().toLocaleDateString('en-CA'); // This gives YYYY-MM-DD in local timezone
-    
-      
-      // Update date fields to today
-      Object.keys(duplicateData).forEach(key => {
-        const lowerKey = key.toLowerCase();
-        if (lowerKey.includes('date') && !lowerKey.includes('time') && !lowerKey.includes('created') && !lowerKey.includes('updated')) {
-          const oldValue = duplicateData[key];
-          duplicateData[key] = todayString;
-        }
-      });
-
-      // Set current user as uploader
-      const uploaderField = Object.keys(duplicateData).find(key => 
-        key.toLowerCase().includes('uploader')
-      );
-      if (uploaderField && user.username) {
-        duplicateData[uploaderField] = user.username;
-      }
-
-      // Add "Original Log: id#" to notes
-      const noteFields = Object.keys(duplicateData).filter(key => 
-        key.toLowerCase().includes('note') || 
-        key.toLowerCase().includes('comment') || 
-        key.toLowerCase().includes('description')
-      );
-
-      if (noteFields.length > 0) {
-        const noteField = noteFields[0];
-        const existingNote = duplicateData[noteField] || '';
-        const originalLogText = `Original Log: ${sourceEntry.id}#`;
-        
-        if (existingNote.trim()) {
-          duplicateData[noteField] = `${existingNote.trim()} | ${originalLogText}`;
-        } else {
-          duplicateData[noteField] = originalLogText;
-        }
-      }
-
-      // Make sure it's NOT a recurrence
-      duplicateData.isRecurrence = false;
-      duplicateData.day_of_the_week = null;
-
-
-      // Save to database
-      const response = await fetch('/api/addentryrec', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(duplicateData)
-      });
-
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (result.success) {
-        setShowDetailModal(false);
-        setSelectedEntry(null);
-        
-        alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
-        
-        await onRefresh();
-      } else {
-        throw new Error(result.error);
-      }
-
-    } catch (error) {
-      alert('Failed to duplicate entry: ' + error.message);
-    }
-  };
-
-  const getColumnStyle = (columnName, dataType) => {
-    const baseStyle = { ...cellStyle };
-    
-    if (dataType === 'bit' || typeof data[0]?.[columnName] === 'boolean') {
-      baseStyle.textAlign = 'center';
     }
     
-    if (columnName.toLowerCase().includes('status')) {
-      baseStyle.fontWeight = '500';
-      baseStyle.color = '#059669';
-    }
-    
-    if (columnName.toLowerCase().includes('note') || columnName.toLowerCase().includes('description')) {
-      baseStyle.maxWidth = '200px';
-    }
-    
-    return baseStyle;
+    setSortConfig({ 
+      key: direction ? columnName : null, 
+      direction: direction 
+    });
   };
 
-  const getDisplayColumns = () => {
-    const displayColumns = columnOrder
-      .filter(columnName => visibleColumns.includes(columnName))
-      .map(columnName => columns.find(col => col.COLUMN_NAME === columnName))
-      .filter(Boolean);
-    
-    return displayColumns;
-  };
-
-  const handleColumnManagerSave = (newVisibleColumns, newColumnOrder) => {
-    setVisibleColumns(newVisibleColumns);
-    setColumnOrder(newColumnOrder);
-    
-    try {
-      localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
-      localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
-    } catch (e) {
+  const getSortIcon = (columnName) => {
+    if (sortConfig.key !== columnName) {
+      return '⇅'; // No sort icon
     }
+    
+    if (sortConfig.direction === 'asc') {
+      return '▲'; // Ascending
+    } else if (sortConfig.direction === 'desc') {
+      return '▼'; // Descending
+    }
+    
+    return '⇅'; // Fallback
   };
 
+  // Helper functions
   const getAvailableYears = () => {
     if (!data || data.length === 0) return [];
     
@@ -435,145 +233,6 @@ export default function LogEntriesTable({
     }
     
     return weeks;
-  };
-
-  const getFilteredData = () => {
-    if (!data || data.length === 0) return [];
-
-    const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
-    
-    // If no filters are applied, return all data
-    const hasFilters = Object.values(dateFilters).some(value => value && value !== '');
-    if (!hasFilters) {
-      return expandedData;
-    }
-    
-    const dateColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('date') || 
-      col.COLUMN_NAME.toLowerCase().includes('created')
-    );
-    
-    const logTypeColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('log_type')
-    );
-
-    const districtColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('district'));
-    const incidentColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('incident'));
-    const assignedColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('assigned') || 
-      col.COLUMN_NAME.toLowerCase().includes('assignee')
-    );
-    const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
-    
-    return expandedData.filter(entry => {
-      // Date filters (existing logic - keeping year, month, week)
-      if (dateColumn) {
-        const dateValue = entry[dateColumn.COLUMN_NAME];
-        if (dateValue) {
-          try {
-            const entryDate = new Date(dateValue);
-            const entryYear = entryDate.getFullYear();
-            const entryMonth = entryDate.getMonth() + 1;
-            const entryDay = entryDate.getDate();
-            
-            if (dateFilters.year && entryYear !== parseInt(dateFilters.year)) {
-              return false;
-            }
-            
-            if (dateFilters.month && entryMonth !== parseInt(dateFilters.month)) {
-              return false;
-            }
-            
-            if (dateFilters.week && dateFilters.year && dateFilters.month) {
-              const weeks = getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month));
-              const selectedWeek = weeks.find(w => w.number === parseInt(dateFilters.week));
-              
-              if (selectedWeek && (entryDay < selectedWeek.start || entryDay > selectedWeek.end)) {
-                return false;
-              }
-            }
-          } catch (e) {
-            return false;
-          }
-        }
-      }
-      
-      // Log type filter (existing logic)
-      if (dateFilters.logType && logTypeColumn) {
-        const entryLogType = entry[logTypeColumn.COLUMN_NAME];
-        if (!entryLogType) return false;
-        
-        const normalizedEntryType = entryLogType.toString().toLowerCase().trim();
-        const selectedType = dateFilters.logType.toLowerCase();
-
-        if (!normalizedEntryType.includes(selectedType)) {
-          return false;
-        }
-      }
-
-      // CONTENT FILTERS (keeping these)
-      // District filter
-      if (dateFilters.district && districtColumn) {
-        const entryDistrict = entry[districtColumn.COLUMN_NAME];
-        if (!entryDistrict || entryDistrict.toString().toLowerCase() !== dateFilters.district.toLowerCase()) {
-          return false;
-        }
-      }
-
-      // Incident filter (partial match)
-      if (dateFilters.incident && incidentColumn) {
-        const entryIncident = entry[incidentColumn.COLUMN_NAME];
-        if (!entryIncident || !entryIncident.toString().toLowerCase().includes(dateFilters.incident.toLowerCase())) {
-          return false;
-        }
-      }
-
-      // Assigned filter
-      if (dateFilters.assigned && assignedColumn) {
-        const entryAssigned = entry[assignedColumn.COLUMN_NAME];
-        if (!entryAssigned || entryAssigned.toString().toLowerCase() !== dateFilters.assigned.toLowerCase()) {
-          return false;
-        }
-      }
-
-      // Uploader filter
-      if (dateFilters.uploader && uploaderColumn) {
-        const entryUploader = entry[uploaderColumn.COLUMN_NAME];
-        if (!entryUploader || entryUploader.toString().toLowerCase() !== dateFilters.uploader.toLowerCase()) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
-  };
-
-  const clearFilters = () => {
-    setDateFilters({
-      year: '',
-      month: '',
-      week: '',
-      logType: '',
-      district: '',
-      incident: '',
-      assigned: '',
-      uploader: ''
-    });
-  };
-
-  const handleFilterChange = (filterType, value) => {
-    setDateFilters(prev => {
-      const newFilters = { ...prev, [filterType]: value };
-      
-      if (filterType === 'year') {
-        newFilters.month = '';
-        newFilters.week = '';
-      } else if (filterType === 'month') {
-        newFilters.week = '';
-      }
-      
-      return newFilters;
-    });
   };
 
   const generateRecurringEntries = (data) => {
@@ -672,7 +331,417 @@ export default function LogEntriesTable({
     });
   };
 
-  // Connection status helper
+  // SINGLE getFilteredData function with filtering AND sorting
+  const getFilteredData = () => {
+    if (!data || data.length === 0) return [];
+
+    const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
+    
+    // Apply filters first
+    const hasFilters = Object.values(dateFilters).some(value => value && value !== '');
+    let filteredData = expandedData;
+    
+    if (hasFilters) {
+      const dateColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('date') || 
+        col.COLUMN_NAME.toLowerCase().includes('created')
+      );
+      
+      const logTypeColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('log_type')
+      );
+
+      const districtColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('district'));
+      const incidentColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('incident'));
+      const assignedColumn = columns.find(col => 
+        col.COLUMN_NAME.toLowerCase().includes('assigned') || 
+        col.COLUMN_NAME.toLowerCase().includes('assignee')
+      );
+      const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
+      
+      filteredData = expandedData.filter(entry => {
+        // Date filters
+        if (dateColumn) {
+          const dateValue = entry[dateColumn.COLUMN_NAME];
+          if (dateValue) {
+            try {
+              const entryDate = new Date(dateValue);
+              const entryYear = entryDate.getFullYear();
+              const entryMonth = entryDate.getMonth() + 1;
+              const entryDay = entryDate.getDate();
+              
+              if (dateFilters.year && entryYear !== parseInt(dateFilters.year)) {
+                return false;
+              }
+              
+              if (dateFilters.month && entryMonth !== parseInt(dateFilters.month)) {
+                return false;
+              }
+              
+              if (dateFilters.week && dateFilters.year && dateFilters.month) {
+                const weeks = getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month));
+                const selectedWeek = weeks.find(w => w.number === parseInt(dateFilters.week));
+                
+                if (selectedWeek && (entryDay < selectedWeek.start || entryDay > selectedWeek.end)) {
+                  return false;
+                }
+              }
+            } catch (e) {
+              return false;
+            }
+          }
+        }
+        
+        // Log type filter
+        if (dateFilters.logType && logTypeColumn) {
+          const entryLogType = entry[logTypeColumn.COLUMN_NAME];
+          if (!entryLogType) return false;
+          
+          const normalizedEntryType = entryLogType.toString().toLowerCase().trim();
+          const selectedType = dateFilters.logType.toLowerCase();
+
+          if (!normalizedEntryType.includes(selectedType)) {
+            return false;
+          }
+        }
+
+        // Content filters
+        if (dateFilters.district && districtColumn) {
+          const entryDistrict = entry[districtColumn.COLUMN_NAME];
+          if (!entryDistrict || entryDistrict.toString().toLowerCase() !== dateFilters.district.toLowerCase()) {
+            return false;
+          }
+        }
+
+        if (dateFilters.incident && incidentColumn) {
+          const entryIncident = entry[incidentColumn.COLUMN_NAME];
+          if (!entryIncident || !entryIncident.toString().toLowerCase().includes(dateFilters.incident.toLowerCase())) {
+            return false;
+          }
+        }
+
+        if (dateFilters.assigned && assignedColumn) {
+          const entryAssigned = entry[assignedColumn.COLUMN_NAME];
+          if (!entryAssigned || entryAssigned.toString().toLowerCase() !== dateFilters.assigned.toLowerCase()) {
+            return false;
+          }
+        }
+
+        if (dateFilters.uploader && uploaderColumn) {
+          const entryUploader = entry[uploaderColumn.COLUMN_NAME];
+          if (!entryUploader || entryUploader.toString().toLowerCase() !== dateFilters.uploader.toLowerCase()) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+    }
+
+    // Apply sorting after filters
+    if (sortConfig.key && sortConfig.direction) {
+      filteredData = [...filteredData].sort((a, b) => {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        // Handle null/undefined values
+        if (aValue === null || aValue === undefined) {
+          if (bValue === null || bValue === undefined) return 0;
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        if (bValue === null || bValue === undefined) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        
+        // Try to detect data type and sort accordingly
+        const column = columns.find(col => col.COLUMN_NAME === sortConfig.key);
+        const dataType = column?.DATA_TYPE?.toLowerCase() || '';
+        
+        // Handle dates
+        if (dataType.includes('date') || dataType.includes('time')) {
+          const dateA = new Date(aValue);
+          const dateB = new Date(bValue);
+          if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
+            const result = dateA.getTime() - dateB.getTime();
+            return sortConfig.direction === 'asc' ? result : -result;
+          }
+        }
+        
+        // Handle numbers
+        if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
+          const numA = parseFloat(aValue);
+          const numB = parseFloat(bValue);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            const result = numA - numB;
+            return sortConfig.direction === 'asc' ? result : -result;
+          }
+        }
+        
+        // Handle boolean/bit
+        if (dataType === 'bit' || typeof aValue === 'boolean' || typeof bValue === 'boolean') {
+          const boolA = aValue === true || aValue === 1 || aValue === '1';
+          const boolB = bValue === true || bValue === 1 || bValue === '1';
+          const result = Number(boolA) - Number(boolB);
+          return sortConfig.direction === 'asc' ? result : -result;
+        }
+        
+        // Default string comparison
+        const strA = String(aValue).toLowerCase();
+        const strB = String(bValue).toLowerCase();
+        const result = strA.localeCompare(strB);
+        return sortConfig.direction === 'asc' ? result : -result;
+      });
+    }
+
+    return filteredData;
+  };
+
+  // Rest of your functions (handleSaveEntry, handleColumnAdded, etc.) remain exactly the same...
+  const handleSaveEntry = async (formData) => {
+    try {
+      const response = await fetch('/api/addentryrec', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {        
+        alert(result.message);
+        await onRefresh();
+      } else {
+        throw new Error(result.error);
+      }
+
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleColumnAdded = async () => {
+    try {
+      await onRefresh();
+      setConnectionStatus('✅ Column added successfully! Data refreshed.');
+      setTimeout(() => {
+        setConnectionStatus('✅ Loaded');
+      }, 3000);
+    } catch (error) {
+      setConnectionStatus('❌ Column added but failed to refresh data. Please reload the page.');
+    }
+  };
+
+  const handleSaveEditedEntry = async (editedEntry) => {
+    try {
+      const requestData = {
+        action: 'update',
+        entryId: editedEntry.id,
+        entryData: editedEntry
+      };
+
+      const response = await fetch('/api/updateentry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {        
+        await onRefresh();
+        setConnectionStatus('✅ Entry updated successfully!');
+        setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
+        return true;
+      } else {
+        throw new Error(result.error || 'Failed to update entry');
+      }
+      
+    } catch (error) {
+      setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
+      setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
+      return false;
+    }
+  };
+
+  const handleDuplicateEntry = async (sourceEntry) => {
+    if (!sourceEntry) {
+      alert('No entry selected for duplication');
+      return;
+    }
+
+    if (!user) {
+      alert('Cannot duplicate: User information not available');
+      return;
+    }
+
+    try {
+      const duplicateData = { ...sourceEntry };
+      
+      // Remove fields that shouldn't be duplicated
+      delete duplicateData.id;
+      delete duplicateData.created_at;
+      delete duplicateData.updated_at;
+      delete duplicateData.is_virtual;
+      delete duplicateData.original_id;
+      delete duplicateData.week_offset;
+      delete duplicateData.target_day;
+      delete duplicateData.generated_on;
+      delete duplicateData.relative_to_current;
+      delete duplicateData.is_recurring;
+      delete duplicateData.recurrence_day;
+      delete duplicateData.day_of_the_week;
+      
+      const todayString = new Date().toLocaleDateString('en-CA');
+      
+      // Update date fields to today
+      Object.keys(duplicateData).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        if (lowerKey.includes('date') && !lowerKey.includes('time') && !lowerKey.includes('created') && !lowerKey.includes('updated')) {
+          const oldValue = duplicateData[key];
+          duplicateData[key] = todayString;
+        }
+      });
+
+      // Set current user as uploader
+      const uploaderField = Object.keys(duplicateData).find(key => 
+        key.toLowerCase().includes('uploader')
+      );
+      if (uploaderField && user.username) {
+        duplicateData[uploaderField] = user.username;
+      }
+
+      // Add "Original Log: id#" to notes
+      const noteFields = Object.keys(duplicateData).filter(key => 
+        key.toLowerCase().includes('note') || 
+        key.toLowerCase().includes('comment') || 
+        key.toLowerCase().includes('description')
+      );
+
+      if (noteFields.length > 0) {
+        const noteField = noteFields[0];
+        const existingNote = duplicateData[noteField] || '';
+        const originalLogText = `Original Log: ${sourceEntry.id}#`;
+        
+        if (existingNote.trim()) {
+          duplicateData[noteField] = `${existingNote.trim()} | ${originalLogText}`;
+        } else {
+          duplicateData[noteField] = originalLogText;
+        }
+      }
+
+      duplicateData.isRecurrence = false;
+      duplicateData.day_of_the_week = null;
+
+      const response = await fetch('/api/addentryrec', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(duplicateData)
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        setShowDetailModal(false);
+        setSelectedEntry(null);
+        
+        alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
+        
+        await onRefresh();
+      } else {
+        throw new Error(result.error);
+      }
+
+    } catch (error) {
+      alert('Failed to duplicate entry: ' + error.message);
+    }
+  };
+
+  const getColumnStyle = (columnName, dataType) => {
+    const baseStyle = { ...cellStyle };
+    
+    if (dataType === 'bit' || typeof data[0]?.[columnName] === 'boolean') {
+      baseStyle.textAlign = 'center';
+    }
+    
+    if (columnName.toLowerCase().includes('status')) {
+      baseStyle.fontWeight = '500';
+      baseStyle.color = '#059669';
+    }
+    
+    if (columnName.toLowerCase().includes('note') || columnName.toLowerCase().includes('description')) {
+      baseStyle.maxWidth = '200px';
+    }
+    
+    return baseStyle;
+  };
+
+  const getDisplayColumns = () => {
+    const displayColumns = columnOrder
+      .filter(columnName => visibleColumns.includes(columnName))
+      .map(columnName => columns.find(col => col.COLUMN_NAME === columnName))
+      .filter(Boolean);
+    
+    return displayColumns;
+  };
+
+  const handleColumnManagerSave = (newVisibleColumns, newColumnOrder) => {
+    setVisibleColumns(newVisibleColumns);
+    setColumnOrder(newColumnOrder);
+    
+    try {
+      localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
+      localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
+    } catch (e) {
+    }
+  };
+
+  const clearFilters = () => {
+    setDateFilters({
+      year: '',
+      month: '',
+      week: '',
+      logType: '',
+      district: '',
+      incident: '',
+      assigned: '',
+      uploader: ''
+    });
+  };
+
+  const handleFilterChange = (filterType, value) => {
+    setDateFilters(prev => {
+      const newFilters = { ...prev, [filterType]: value };
+      
+      if (filterType === 'year') {
+        newFilters.month = '';
+        newFilters.week = '';
+      } else if (filterType === 'month') {
+        newFilters.week = '';
+      }
+      
+      return newFilters;
+    });
+  };
+
   const getConnectionStatusClass = () => {
     if (connectionStatus.includes('✅')) return 'connected';
     if (connectionStatus.includes('❌')) return 'error';
@@ -730,7 +799,6 @@ export default function LogEntriesTable({
     return Object.values(dateFilters).filter(value => value && value !== '').length;
   };
 
-  // Helper function to format column names
   const formatColumnName = (columnName) => {
     if (!columnName || typeof columnName !== 'string') {
       return 'Unknown Column';
@@ -740,7 +808,6 @@ export default function LogEntriesTable({
       .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
-  // Helper function to get column type
   const getColumnType = (columnName, dataType) => {
     const lowerName = columnName ? columnName.toLowerCase() : '';
     const lowerType = dataType ? dataType.toLowerCase() : '';
@@ -766,8 +833,6 @@ export default function LogEntriesTable({
 
   return (
     <div className="log-entries-container">
-      {/* REMOVE: MiniLogin and TabNavigation - now in App.jsx */}
-      
       {/* Status Header */}
       <div className="status-header">
         <div>
@@ -806,7 +871,7 @@ export default function LogEntriesTable({
             setShowColumnManager={setShowColumnManager}
             setShowAddModal={setShowAddModal}
             setShowAddColumnModal={setShowAddColumnModal}
-            fetchLogEntries={onRefresh} // Use the prop
+            fetchLogEntries={onRefresh}
             exportComponent={
               <PDFExport
                 data={getFilteredData()}
@@ -1013,7 +1078,7 @@ export default function LogEntriesTable({
           formatCellValue={formatCellValue}
           onEventClick={handleRowClick}
           showVirtualEntries={showVirtualEntries}
-          dateFilters={dateFilters} // NEW: Pass date filters to calendar
+          dateFilters={dateFilters}
         />
       ) : (
         <div className="table-container">
@@ -1023,7 +1088,6 @@ export default function LogEntriesTable({
             </div>
           </div>
           
-          {/* Use VirtualTable for better performance */}
           <VirtualTable
             data={getFilteredData()}
             columns={columns}
@@ -1033,11 +1097,14 @@ export default function LogEntriesTable({
             onRowClick={handleRowClick}
             hasPermission={hasPermission}
             getColumnType={getColumnType}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            getSortIcon={getSortIcon}
           />
         </div>
       )}
 
-      {/* Conditionally render modals based on permissions */}
+      {/* Modals */}
       {hasPermission('Operator') && (
         <AddEntryModal 
           isOpen={showAddModal}
@@ -1049,57 +1116,35 @@ export default function LogEntriesTable({
           currentUser={user} 
         />
       )}
+      
       <ColumnManager 
-            isOpen={showColumnManager}
-            onClose={() => setShowColumnManager(false)}
-            columns={columns}
-            visibleColumns={visibleColumns}
-            columnOrder={columnOrder}
-            onSave={handleColumnManagerSave}
-          />
+        isOpen={showColumnManager}
+        onClose={() => setShowColumnManager(false)}
+        columns={columns}
+        visibleColumns={visibleColumns}
+        columnOrder={columnOrder}
+        onSave={handleColumnManagerSave}
+      />
 
       {hasPermission('Administrator') && (
-        <>
-          
-
-          <AddColumnModal
-            isOpen={showAddColumnModal}
-            onClose={() => setShowAddColumnModal(false)}
-            onColumnAdded={handleColumnAdded}
-          />
-        </>
+        <AddColumnModal
+          isOpen={showAddColumnModal}
+          onClose={() => setShowAddColumnModal(false)}
+          onColumnAdded={handleColumnAdded}
+        />
       )}
 
       <EntryDetailModal
-isOpen={showDetailModal}
-onClose={handleCloseDetailModal}
-entry={selectedEntry}
-columns={columns}
-formatColumnName={formatColumnName}
-formatCellValue={formatCellValue}
-onSave={handleSaveEditedEntry}
-hasPermission={hasPermission}
-onDuplicate={handleDuplicateEntry}  // Add this line
-/>
+        isOpen={showDetailModal}
+        onClose={handleCloseDetailModal}
+        entry={selectedEntry}
+        columns={columns}
+        formatColumnName={formatColumnName}
+        formatCellValue={formatCellValue}
+        onSave={handleSaveEditedEntry}
+        hasPermission={hasPermission}
+        onDuplicate={handleDuplicateEntry}
+      />
     </div>
   );
-}
-
-
-function getColumnType(columnName, dataType) {
-  const lowerName = columnName.toLowerCase();
-  
-  if (dataType === 'bit' || typeof dataType === 'boolean') {
-    return 'center';
-  }
-  
-  if (lowerName.includes('status')) {
-    return 'status';
-  }
-  
-  if (lowerName.includes('note') || lowerName.includes('description')) {
-    return 'note';
-  }
-  
-  return '';
 }

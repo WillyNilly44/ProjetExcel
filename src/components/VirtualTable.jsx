@@ -10,7 +10,10 @@ const VirtualTable = ({
   formatCellValue, 
   onRowClick, 
   hasPermission, 
-  getColumnType 
+  getColumnType,
+  sortConfig = { key: null, direction: null },
+  onSort = () => {},
+  getSortIcon = () => '⇅'
 }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
@@ -18,10 +21,45 @@ const VirtualTable = ({
   const scrollElementRef = useRef(null);
   
   const rowHeight = 50;
-  const overscan = 10; // Render extra rows for smooth scrolling
+  const overscan = 10;
   
   // Memoize display columns for performance
   const displayColumns = useMemo(() => getDisplayColumns(), [getDisplayColumns]);
+  
+  // Helper functions for consistent column sizing
+  const getColumnFlex = useCallback((columnName) => {
+    const lowerName = columnName.toLowerCase();
+    
+    if (lowerName.includes('id')) return '0 0 80px';
+    if (lowerName.includes('date')) return '0 0 120px';
+    if (lowerName.includes('time')) return '0 0 100px';
+    if (lowerName.includes('status')) return '0 0 120px';
+    if (lowerName.includes('ticket')) return '0 0 130px';
+    if (lowerName.includes('district')) return '0 0 100px';
+    if (lowerName.includes('assigned')) return '0 0 105px';
+    if (lowerName.includes('note') || lowerName.includes('description') || lowerName.includes('incident')) {
+      return '2 1 200px';
+    }
+    
+    return '1 1 150px';
+  }, []);
+
+  const getColumnMinWidth = useCallback((columnName) => {
+    const lowerName = columnName.toLowerCase();
+    
+    if (lowerName.includes('id')) return '60px';
+    if (lowerName.includes('date')) return '100px';
+    if (lowerName.includes('time')) return '80px';
+    if (lowerName.includes('status')) return '100px';
+    if (lowerName.includes('ticket')) return '100px';
+    if (lowerName.includes('district')) return '90px';
+    if (lowerName.includes('assigned')) return '90px';
+    if (lowerName.includes('note') || lowerName.includes('description') || lowerName.includes('incident')) {
+      return '150px';
+    }
+    
+    return '80px';
+  }, []);
   
   // Calculate visible range
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
@@ -79,32 +117,55 @@ const VirtualTable = ({
   
   return (
     <div className="virtual-table-container" ref={containerRef}>
-      {/* Scrollable Content with Header */}
       <div
         ref={scrollElementRef}
         className="virtual-table-scroll"
         style={{ height: containerHeight }}
         onScroll={handleScroll}
       >
-        {/* Sticky Header */}
-        <div className="virtual-table-header" style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-          <div className="virtual-header-row">
-            {displayColumns.map((column, index) => (
-              <div
-                key={column.COLUMN_NAME}
-                className={`virtual-header-cell ${getColumnType(column.COLUMN_NAME, column.DATA_TYPE)}`}
-                style={{
-                  minWidth: getColumnMinWidth(column.COLUMN_NAME),
-                  flex: getColumnFlex(column.COLUMN_NAME)
-                }}
-                title={`${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`}
-              >
+        {/* Sticky Header - using same sizing as rows */}
+        <div className="virtual-table-header">
+          {displayColumns.map((column) => (
+            <div 
+              key={column.COLUMN_NAME} 
+              className={`virtual-table-header-cell sortable-header ${
+                sortConfig.key === column.COLUMN_NAME ? 'active-sort' : ''
+              }`}
+              onClick={() => onSort(column.COLUMN_NAME)}
+              title={`Click to sort by ${formatColumnName(column.COLUMN_NAME)}`}
+              style={{
+                minWidth: getColumnMinWidth(column.COLUMN_NAME),
+                flex: getColumnFlex(column.COLUMN_NAME),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 0.5rem',
+                cursor: 'pointer',
+                position: 'relative'
+              }}
+            >
+              <span className="header-text" style={{ 
+                flex: 1, 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
                 {formatColumnName(column.COLUMN_NAME)}
-              </div>
-            ))}
-          </div>
+              </span>
+              <span className="sort-icon" style={{ 
+                fontSize: '0.8em', 
+                opacity: 0.7, 
+                marginLeft: '0.5rem',
+                minWidth: '16px',
+                textAlign: 'center'
+              }}>
+                {getSortIcon(column.COLUMN_NAME)}
+              </span>
+            </div>
+          ))}
         </div>
         
+        {/* Data Rows */}
         <div style={{ height: totalHeight, position: 'relative', marginTop: '0' }}>
           <div style={{ transform: `translateY(${offsetY}px)` }}>
             {visibleData.map((entry, virtualIndex) => {
@@ -120,6 +181,8 @@ const VirtualTable = ({
                   onRowClick={onRowClick}
                   hasPermission={hasPermission}
                   rowHeight={rowHeight}
+                  getColumnMinWidth={getColumnMinWidth}
+                  getColumnFlex={getColumnFlex}
                 />
               );
             })}
@@ -139,7 +202,9 @@ const VirtualRow = React.memo(({
   getColumnType, 
   onRowClick, 
   hasPermission, 
-  rowHeight 
+  rowHeight,
+  getColumnMinWidth,
+  getColumnFlex
 }) => {
   
   const handleRowClick = useCallback(() => {
@@ -163,14 +228,22 @@ const VirtualRow = React.memo(({
             className={`virtual-cell ${getColumnType(column.COLUMN_NAME, column.DATA_TYPE)}`}
             style={{
               minWidth: getColumnMinWidth(column.COLUMN_NAME),
-              flex: getColumnFlex(column.COLUMN_NAME)
+              flex: getColumnFlex(column.COLUMN_NAME),
+              padding: '0.75rem 0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              overflow: 'hidden'
             }}
             title={entry.is_virtual ? `🔄 Recurring: ${formattedValue}` : formattedValue}
           >
             {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
               <span className="virtual-icon">🔄</span>
             )}
-            <span className={entry.is_virtual ? 'virtual-text' : 'normal-text'}>
+            <span className={entry.is_virtual ? 'virtual-text' : 'normal-text'} style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
               {formattedValue}
             </span>
           </div>
@@ -180,34 +253,6 @@ const VirtualRow = React.memo(({
   );
 });
 
-// Helper functions for column sizing
-const getColumnFlex = (columnName) => {
-  const lowerName = columnName.toLowerCase();
-  
-  if (lowerName.includes('id')) return '0 0 80px';
-  if (lowerName.includes('date')) return '0 0 120px';
-  if (lowerName.includes('time')) return '0 0 100px';
-  if (lowerName.includes('status')) return '0 0 120px';
-  if (lowerName.includes('ticket')) return '0 0 130px';
-  if (lowerName.includes('district')) return '0 0 100px';
-  if (lowerName.includes('note') || lowerName.includes('description')) {
-    return '2 1 200px';
-  }
-  
-  return '1 1 150px';
-};
-
-const getColumnMinWidth = (columnName) => {
-  const lowerName = columnName.toLowerCase();
-  
-  if (lowerName.includes('id')) return '60px';
-  if (lowerName.includes('date')) return '100px';
-  if (lowerName.includes('time')) return '80px';
-  if (lowerName.includes('note') || lowerName.includes('description')) {
-    return '150px';
-  }
-  
-  return '80px';
-};
+VirtualRow.displayName = 'VirtualRow';
 
 export default VirtualTable;

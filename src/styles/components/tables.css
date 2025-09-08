@@ -362,311 +362,191 @@
   border: 1px solid #374151;
 }
 
+.virtual-table-scroll {
+  overflow: auto;
+  background: transparent;
+}
+
 .virtual-table-header {
+  display: flex;
   position: sticky;
   top: 0;
   z-index: 10;
-  background-color: #1f2937;
-  border-bottom: 2px solid #4b5563;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.virtual-header-row {
-  display: flex;
+  background: rgba(55, 65, 81, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
   min-height: 50px;
-  align-items: center;
 }
 
-.virtual-header-cell {
-  padding: 12px 8px;
-  font-weight: 700;
-  font-size: 12px;
+.virtual-table-header-cell {
+  background: rgba(55, 65, 81, 0.9);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
   color: #f9fafb;
-  border-right: 1px solid #4b5563;
-  background-color: #1f2937;
-  display: flex;
-  align-items: center;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.025em;
+  line-height: 1.2;
+  transition: all 0.2s ease;
 }
 
-.virtual-header-cell:last-child {
+.virtual-table-header-cell:last-child {
   border-right: none;
 }
 
-.virtual-header-cell:hover {
-  background-color: #374151;
-  color: #ffffff;
+/* Sortable Header Styling */
+.virtual-table-header-cell.sortable-header {
+  cursor: pointer;
+  user-select: none;
 }
 
-.virtual-header-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
+.virtual-table-header-cell.sortable-header:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
 }
 
-.virtual-table-scroll {
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #6b7280 #1f2937;
-  background-color: #111827;
+.virtual-table-header-cell.sortable-header.active-sort {
+  background-color: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
-.virtual-table-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-
-.virtual-table-scroll::-webkit-scrollbar-thumb {
-  background-color: #6b7280;
+.sort-icon {
+  transition: all 0.2s ease;
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
+  padding: 2px 4px;
 }
 
-.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af;
+.sortable-header:hover .sort-icon,
+.sortable-header.active-sort .sort-icon {
+  opacity: 1;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
 }
 
+/* Row styling */
 .virtual-row {
   display: flex;
-  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
   cursor: pointer;
-  border-bottom: 1px solid #374151;
-  transition: background-color 0.2s ease;
   min-height: 50px;
 }
 
 .virtual-row:hover {
-  background-color: #1e3a8a;
-  box-shadow: inset 0 0 0 1px #3b82f6;
+  background-color: rgba(255, 255, 255, 0.05);
+  transform: translateX(2px);
 }
 
 .virtual-row.even {
-  background-color: #1f2937;
-}
-
-.virtual-row.odd {
-  background-color: #111827;
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 .virtual-row.virtual-entry {
-  background-color: #365314;
-  font-style: italic;
-}
-
-.virtual-row.virtual-entry:hover {
-  background-color: #4ade80;
-  color: #111827;
+  background-color: rgba(59, 130, 246, 0.05);
+  border-left: 3px solid #3b82f6;
 }
 
 .virtual-cell {
-  padding: 12px 8px;
-  border-right: 1px solid #374151;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-  line-height: 1.4;
-  display: flex;
-  align-items: center;
-  color: #e5e7eb;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  line-height: 1.3;
 }
 
 .virtual-cell:last-child {
   border-right: none;
 }
 
-.virtual-cell.center {
-  justify-content: center;
+/* Virtual entry indicators */
+.virtual-icon {
+  margin-right: 0.5rem;
+  color: #60a5fa;
+  font-size: 0.8em;
 }
 
-.virtual-cell.status {
-  font-weight: 600;
-  color: #10b981;
-  text-align: center;
-  justify-content: center;
+.virtual-text {
+  color: #93c5fd;
+  font-style: italic;
 }
 
-.virtual-cell.note {
-  font-size: 13px;
-  line-height: 1.3;
-  color: #d1d5db;
+.normal-text {
+  color: #e2e8f0;
 }
 
-.virtual-cell.actions {
-  flex: 0 0 120px;
-  justify-content: center;
-}
-
-/* ===== SCROLLBAR STYLING ===== */
-.table-scroll-container::-webkit-scrollbar,
-.virtual-table-scroll::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.table-scroll-container::-webkit-scrollbar-track,
-.virtual-table-scroll::-webkit-scrollbar-track {
-  background-color: #1f2937;
-  border-radius: 4px;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb,
-.virtual-table-scroll::-webkit-scrollbar-thumb {
-  background-color: #6b7280;
-  border-radius: 4px;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb:hover,
-.virtual-table-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af;
-}
-
-/* ===== RESPONSIVE DESIGN ===== */
-@media (max-width: 768px) {
-  .table-container {
-    margin: 8px 0;
-    border-radius: 6px;
-  }
-  
-  .table-header {
-    padding: 12px 16px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .table-title {
-    font-size: 16px;
-  }
-  
-  .table-info {
-    font-size: 12px;
-    padding: 6px 10px;
-  }
-  
-  .virtual-table-container {
-    border-radius: 6px;
-  }
-  
-  .virtual-header-cell,
-  .virtual-cell {
-    padding: 8px 4px;
-    font-size: 11px;
-  }
-  
-  .virtual-row {
-    min-height: 45px;
-  }
-  
-  .table-header-cell,
-  .table-cell {
-    padding: 8px 12px;
-    font-size: 12px;
-  }
-  
-  .action-btn {
-    padding: 4px 8px;
-    font-size: 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .table-scroll-container {
-    margin: 4px;
-  }
-  
-  .virtual-header-cell,
-  .virtual-cell {
-    padding: 6px 2px;
-    font-size: 10px;
-  }
-  
-  .virtual-row {
-    min-height: 40px;
-  }
-  
-  .table-header-cell,
-  .table-cell {
-    padding: 6px 8px;
-    font-size: 11px;
-  }
-}
-
-/* ===== FOCUS STATES ===== */
-.table-row:focus,
-.virtual-row:focus {
-  outline: 2px solid #6366f1;
-  outline-offset: -2px;
-}
-
-.action-btn:focus {
-  outline: 2px solid #6366f1;
-  outline-offset: 2px;
-}
-
-/* ===== TRANSITION EFFECTS ===== */
-.table-container,
-.virtual-table-container {
-  transition: box-shadow 0.3s ease;
-}
-
-.table-container:hover,
-.virtual-table-container:hover {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5);
-}
-
-/* ===== VIRTUAL TABLE EMPTY STATES ===== */
+/* Empty state styling */
 .virtual-table-empty {
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 300px;
-  background-color: #111827;
-  border: 1px solid #374151;
+  justify-content: center;
+  min-height: 400px;
+  background: #1e293b;
   border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .empty-state {
   text-align: center;
-  color: #9ca3af;
-  font-size: 16px;
-  padding: 40px;
+  color: #94a3b8;
+  font-size: 1.125rem;
+  padding: 2rem;
 }
 
-/* ===== VIRTUAL ICONS AND TEXT ===== */
-.virtual-icon {
-  margin-right: 4px;
-  font-size: 12px;
-  color: #10b981;
+/* Responsive adjustments */
+@media (max-width: 1400px) {
+  .virtual-table-header-cell {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.375rem !important;
+  }
+  
+  .virtual-cell {
+    padding: 0.5rem 0.375rem !important;
+    font-size: 0.8rem;
+  }
 }
 
-.virtual-text {
-  font-style: italic;
-  opacity: 0.9;
-  color: #10b981;
+@media (max-width: 1200px) {
+  .virtual-table-header-cell {
+    font-size: 0.65rem;
+    padding: 0.5rem 0.25rem !important;
+  }
+  
+  .virtual-cell {
+    padding: 0.5rem 0.25rem !important;
+    font-size: 0.75rem;
+  }
 }
 
-.normal-text {
-  font-style: normal;
-  color: #e5e7eb;
+@media (max-width: 1024px) {
+  .virtual-table-header-cell {
+    font-size: 0.6rem;
+    padding: 0.4rem 0.2rem !important;
+  }
+  
+  .virtual-cell {
+    padding: 0.4rem 0.2rem !important;
+    font-size: 0.7rem;
+  }
 }
 
-/* Responsive Design for Virtual Table */
 @media (max-width: 768px) {
   .virtual-table-container {
-    font-size: 12px;
+    overflow-x: auto;
   }
   
-  .virtual-header-cell,
+  .virtual-table-header {
+    min-width: 800px;
+  }
+  
+  .virtual-table-header-cell {
+    font-size: 0.55rem;
+    padding: 0.3rem 0.15rem !important;
+    min-width: 60px;
+  }
+  
   .virtual-cell {
-    padding: 8px 4px;
-    font-size: 11px;
-  }
-  
-  .virtual-row {
-    min-height: 45px;
+    padding: 0.3rem 0.15rem !important;
+    font-size: 0.65rem;
   }
 }
