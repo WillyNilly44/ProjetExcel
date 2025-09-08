@@ -18,6 +18,7 @@
 @import './components/user-management.css';
 @import 'components/kpi.css';
 @import './components/threshold-manager.css';
+@import './components/passwordChange.css';
 
 
 /* Utilities */

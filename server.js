@@ -36,7 +36,6 @@ const config = {
 };
 
 if (!config.server || !config.database || !config.user || !config.password) {
-
   process.exit(1);
 }
 
@@ -54,7 +53,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-const loginHandler = require('./api/loginuser');
+const loginHandler = require('./api/login');
+const changePasswordHandler = require('./api/changepassword');
 const dbConnectionHandler = require('./api/dbconnection');
 const addEntryHandler = require('./api/addentryrec');
 const deleteEntryHandler = require('./api/deleteentry');
@@ -71,13 +71,23 @@ const addKpiHandler = require('./api/addkpi');
 const updateKpiHandler = require('./api/updatekpi');
 const deleteKpiHandler = require('./api/deletekpi');
 
-app.post('/api/loginuser', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   const event = {
     httpMethod: 'POST',
     body: JSON.stringify(req.body),
     headers: req.headers
   };
   const result = await loginHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+app.post('/api/changepassword', async (req, res) => {
+  const event = {
+    httpMethod: 'POST',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await changePasswordHandler.handler(event, {});
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
@@ -101,13 +111,13 @@ app.post('/api/addentryrec', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
-// Update the delete entry endpoint
+// Update the delete entry endpoint with correct table names
 app.delete('/api/deleteentry', async (req, res) => {
   try {
     const { id, user } = req.body;
     
     // Verify user information
-    if (!user || !user.email) {
+    if (!user || !user.username) {
       return res.status(401).json({
         success: false,
         error: 'User authentication required'
@@ -120,13 +130,13 @@ app.delete('/api/deleteentry', async (req, res) => {
     }
 
     const userRequest = new sql.Request();
-    userRequest.input('email', sql.NVarChar(255), user.email);
+    userRequest.input('username', sql.VarChar(10), user.username);
     
     const userResult = await userRequest.query(`
       SELECT u.*, l.level_Name 
-      FROM users u 
-      LEFT JOIN access_levels l ON u.level_id = l.id 
-      WHERE u.username = @email
+      FROM LOG_ENTRIES_USER u 
+      LEFT JOIN LOG_ENTRIES_LEVELS l ON u.level_id = l.id 
+      WHERE u.username = @username
     `);
 
     if (userResult.recordset.length === 0) {
@@ -296,12 +306,9 @@ app.delete('/api/deletekpi', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
-// Add these routes to your existing API file (e.g., server.js or routes.js)
-
 // GET /api/getthresholds - Fetch thresholds from database
 app.get('/api/getthresholds', async (req, res) => {
   try {
-
     // Ensure we're connected to the database
     if (!sql.connected) {
       await sql.connect(config);
@@ -342,7 +349,6 @@ app.get('/api/getthresholds', async (req, res) => {
 // POST /api/savethresholds - Save thresholds to database
 app.post('/api/savethresholds', async (req, res) => {
   try {
-
     const { 
       maintenance_yellow, 
       maintenance_red, 
@@ -412,7 +418,6 @@ app.post('/api/savethresholds', async (req, res) => {
 
     const result = await mainRequest.query(query);
 
-
     res.json({
       success: true,
       message: `Thresholds ${hasExistingThresholds ? 'updated' : 'saved'} successfully`,
@@ -427,13 +432,13 @@ app.post('/api/savethresholds', async (req, res) => {
   }
 });
 
-// Add column endpoint
+// Add column endpoint - Updated with correct table references
 app.post('/api/add-column', async (req, res) => {
   try {
     const { columnData, user } = req.body;
     
     // Verify user is Administrator
-    if (!user || !user.email) {
+    if (!user || !user.username) {
       return res.status(401).json({
         success: false,
         error: 'User authentication required'
@@ -444,15 +449,15 @@ app.post('/api/add-column', async (req, res) => {
       await sql.connect(config);
     }
 
-    // Check user permissions
+    // Check user permissions using correct table names
     const userRequest = new sql.Request();
-    userRequest.input('email', sql.NVarChar(255), user.email);
+    userRequest.input('username', sql.VarChar(10), user.username);
     
     const userResult = await userRequest.query(`
       SELECT u.*, l.level_Name 
-      FROM users u 
-      LEFT JOIN access_levels l ON u.level_id = l.id 
-      WHERE u.username = @email
+      FROM LOG_ENTRIES_USER u 
+      LEFT JOIN LOG_ENTRIES_LEVELS l ON u.level_id = l.id 
+      WHERE u.username = @username
     `);
 
     if (userResult.recordset.length === 0) {
@@ -563,8 +568,8 @@ app.post('/api/add-column', async (req, res) => {
     const alterRequest = new sql.Request();
     const alterSQL = `ALTER TABLE LOG_ENTRIES ADD [${sanitizedName}] ${sqlType} ${nullConstraint}${defaultConstraint}`;
     
-    
     await alterRequest.query(alterSQL);
+    
     res.json({
       success: true,
       message: `Column '${sanitizedName}' added successfully`,
@@ -575,7 +580,6 @@ app.post('/api/add-column', async (req, res) => {
     });
 
   } catch (error) {
-    
     // Handle specific SQL errors
     let errorMessage = error.message;
     if (error.message.includes('Invalid column name')) {
@@ -593,7 +597,7 @@ app.post('/api/add-column', async (req, res) => {
   }
 });
 
-// Add this new endpoint (keeping the existing /api/add-column as well)
+// Add this new endpoint - Updated with correct table references
 app.post('/api/addcolumn', async (req, res) => {
   try {
     const { columnName, dataType, isNullable, defaultValue, user } = req.body;
@@ -606,16 +610,34 @@ app.post('/api/addcolumn', async (req, res) => {
       });
     }
 
-    // Check user permissions
-    if (!user.role || user.role !== 'Administrator') {
+    if (!sql.connected) {
+      await sql.connect(config);
+    }
+
+    // Check user permissions using correct table names
+    const userRequest = new sql.Request();
+    userRequest.input('username', sql.VarChar(10), user.username);
+    
+    const userResult = await userRequest.query(`
+      SELECT u.*, l.level_Name 
+      FROM LOG_ENTRIES_USER u 
+      LEFT JOIN LOG_ENTRIES_LEVELS l ON u.level_id = l.id 
+      WHERE u.username = @username
+    `);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'User not found in database'
+      });
+    }
+
+    const dbUser = userResult.recordset[0];
+    if (dbUser.level_Name !== 'Administrator') {
       return res.status(403).json({
         success: false,
         error: 'Administrator privileges required to add columns'
       });
-    }
-
-    if (!sql.connected) {
-      await sql.connect(config);
     }
 
     // Validate column data

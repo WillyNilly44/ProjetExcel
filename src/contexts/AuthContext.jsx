@@ -12,72 +12,60 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
-  // Add role definitions
-  const roleDefinitions = {
-    'Administrator': '👑',
-    'Updater': '⚡',
-    'Viewer': '👨‍💼'
-  };
-
-  // Load user from localStorage on app start
   useEffect(() => {
-    const loadStoredUser = () => {
-      try {
-        const storedUser = localStorage.getItem('logViewerUser');
-        const storedTimestamp = localStorage.getItem('logViewerUserTimestamp');
-        
-        if (storedUser && storedTimestamp) {
-          const userObj = JSON.parse(storedUser);
-          const timestamp = parseInt(storedTimestamp);
-          const now = Date.now();
-          
-          // Check if the stored session is less than 24 hours old
-          const sessionAge = now - timestamp;
-          const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-          
-          if (sessionAge < maxSessionAge) {
-            setUser(userObj);
-            setIsAuthenticated(true); // ADD THIS LINE
-          } else {
-            localStorage.removeItem('logViewerUser');
-            localStorage.removeItem('logViewerUserTimestamp');
-          }
-        }
-      } catch (error) {
-        localStorage.removeItem('logViewerUser');
-        localStorage.removeItem('logViewerUserTimestamp');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadStoredUser();
+    console.log('AuthProvider: Starting auth check...');
+    checkExistingAuth();
   }, []);
 
-  // Save user to localStorage whenever user state changes
-  useEffect(() => {
-    if (user) {
-      try {
-        localStorage.setItem('logViewerUser', JSON.stringify(user));
-        localStorage.setItem('logViewerUserTimestamp', Date.now().toString());
-        setIsAuthenticated(true); // ADD THIS LINE
-      } catch (error) {
+  const checkExistingAuth = () => {
+    console.log('Checking existing auth...');
+    try {
+      const storedUser = localStorage.getItem('logViewerUser');
+      const timestamp = localStorage.getItem('logViewerUserTimestamp');
+      
+      console.log('Stored user:', storedUser);
+      console.log('Timestamp:', timestamp);
+      
+      if (storedUser && timestamp) {
+        const userData = JSON.parse(storedUser);
+        const loginTime = parseInt(timestamp);
+        const currentTime = Date.now();
+        const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours
+        
+        console.log('Session check:', { loginTime, currentTime, expired: currentTime - loginTime >= sessionDuration });
+        
+        if (currentTime - loginTime < sessionDuration) {
+          console.log('Valid session found, setting user:', userData);
+          setUser(userData);
+          // Check if user must change password
+          if (userData.must_change_password) {
+            console.log('User must change password:', userData.must_change_password);
+            setMustChangePassword(true);
+          }
+        } else {
+          // Session expired
+          console.log('Session expired, logging out');
+          logout();
+        }
+      } else {
+        console.log('No stored session found');
       }
-    } else {
-      // Clear localStorage when user logs out
-      localStorage.removeItem('logViewerUser');
-      localStorage.removeItem('logViewerUserTimestamp');
-      setIsAuthenticated(false); // ADD THIS LINE
+    } catch (error) {
+      console.error('Error checking existing auth:', error);
+      logout();
+    } finally {
+      console.log('Setting loading to false');
+      setLoading(false);
     }
-  }, [user]);
+  };
 
   const login = async (username, password) => {
+    console.log('Attempting login for:', username);
     try {
-      const response = await fetch('/api/loginuser', {
+      const response = await fetch('/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,97 +73,129 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ username, password }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const userData = await response.json();
+      const data = await response.json();
+      console.log('Login response:', data);
       
-      if (userData.success && userData.user) {
-        setUser(userData.user);
-        setIsAuthenticated(true); // ADD THIS LINE
-        return { success: true, user: userData.user };
+      if (data.success && data.user) {
+        const userData = {
+          ...data.user,
+          role: getUserRole(data.user.level_Name || 'Viewer'),
+          must_change_password: data.user.must_change_password || false,
+          password_changed_at: data.user.password_changed_at || null
+        };
+        
+        console.log('Login successful, user data:', userData);
+        console.log('Must change password:', userData.must_change_password);
+        
+        setUser(userData);
+        localStorage.setItem('logViewerUser', JSON.stringify(userData));
+        localStorage.setItem('logViewerUserTimestamp', Date.now().toString());
+        
+        // Check if user must change password
+        if (userData.must_change_password) {
+          console.log('Setting mustChangePassword to true');
+          setMustChangePassword(true);
+        }
+        
+        return { success: true, user: userData };
       } else {
-        throw new Error(userData.error || 'Login failed');
+        return { success: false, error: data.error || 'Login failed' };
       }
     } catch (error) {
-      return { success: false, error: error.message };
+      console.error('Login error:', error);
+      return { success: false, error: 'Network error' };
+    }
+  };
+
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      if (!user) {
+        return { success: false, error: 'User not authenticated' };
+      }
+
+      const response = await fetch('/api/changepassword', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: user.username,
+          currentPassword: currentPassword,
+          newPassword: newPassword
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update user data to reflect password change
+        const updatedUser = {
+          ...user,
+          must_change_password: false,
+          password_changed_at: new Date().toISOString()
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem('logViewerUser', JSON.stringify(updatedUser));
+        setMustChangePassword(false);
+        
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, error: data.error || 'Password change failed' };
+      }
+    } catch (error) {
+      console.error('Change password error:', error);
+      return { success: false, error: 'Network error' };
     }
   };
 
   const logout = () => {
+    console.log('Logging out user');
     setUser(null);
-    setIsAuthenticated(false); // ADD THIS LINE
+    setMustChangePassword(false);
+    localStorage.removeItem('logViewerUser');
+    localStorage.removeItem('logViewerUserTimestamp');
   };
 
-  const hasPermission = (requiredRole) => {
-    if (!user || !isAuthenticated) {
-      return false;
+  const getUserRole = (levelName) => {
+    switch (levelName?.toLowerCase()) {
+      case 'administrator':
+        return 'admin';
+      case 'operator':
+        return 'operator';
+      case 'viewer':
+      default:
+        return 'viewer';
     }
+  };
 
-    // Check by level_Name (your current system)
-    if (requiredRole === 'Administrator') {
-      return user.level_Name === 'Administrator' || user.level_Name === 'Super Admin';
-    }
+  const hasPermission = (requiredLevel) => {
+    if (!user) return false;
     
-    if (requiredRole === 'Operator') {
-      return ['Administrator', 'Super Admin', 'Manager', 'Operator'].includes(user.level_Name);
-    }
-
-    if (requiredRole === 'Manager') {
-      return ['Administrator', 'Super Admin', 'Manager'].includes(user.level_Name);
-    }
-
-    // Also check by role field (new system)
-    if (user.role) {
-      if (requiredRole === 'Administrator') {
-        return user.role === 'Administrator';
-      }
-      
-      if (requiredRole === 'Operator') {
-        return user.role === 'Administrator' || user.role === 'Updater';
-      }
-    }
+    const userLevel = user.level_Name?.toLowerCase() || 'viewer';
     
-    return true;
-  };
-
-  // Add helper function to get role display
-  const getRoleDisplay = (roleName = null) => {
-    const role = roleName || user?.role || user?.level_Name;
-    const icon = roleDefinitions[role] || getLevelIcon(role) || '❓';
-    return `${icon} ${role}`;
-  };
-
-  // Helper function for level icons (from your existing code)
-  const getLevelIcon = (level) => {
-    const icons = {
-      'Super Admin': '👑',
-      'Administrator': '⚡',
-      'Manager': '👨‍💼',
-      'Operator': '🔧',
-      'Viewer': '👀',
-      'Guest': '👤'
-    };
-    return icons[level] || '👤';
+    switch (requiredLevel.toLowerCase()) {
+      case 'administrator':
+        return userLevel === 'administrator';
+      case 'operator':
+        return userLevel === 'operator' || userLevel === 'administrator';
+      case 'viewer':
+        return true; // Everyone can view
+      default:
+        return false;
+    }
   };
 
   const value = {
     user,
-    token,
-    isAuthenticated,
-    isLoading,
+    loading,
+    mustChangePassword,
+    setMustChangePassword,
     login,
     logout,
-    hasPermission,
-    getRoleDisplay,
-    roleDefinitions
+    changePassword,
+    hasPermission
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

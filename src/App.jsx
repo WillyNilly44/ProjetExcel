@@ -6,16 +6,20 @@ import UserManagement from './components/UserManagement';
 import DashboardTab from './components/DashboardTab';
 import KPITab from './components/KPITab';
 import MiniLogin from './components/MiniLogin';
+import PasswordChangeModal from './components/PasswordChangeModal';
 import './styles/index.css';
 
 function AppContent() {
-  const { isLoading, user, hasPermission } = useAuth();
+  // FIXED: Get logout function at component level, not inside onClick
+  const { loading, user, hasPermission, mustChangePassword, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState([]);
   const [columns, setColumns] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('Ready to load');
   const [connectionInfo, setConnectionInfo] = useState(null);
+
+  console.log('AppContent render:', { loading, user: !!user, mustChangePassword });
 
   // Fetch data function
   const fetchLogEntries = async () => {
@@ -163,20 +167,52 @@ function AppContent() {
     return value.toString();
   };
 
-  // Fetch data when component mounts
+  // Fetch data when component mounts (regardless of auth status)
   useEffect(() => {
     fetchLogEntries();
   }, []);
 
-  // Show loading screen while checking stored authentication
-  if (isLoading) {
+  // FIXED: Handle logout properly
+  const handleLogout = () => {
+    logout();
+    // Don't force reload - let React handle the state change
+  };
+
+  // Show password change modal if user is logged in and must change password
+  if (user && mustChangePassword) {
     return (
-      <div className="app-loading">
-        <div className="loading-container">
-          <div className="loading-spinner">⏳</div>
-          <h2>Loading Log Viewer...</h2>
-          <p>Checking authentication...</p>
+      <div className="app">
+        <div className="app-header" style={{ 
+          padding: '1rem', 
+          background: '#667eea', 
+          color: 'white', 
+          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h1 style={{ margin: 0 }}>📊 Log Viewer - Password Change Required</h1>
+            <p style={{ margin: '0.5rem 0 0 0' }}>Welcome, {user.name} ({user.username})</p>
+          </div>
+          <button 
+            onClick={handleLogout}
+            style={{ 
+              background: 'rgba(255,255,255,0.2)', 
+              border: '1px solid white', 
+              color: 'white', 
+              padding: '0.5rem 1rem', 
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            🚪 Logout
+          </button>
         </div>
+        <PasswordChangeModal 
+          isOpen={mustChangePassword}
+          isRequired={true}
+        />
       </div>
     );
   }
@@ -205,6 +241,25 @@ function AppContent() {
         return <LogEntriesTable {...commonProps} />;
       
       case 'users':
+        // User Management requires authentication
+        if (!user) {
+          return (
+            <div className="auth-required" style={{ 
+              padding: '2rem', 
+              textAlign: 'center',
+              background: '#f8f9fa',
+              margin: '2rem',
+              borderRadius: '8px',
+              border: '1px solid #dee2e6'
+            }}>
+              <h2>🔐 Authentication Required</h2>
+              <p>Please log in to access User Management.</p>
+              <div style={{ marginTop: '1rem' }}>
+                <MiniLogin />
+              </div>
+            </div>
+          );
+        }
         return <UserManagement />;
       
       default:
@@ -212,17 +267,58 @@ function AppContent() {
     }
   };
 
+  // Main app content (always show regardless of auth status)
   return (
     <div className="App">
-      <MiniLogin />
-      
+      {/* Header with login status */}
+      <div className="app-header" style={{ 
+        background: '#f8f9fa', 
+        padding: '0.5rem 1rem', 
+        borderBottom: '1px solid #dee2e6',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <strong>📊 Log Viewer Application</strong>
+          {user && (
+            <span style={{ marginLeft: '1rem', color: '#28a745' }}>
+              ✅ Logged in as {user.name} ({user.level_Name})
+            </span>
+          )}
+        </div>
+        <div>
+          {user ? (
+            <button 
+              onClick={handleLogout}
+              style={{ 
+                background: '#dc3545', 
+                border: 'none', 
+                color: 'white', 
+                padding: '0.25rem 0.75rem', 
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.875rem'
+              }}
+            >
+              🚪 Logout
+            </button>
+          ) : (
+            <MiniLogin />
+          )}
+        </div>
+      </div>
+
       <TabNavigation 
         activeTab={activeTab} 
         onTabChange={setActiveTab} 
         hasPermission={hasPermission}
+        user={user}
       />
 
-      {renderActiveTab()}
+      <div className="tab-content">
+        {renderActiveTab()}
+      </div>
     </div>
   );
 }
