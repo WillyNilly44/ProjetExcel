@@ -17,7 +17,9 @@ export default function AddEntryModal({
   const [incidentSuggestions, setIncidentSuggestions] = useState([]); 
   const [showIncidentSuggestions, setShowIncidentSuggestions] = useState(false); 
   const [isRecurrence, setIsRecurrence] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState('weekly'); // 'weekly' or 'monthly'
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
+  const [selectedDayOfMonth, setSelectedDayOfMonth] = useState('');
 
   useEffect(() => {
     if (isOpen && columns.length > 0) {
@@ -81,10 +83,11 @@ export default function AddEntryModal({
     try {
       const submissionData = {
         ...formData,
-
         uploader: currentUser?.username || 'Unknown User',
         isRecurrence,
-        day_of_the_week: isRecurrence ? selectedDayOfWeek : null 
+        recurrence_type: isRecurrence ? recurrenceType : null,
+        day_of_the_week: isRecurrence && recurrenceType === 'weekly' ? selectedDayOfWeek : null,
+        day_of_the_month: isRecurrence && recurrenceType === 'monthly' ? selectedDayOfMonth : null
       };
       
       await onSave(submissionData);
@@ -119,15 +122,19 @@ export default function AddEntryModal({
       }
     });
   
-    
     if (formData.log_start && formData.log_end) {
       if (formData.log_end <= formData.log_start) {
         newErrors.log_end = 'End time must be after start time';
       }
     }
     
-    if (isRecurrence && !selectedDayOfWeek) {
-      newErrors.recurrence = 'Please select a day of the week for recurrence';
+    if (isRecurrence) {
+      if (recurrenceType === 'weekly' && !selectedDayOfWeek) {
+        newErrors.recurrence = 'Please select a day of the week for weekly recurrence';
+      }
+      if (recurrenceType === 'monthly' && !selectedDayOfMonth) {
+        newErrors.recurrence = 'Please select a day of the month for monthly recurrence';
+      }
     }
     
     setErrors(newErrors);
@@ -196,6 +203,44 @@ export default function AddEntryModal({
       incident && incident.toLowerCase().includes(inputValue.toLowerCase())
     );
   };
+
+  // Generate day of month options
+  const getDayOfMonthOptions = () => {
+    const options = [];
+    for (let i = 1; i <= 31; i++) {
+      options.push({
+        value: i.toString(),
+        label: `${i}${getOrdinalSuffix(i)} day of the month`
+      });
+    }
+    // Add special options
+    options.push({
+      value: 'last',
+      label: 'Last day of the month'
+    });
+    options.push({
+      value: 'last-weekday',
+      label: 'Last weekday of the month'
+    });
+    return options;
+  };
+
+  const getOrdinalSuffix = (num) => {
+    const lastDigit = num % 10;
+    const lastTwoDigits = num % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+      return 'th';
+    }
+    
+    switch (lastDigit) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  };
+
   const renderInput = (column) => {
     const columnName = column.COLUMN_NAME;
     const dataType = column.DATA_TYPE.toLowerCase();
@@ -218,6 +263,7 @@ export default function AddEntryModal({
       borderColor: '#60a5fa',
       boxShadow: '0 0 0 3px rgba(96, 165, 250, 0.1)'
     };
+
     if (columnName.toLowerCase().includes('uploader')) {
       const uploaderValue = currentUser?.username || 'Unknown User';
       
@@ -571,7 +617,9 @@ export default function AddEntryModal({
     setFormData({});
     setErrors({});
     setIsRecurrence(false);
+    setRecurrenceType('weekly');
     setSelectedDayOfWeek('');
+    setSelectedDayOfMonth('');
   };
 
   if (!isOpen) return null;
@@ -687,7 +735,7 @@ export default function AddEntryModal({
               ))}
             </div>
 
-            {/* Recurrence Section */}
+            {/* Enhanced Recurrence Section */}
             <div style={{
               marginTop: '32px',
               padding: '20px',
@@ -713,7 +761,7 @@ export default function AddEntryModal({
                 }}>
                   Recurrence Settings
                 </h4>
-                {isRecurrence && selectedDayOfWeek && (
+                {isRecurrence && (
                   <div style={{
                     padding: '4px 8px',
                     backgroundColor: '#3b82f6',
@@ -722,7 +770,12 @@ export default function AddEntryModal({
                     fontSize: '12px',
                     fontWeight: '500'
                   }}>
-                    Every {selectedDayOfWeek}
+                    {recurrenceType === 'weekly' && selectedDayOfWeek && `Every ${selectedDayOfWeek}`}
+                    {recurrenceType === 'monthly' && selectedDayOfMonth && (
+                      selectedDayOfMonth === 'last' ? 'Last day of month' :
+                      selectedDayOfMonth === 'last-weekday' ? 'Last weekday of month' :
+                      `${selectedDayOfMonth}${getOrdinalSuffix(parseInt(selectedDayOfMonth))} of month`
+                    )}
                   </div>
                 )}
               </div>
@@ -742,6 +795,7 @@ export default function AddEntryModal({
                     setIsRecurrence(e.target.checked);
                     if (!e.target.checked) {
                       setSelectedDayOfWeek('');
+                      setSelectedDayOfMonth('');
                     }
                   }}
                   style={{
@@ -763,8 +817,75 @@ export default function AddEntryModal({
                 </label>
               </div>
               
-              {/* Day of Week Selection */}
+              {/* Recurrence Type Selection */}
               {isRecurrence && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#e2e8f0',
+                    marginBottom: '8px'
+                  }}>
+                    🔁 Recurrence Type *
+                  </label>
+                  <div style={{
+                    display: 'flex',
+                    gap: '12px',
+                    marginBottom: '16px'
+                  }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      padding: '8px 16px',
+                      backgroundColor: recurrenceType === 'weekly' ? '#3b82f6' : '#334155',
+                      borderRadius: '8px',
+                      transition: 'all 0.2s ease'
+                    }}>
+                      <input
+                        type="radio"
+                        name="recurrenceType"
+                        value="weekly"
+                        checked={recurrenceType === 'weekly'}
+                        onChange={(e) => {
+                          setRecurrenceType(e.target.value);
+                          setSelectedDayOfMonth(''); // Clear monthly selection
+                        }}
+                        style={{ margin: 0 }}
+                      />
+                      <span style={{ color: '#e2e8f0', fontSize: '14px' }}>📅 Weekly</span>
+                    </label>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      padding: '8px 16px',
+                      backgroundColor: recurrenceType === 'monthly' ? '#3b82f6' : '#334155',
+                      borderRadius: '8px',
+                      transition: 'all 0.2s ease'
+                    }}>
+                      <input
+                        type="radio"
+                        name="recurrenceType"
+                        value="monthly"
+                        checked={recurrenceType === 'monthly'}
+                        onChange={(e) => {
+                          setRecurrenceType(e.target.value);
+                          setSelectedDayOfWeek(''); // Clear weekly selection
+                        }}
+                        style={{ margin: 0 }}
+                      />
+                      <span style={{ color: '#e2e8f0', fontSize: '14px' }}>🗓️ Monthly</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+              
+              {/* Day of Week Selection (Weekly) */}
+              {isRecurrence && recurrenceType === 'weekly' && (
                 <div style={{ marginTop: '16px' }}>
                   <label style={{
                     display: 'block',
@@ -799,17 +920,43 @@ export default function AddEntryModal({
                     <option value="saturday">📅 Saturday</option>
                     <option value="sunday">📅 Sunday</option>
                   </select>
-                  
-                  {errors.recurrence && (
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#fecaca',
-                      marginTop: '6px',
-                      fontStyle: 'italic'
-                    }}>
-                      {errors.recurrence}
-                    </div>
-                  )}
+                </div>
+              )}
+
+              {/* Day of Month Selection (Monthly) */}
+              {isRecurrence && recurrenceType === 'monthly' && (
+                <div style={{ marginTop: '16px' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#e2e8f0',
+                    marginBottom: '8px'
+                  }}>
+                    🗓️ Day of the Month *
+                  </label>
+                  <select
+                    value={selectedDayOfMonth}
+                    onChange={(e) => setSelectedDayOfMonth(e.target.value)}
+                    style={{
+                      width: '100%',
+                      maxWidth: '300px',
+                      padding: '12px 16px',
+                      border: `2px solid ${errors.recurrence ? '#ef4444' : '#334155'}`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: errors.recurrence ? '#7f1d1d' : '#1e293b',
+                      color: '#e2e8f0',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="">Select a day...</option>
+                    {getDayOfMonthOptions().map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                   
                   <div style={{
                     fontSize: '12px',
@@ -817,7 +964,19 @@ export default function AddEntryModal({
                     marginTop: '6px',
                     fontStyle: 'italic'
                   }}>
+                    💡 If the selected day doesn't exist in a month (e.g., 31st in February), it will use the last available day of that month.
                   </div>
+                </div>
+              )}
+              
+              {errors.recurrence && (
+                <div style={{
+                  fontSize: '12px',
+                  color: '#fecaca',
+                  marginTop: '6px',
+                  fontStyle: 'italic'
+                }}>
+                  {errors.recurrence}
                 </div>
               )}
             </div>

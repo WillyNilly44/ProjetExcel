@@ -244,91 +244,110 @@ export default function LogEntriesTable({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    let recurringFound = 0;
-    let virtualCreated = 0;
-    
     data.forEach(entry => {
-      const hasRecurrence = entry.is_recurring === 1 || entry.is_recurring === true || entry.recurrence_day;
+      const hasRecurrence = entry.recurrence_type && (entry.recurrence_type === 'weekly' || entry.recurrence_type === 'monthly');
       
-      if (hasRecurrence && entry.recurrence_day) {
-        recurringFound++;
-        
-        const dayMapping = {
-          'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
-          'thursday': 4, 'friday': 5, 'saturday': 6
-        };
-        
-        const targetDay = dayMapping[entry.recurrence_day.toLowerCase()];
-        
-        if (targetDay !== undefined) {
-          const weekOffsets = [-1, 1]; 
+      if (hasRecurrence) {
+        if (entry.recurrence_type === 'weekly' && entry.day_of_the_week) {
+          // Weekly recurrence logic (existing)
+          const dayMapping = {
+            'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
+            'thursday': 4, 'friday': 5, 'saturday': 6
+          };
           
-          weekOffsets.forEach(weekOffset => {
-            const startOfTargetWeek = new Date(today);
-            startOfTargetWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
+          const targetDay = dayMapping[entry.day_of_the_week.toLowerCase()];
+          
+          if (targetDay !== undefined) {
+            const weekOffsets = [-1, 1];
             
-            const recurringDate = new Date(startOfTargetWeek);
-            recurringDate.setDate(startOfTargetWeek.getDate() + targetDay);
-            recurringDate.setHours(0, 0, 0, 0); 
+            weekOffsets.forEach(weekOffset => {
+              const startOfTargetWeek = new Date(today);
+              startOfTargetWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
+              
+              const recurringDate = new Date(startOfTargetWeek);
+              recurringDate.setDate(startOfTargetWeek.getDate() + targetDay);
+              recurringDate.setHours(0, 0, 0, 0);
+              
+              const originalDate = new Date(entry.log_date);
+              originalDate.setHours(0, 0, 0, 0);
+              
+              if (recurringDate.getTime() !== originalDate.getTime()) {
+                const virtualEntry = createVirtualEntry(entry, recurringDate, 'weekly');
+                expandedData.push(virtualEntry);
+              }
+            });
+          }
+        } 
+        else if (entry.recurrence_type === 'monthly') {
+          // Monthly recurrence logic
+          const monthOffsets = [-1, 1]; // Previous and next month
+          
+          monthOffsets.forEach(monthOffset => {
+            const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+            let recurringDate;
             
-            const originalDate = new Date(entry.log_date);
-            originalDate.setHours(0, 0, 0, 0);
-            
-            if (recurringDate.getTime() === originalDate.getTime()) {
-              return; 
+            if (entry.monthly_pattern === 'last') {
+              // Last day of the month
+              recurringDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+            } else if (entry.monthly_pattern === 'last-weekday') {
+              // Last weekday of the month
+              recurringDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+              while (recurringDate.getDay() === 0 || recurringDate.getDay() === 6) {
+                recurringDate.setDate(recurringDate.getDate() - 1);
+              }
+            } else if (entry.day_of_the_month) {
+              // Specific day of the month
+              const lastDayOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate();
+              const dayOfMonth = Math.min(parseInt(entry.day_of_the_month), lastDayOfMonth);
+              recurringDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), dayOfMonth);
             }
             
-            const isFutureDate = recurringDate > today;
-            
-            const statusColumn = columns.find(col => 
-              col.COLUMN_NAME.toLowerCase().includes('status') ||
-              col.COLUMN_NAME.toLowerCase().includes('completion')
-            );
-            
-            const virtualEntry = {
-              ...entry,
-              id: `${entry.id}_recurring_${recurringDate.getTime()}`,
-              log_date: recurringDate.toISOString().split('T')[0],
-              is_virtual: true,
-              original_id: entry.id,
-              week_offset: weekOffset,
-              target_day: entry.recurrence_day,
-              generated_on: today.toISOString().split('T')[0],
-              relative_to_current: true
-            };
-            
-            if (statusColumn && isFutureDate) {
-              virtualEntry[statusColumn.COLUMN_NAME] = 'Not Completed';
+            if (recurringDate) {
+              recurringDate.setHours(0, 0, 0, 0);
+              
+              const originalDate = new Date(entry.log_date);
+              originalDate.setHours(0, 0, 0, 0);
+              
+              if (recurringDate.getTime() !== originalDate.getTime()) {
+                const virtualEntry = createVirtualEntry(entry, recurringDate, 'monthly');
+                expandedData.push(virtualEntry);
+              }
             }
-            
-            if (isFutureDate) {
-              if ('status' in virtualEntry) virtualEntry.status = 'Not Completed';
-              if ('completion_status' in virtualEntry) virtualEntry.completion_status = 'Not Completed';
-              if ('task_status' in virtualEntry) virtualEntry.task_status = 'Not Completed';
-              if ('log_status' in virtualEntry) virtualEntry.log_status = 'Not Completed';
-            }
-            
-            virtualCreated++;
-            expandedData.push(virtualEntry);
           });
         }
       }
-    });    
+    });
     
     return expandedData.sort((a, b) => {
       const dateA = new Date(a.log_date);
       const dateB = new Date(b.log_date);
-      
-      const dateDiff = dateB - dateA;
-      if (dateDiff !== 0) {
-        return dateDiff;
-      }
-      
-      const idA = typeof a.id === 'string' ? parseInt(a.original_id || a.id) : a.id;
-      const idB = typeof b.id === 'string' ? parseInt(b.original_id || b.id) : b.id;
-      
-      return idB - idA; 
+      return dateB - dateA;
     });
+  };
+
+  const createVirtualEntry = (entry, recurringDate, recurrenceType) => {
+    const isFutureDate = recurringDate > new Date();
+    
+    const statusColumn = columns.find(col => 
+      col.COLUMN_NAME.toLowerCase().includes('status') ||
+      col.COLUMN_NAME.toLowerCase().includes('completion')
+    );
+    
+    const virtualEntry = {
+      ...entry,
+      id: `${entry.id}_recurring_${recurrenceType}_${recurringDate.getTime()}`,
+      log_date: recurringDate.toISOString().split('T')[0],
+      is_virtual: true,
+      original_id: entry.id,
+      recurrence_type: recurrenceType,
+      generated_on: new Date().toISOString().split('T')[0]
+    };
+    
+    if (statusColumn && isFutureDate) {
+      virtualEntry[statusColumn.COLUMN_NAME] = 'Not Completed';
+    }
+    
+    return virtualEntry;
   };
 
   // SINGLE getFilteredData function with filtering AND sorting
