@@ -1,8 +1,77 @@
-/* Main app container with compact spacing */
+/* App Layout */
 .App {
   min-height: 100vh;
-  background-color: var(--bg-primary);
-  padding: var(--space-md);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+  position: relative;
+}
+
+/* Main Content Area - FIXED: Remove white background */
+.tab-content {
+  min-height: calc(100vh - 60px);
+  padding: 2rem;
+  background: rgba(30, 41, 59, 0.95); /* Changed from white to dark */
+  margin: 0 1rem 1rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(71, 85, 105, 0.3); /* Changed border color */
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.3),
+    0 10px 10px -5px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  color: #f8fafc; /* Changed text color to light */
+}
+
+/* Auth Required Styling */
+.auth-required {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: linear-gradient(135deg, #1e293b, #334155); /* Changed to dark */
+  border-radius: 16px;
+  border: 2px solid #3b82f6; /* Changed border color */
+  margin: 2rem;
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+.auth-required h2 {
+  color: #f8fafc; /* Changed to light text */
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.auth-required p {
+  color: #cbd5e1; /* Changed to light text */
+  margin-bottom: 2rem;
+  font-size: 1.125rem;
+}
+
+/* Access Denied Styling */
+.access-denied {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.access-denied-content {
+  text-align: center;
+  padding: 3rem;
+  background: linear-gradient(135deg, #fecaca, #fca5a5);
+  border-radius: 16px;
+  border: 2px solid #ef4444;
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+}
+
+.access-denied-content h2 {
+  color: #dc2626;
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.access-denied-content p {
+  color: #b91c1c;
+  font-size: 1.125rem;
 }
 
 /* Log entries container */

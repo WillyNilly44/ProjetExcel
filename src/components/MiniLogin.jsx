@@ -79,6 +79,13 @@ const MiniLogin = () => {
     setTimeout(() => setLoginStatus(''), 3000);
   };
 
+  const handleCancel = () => {
+    setIsOpen(false);
+    setUsername('');
+    setPassword('');
+    setError('');
+  };
+
   if (isAuthenticated) {
     return (
       <div className="mini-login" ref={dropdownRef}>
@@ -173,13 +180,23 @@ const MiniLogin = () => {
               />
             </div>
 
-            <button 
-              type="submit" 
-              className="mini-login-btn"
-              disabled={isLoading}
-            >
-              {isLoading ? '⏳ Signing in...' : '🔑 Sign In'}
-            </button>
+            <div className="mini-login-actions">
+              <button 
+                type="submit" 
+                className="mini-login-btn"
+                disabled={isLoading}
+              >
+                {isLoading ? '⏳ Signing in...' : '🔑 Sign In'}
+              </button>
+              <button
+                type="button"
+                className="login-cancel"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+            </div>
           </form>
         </div>
       )}

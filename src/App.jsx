@@ -10,7 +10,6 @@ import PasswordChangeModal from './components/PasswordChangeModal';
 import './styles/index.css';
 
 function AppContent() {
-  // FIXED: Get logout function at component level, not inside onClick
   const { loading, user, hasPermission, mustChangePassword, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [data, setData] = useState([]);
@@ -20,6 +19,13 @@ function AppContent() {
   const [connectionInfo, setConnectionInfo] = useState(null);
 
   console.log('AppContent render:', { loading, user: !!user, mustChangePassword });
+
+  // FIXED: Reset to dashboard when user logs out and is on users tab
+  useEffect(() => {
+    if (!user && activeTab === 'users') {
+      setActiveTab('dashboard');
+    }
+  }, [user, activeTab]);
 
   // Fetch data function
   const fetchLogEntries = async () => {
@@ -172,40 +178,19 @@ function AppContent() {
     fetchLogEntries();
   }, []);
 
-  // FIXED: Handle logout properly
   const handleLogout = () => {
     logout();
-    // Don't force reload - let React handle the state change
+    // FIXED: Always go back to dashboard after logout
+    setActiveTab('dashboard');
   };
 
   // Show password change modal if user is logged in and must change password
   if (user && mustChangePassword) {
     return (
-      <div className="app">
-        <div className="app-header" style={{ 
-          padding: '1rem', 
-          background: '#667eea', 
-          color: 'white', 
-          textAlign: 'center',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div>
-            <h1 style={{ margin: 0 }}>📊 Log Viewer - Password Change Required</h1>
-            <p style={{ margin: '0.5rem 0 0 0' }}>Welcome, {user.name} ({user.username})</p>
-          </div>
-          <button 
-            onClick={handleLogout}
-            style={{ 
-              background: 'rgba(255,255,255,0.2)', 
-              border: '1px solid white', 
-              color: 'white', 
-              padding: '0.5rem 1rem', 
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
+      <div className="App">
+        <div className="user-info-corner">
+          <span>✅ {user.name} ({user.level_Name})</span>
+          <button onClick={handleLogout} className="logout-btn">
             🚪 Logout
           </button>
         </div>
@@ -241,24 +226,10 @@ function AppContent() {
         return <LogEntriesTable {...commonProps} />;
       
       case 'users':
-        // User Management requires authentication
+        // FIXED: Don't render UserManagement at all if not logged in
+        // This prevents the duplicate login buttons
         if (!user) {
-          return (
-            <div className="auth-required" style={{ 
-              padding: '2rem', 
-              textAlign: 'center',
-              background: '#f8f9fa',
-              margin: '2rem',
-              borderRadius: '8px',
-              border: '1px solid #dee2e6'
-            }}>
-              <h2>🔐 Authentication Required</h2>
-              <p>Please log in to access User Management.</p>
-              <div style={{ marginTop: '1rem' }}>
-                <MiniLogin />
-              </div>
-            </div>
-          );
+          return null; // This will be handled by the corner login
         }
         return <UserManagement />;
       
@@ -267,47 +238,43 @@ function AppContent() {
     }
   };
 
-  // Main app content (always show regardless of auth status)
+  // Main app content
   return (
     <div className="App">
-      {/* Header with login status */}
-      <div className="app-header" style={{ 
-        background: '#f8f9fa', 
-        padding: '0.5rem 1rem', 
-        borderBottom: '1px solid #dee2e6',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div>
-          <strong>📊 Log Viewer Application</strong>
-          {user && (
-            <span style={{ marginLeft: '1rem', color: '#28a745' }}>
-              ✅ Logged in as {user.name} ({user.level_Name})
-            </span>
-          )}
+      {/* FIXED: Only show corner login when NOT on users tab without auth */}
+      {!user && activeTab !== 'users' && (
+        <div className="login-corner">
+          <MiniLogin />
         </div>
-        <div>
-          {user ? (
-            <button 
-              onClick={handleLogout}
-              style={{ 
-                background: '#dc3545', 
-                border: 'none', 
-                color: 'white', 
-                padding: '0.25rem 0.75rem', 
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '0.875rem'
-              }}
-            >
-              🚪 Logout
-            </button>
-          ) : (
-            <MiniLogin />
-          )}
+      )}
+
+      {/* FIXED: Show special login message when on users tab without auth */}
+      {!user && activeTab === 'users' && (
+        <div className="login-corner">
+          <div style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            borderRadius: '12px',
+            padding: '1rem',
+            color: '#fca5a5',
+            marginBottom: '1rem',
+            fontSize: '0.875rem'
+          }}>
+            🔐 Please log in to access User Management
+          </div>
+          <MiniLogin />
         </div>
-      </div>
+      )}
+
+      {/* Show user info and logout if logged in */}
+      {user && (
+        <div className="user-info-corner">
+          <span>✅ {user.name} ({user.level_Name})</span>
+          <button onClick={handleLogout} className="logout-btn">
+            🚪 Logout
+          </button>
+        </div>
+      )}
 
       <TabNavigation 
         activeTab={activeTab} 

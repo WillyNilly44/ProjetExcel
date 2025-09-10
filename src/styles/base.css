@@ -204,3 +204,44 @@ a:hover {
   border-color: var(--success);
   color: var(--success);
 }
+
+/* Add to your existing index.css file */
+
+.login-corner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
+.user-info-corner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+  font-size: 14px;
+}
+
+.user-info-corner .logout-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.user-info-corner .logout-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.auth-required {
+  padding: 2rem;
+  text-align: center;
+  color: white;
+}
