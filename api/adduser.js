@@ -137,7 +137,6 @@ exports.handler = async (event, context) => {
       const saltRounds = 12;
       hashedPassword = await bcrypt.hash(password, saltRounds);
     } catch (hashError) {
-      console.log('Could not hash password, storing as plain text:', hashError.message);
     }
 
     // Insert new user

@@ -146,11 +146,9 @@ const getColumnGroups = () => {
         
         if (uploaderField && user && user.username) {
           cleanedEntry[uploaderField.COLUMN_NAME] = user.username;
-          console.log(`Setting ${uploaderField.COLUMN_NAME} to:`, user.username);
         }
       }
       
-      console.log('Sending cleaned entry data:', cleanedEntry); // Debug log
       
       const success = await onSave(cleanedEntry);
       if (success) {

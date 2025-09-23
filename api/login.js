@@ -105,22 +105,22 @@ exports.handler = async (event, context) => {
     const user = result.recordset[0];
     let isPasswordValid = false;
 
-    // Handle both old plain text and new hashed passwords
-    if (hasNewColumns && user.password_hash) {
-      // New hashed password system
+    // FIXED: Always check hashed password first if it exists and is not a placeholder
+    if (hasNewColumns && user.password_hash && user.password_hash.length > 10) {
       isPasswordValid = await bcrypt.compare(password, user.password_hash);
-
-    } else if (user.password) {
-      // Legacy plain text password system
+    } else if (user.password && user.password !== '***HASHED***') {
       isPasswordValid = (password === user.password);
-      // If login successful with plain text, hash the password for future use
+      
+      // If login successful with plain text, upgrade to hashed password
       if (isPasswordValid && hasNewColumns) {
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         
+        // FIXED: Use placeholder instead of NULL to avoid constraint violation
         const updateQuery = `
           UPDATE LOG_ENTRIES_USER 
-          SET password_hash = @passwordHash 
+          SET password_hash = @passwordHash,
+              password = '***HASHED***'
           WHERE id = @userId
         `;
         
@@ -128,6 +128,7 @@ exports.handler = async (event, context) => {
         updateRequest.input('passwordHash', sql.VarChar(255), hashedPassword);
         updateRequest.input('userId', sql.Int, user.id);
         await updateRequest.query(updateQuery);
+        
       }
     }
 

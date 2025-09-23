@@ -183,9 +183,7 @@ exports.handler = async (event, context) => {
       try {
         const saltRounds = 12;
         hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-      } catch (hashError) {
-        console.log('Could not hash password, storing as plain text:', hashError.message);
-      }
+      } catch (hashError) {      }
 
       updateFields.push('password = @password');
       updateRequest.input('password', sql.VarChar(25), newPassword);
@@ -226,8 +224,7 @@ exports.handler = async (event, context) => {
       WHERE id = @userId
     `;
 
-    console.log('Update query:', updateQuery);
-    console.log('Update fields:', updateFields);
+
 
     await updateRequest.query(updateQuery);
 

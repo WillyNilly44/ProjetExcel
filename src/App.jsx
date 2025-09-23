@@ -18,7 +18,6 @@ function AppContent() {
   const [connectionStatus, setConnectionStatus] = useState('Ready to load');
   const [connectionInfo, setConnectionInfo] = useState(null);
 
-  console.log('AppContent render:', { loading, user: !!user, mustChangePassword });
 
   // FIXED: Reset to dashboard when user logs out and is on users tab
   useEffect(() => {

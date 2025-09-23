@@ -53,7 +53,6 @@ exports.handler = async (event, context) => {
 
     // Validate user authentication
     if (!user || (!user.email && !user.username)) {
-      console.log('Authentication failed - missing user data:', user);
       return {
         statusCode: 401,
         headers,
@@ -69,7 +68,6 @@ exports.handler = async (event, context) => {
     // Verify user permissions - only allow admin users
     const userRequest = new sql.Request();
     const userIdentifier = user.email || user.username;
-    console.log('Looking up user:', userIdentifier);
     
     userRequest.input('username', sql.NVarChar(255), userIdentifier);
     
@@ -80,10 +78,10 @@ exports.handler = async (event, context) => {
       WHERE u.username = @username OR u.email = @username
     `);
 
-    console.log('User query result:', userResult.recordset);
+
 
     if (userResult.recordset.length === 0) {
-      console.log('User not found in database for identifier:', userIdentifier);
+
       return {
         statusCode: 403,
         headers,
@@ -141,7 +139,6 @@ exports.handler = async (event, context) => {
     const alterRequest = new sql.Request();
     const alterQuery = `ALTER TABLE [${tableName}] ADD ${columnDefinition}`;
     
-    console.log('Executing SQL:', alterQuery);
     
     await alterRequest.query(alterQuery);
 

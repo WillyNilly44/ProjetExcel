@@ -509,7 +509,7 @@ const UserManagement = () => {
                   onChange={(e) => setNewUser(prev => ({...prev, username: e.target.value.toUpperCase()}))}
                   className="form-input"
                   required
-                  maxLength="10"
+                  maxLength="25"
                   autoComplete="off"
                   placeholder="Enter username (max 10 chars)"
                 />

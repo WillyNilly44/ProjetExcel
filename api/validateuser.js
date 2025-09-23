@@ -94,7 +94,6 @@ exports.handler = async (event, context) => {
       try {
         isPasswordValid = await bcrypt.compare(password, user.password_hash);
       } catch (bcryptError) {
-        console.log('Bcrypt error, falling back to plain text comparison');
         isPasswordValid = (password === user.password);
       }
     } else if (user.password) {

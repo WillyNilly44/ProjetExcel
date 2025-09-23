@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
 
     // Get user with current password info
     const getUserQuery = `
-      SELECT id, password, password_hash 
+      SELECT id, username, password, password_hash, must_change_password
       FROM LOG_ENTRIES_USER 
       WHERE username = @username
     `;
@@ -77,6 +77,7 @@ exports.handler = async (event, context) => {
     const userRequest = new sql.Request(pool);
     userRequest.input('username', sql.VarChar(10), username);
     const userResult = await userRequest.query(getUserQuery);
+
 
     if (userResult.recordset.length === 0) {
       return {
@@ -90,6 +91,7 @@ exports.handler = async (event, context) => {
     }
 
     const user = userResult.recordset[0];
+
     let isCurrentPasswordValid = false;
 
     // Verify current password (handle both hashed and plain text)
@@ -98,6 +100,7 @@ exports.handler = async (event, context) => {
     } else if (user.password) {
       isCurrentPasswordValid = (currentPassword === user.password);
     }
+    
     
     if (!isCurrentPasswordValid) {
       return {
@@ -125,18 +128,24 @@ exports.handler = async (event, context) => {
     const columnCheck = await pool.request().query(checkColumnsQuery);
     const existingColumns = columnCheck.recordset.map(row => row.COLUMN_NAME);
     
+    
     const hasNewColumns = existingColumns.includes('password_hash');
 
     // Update password in database
     let updateQuery;
+    let updateRequest = new sql.Request(pool);
+    
     if (hasNewColumns) {
+      // FIXED: Use placeholder instead of NULL to avoid constraint violation
       updateQuery = `
         UPDATE LOG_ENTRIES_USER 
         SET password_hash = @newPasswordHash,
+            password = '***HASHED***',
             must_change_password = 0,
             password_changed_at = GETDATE()
         WHERE id = @userId
       `;
+      updateRequest.input('newPasswordHash', sql.VarChar(255), newPasswordHash);
     } else {
       // Fallback for old schema - update plain text password
       updateQuery = `
@@ -144,24 +153,36 @@ exports.handler = async (event, context) => {
         SET password = @newPassword
         WHERE id = @userId
       `;
-    }
-
-    const updateRequest = new sql.Request(pool);
-    if (hasNewColumns) {
-      updateRequest.input('newPasswordHash', sql.VarChar(255), newPasswordHash);
-    } else {
       updateRequest.input('newPassword', sql.VarChar(25), newPassword);
     }
+    
     updateRequest.input('userId', sql.Int, user.id);
     
-    await updateRequest.query(updateQuery);
+    const updateResult = await updateRequest.query(updateQuery);
+
+    // VERIFY THE UPDATE - Let's check what was actually saved
+    const verifyQuery = `
+      SELECT id, username, password, password_hash, must_change_password
+      FROM LOG_ENTRIES_USER 
+      WHERE id = @userId
+    `;
+    
+    const verifyRequest = new sql.Request(pool);
+    verifyRequest.input('userId', sql.Int, user.id);
+    const verifyResult = await verifyRequest.query(verifyQuery);
+    
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Password changed successfully'
+        message: 'Password changed successfully',
+        debug: {
+          hasNewColumns,
+          existingColumns,
+          userAfterUpdate: verifyResult.recordset[0]
+        }
       })
     };
 

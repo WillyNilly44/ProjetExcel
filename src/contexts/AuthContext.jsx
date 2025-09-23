@@ -16,18 +16,14 @@ export const AuthProvider = ({ children }) => {
   const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useEffect(() => {
-    console.log('AuthProvider: Starting auth check...');
     checkExistingAuth();
   }, []);
 
   const checkExistingAuth = () => {
-    console.log('Checking existing auth...');
     try {
       const storedUser = localStorage.getItem('logViewerUser');
       const timestamp = localStorage.getItem('logViewerUserTimestamp');
-      
-      console.log('Stored user:', storedUser);
-      console.log('Timestamp:', timestamp);
+
       
       if (storedUser && timestamp) {
         const userData = JSON.parse(storedUser);
@@ -35,35 +31,27 @@ export const AuthProvider = ({ children }) => {
         const currentTime = Date.now();
         const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours
         
-        console.log('Session check:', { loginTime, currentTime, expired: currentTime - loginTime >= sessionDuration });
         
         if (currentTime - loginTime < sessionDuration) {
-          console.log('Valid session found, setting user:', userData);
           setUser(userData);
           // Check if user must change password
           if (userData.must_change_password) {
-            console.log('User must change password:', userData.must_change_password);
             setMustChangePassword(true);
           }
         } else {
-          // Session expired
-          console.log('Session expired, logging out');
           logout();
         }
       } else {
-        console.log('No stored session found');
       }
     } catch (error) {
       console.error('Error checking existing auth:', error);
       logout();
     } finally {
-      console.log('Setting loading to false');
       setLoading(false);
     }
   };
 
   const login = async (username, password) => {
-    console.log('Attempting login for:', username);
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
@@ -74,7 +62,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = await response.json();
-      console.log('Login response:', data);
       
       if (data.success && data.user) {
         const userData = {
@@ -84,8 +71,6 @@ export const AuthProvider = ({ children }) => {
           password_changed_at: data.user.password_changed_at || null
         };
         
-        console.log('Login successful, user data:', userData);
-        console.log('Must change password:', userData.must_change_password);
         
         setUser(userData);
         localStorage.setItem('logViewerUser', JSON.stringify(userData));
@@ -93,7 +78,6 @@ export const AuthProvider = ({ children }) => {
         
         // Check if user must change password
         if (userData.must_change_password) {
-          console.log('Setting mustChangePassword to true');
           setMustChangePassword(true);
         }
         
@@ -150,7 +134,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log('Logging out user');
     setUser(null);
     setMustChangePassword(false);
     localStorage.removeItem('logViewerUser');

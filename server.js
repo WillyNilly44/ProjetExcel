@@ -726,7 +726,6 @@ app.post('/api/addcolumn', async (req, res) => {
     const alterRequest = new sql.Request();
     const alterSQL = `ALTER TABLE LOG_ENTRIES ADD [${sanitizedName}] ${sqlType} ${nullConstraint}${defaultConstraint}`;
     
-    console.log('Executing SQL:', alterSQL);
     
     await alterRequest.query(alterSQL);
 

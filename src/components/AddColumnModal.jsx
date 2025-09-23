@@ -52,11 +52,6 @@ const AddColumnModal = ({ isOpen, onClose, onColumnAdded }) => {
         }
       };
 
-      console.log('Sending add column request:', {
-        headers: requestHeaders,
-        body: requestBody
-      });
-
       const response = await fetch('/api/addcolumn', {
         method: 'POST',
         headers: requestHeaders,
