@@ -20,7 +20,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
   const [showEditKPIModal, setShowEditKPIModal] = useState(false);
   const [editingKPI, setEditingKPI] = useState(null);
   const [newKPI, setNewKPI] = useState({
-    month: '', // Auto-set to current month/year
+    month: '',
     week: '',
     maintenance_1: 0,
     maintenance_2: 0,
@@ -37,132 +37,102 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     impact: 5
   });
 
-  // Load thresholds from database on component mount
-  const loadThresholds = async () => {
-    try {
-      const response = await fetch('/api/getthresholds', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        if (result.success && result.data && result.data.length > 0) {
-          const dbThresholds = result.data[0];
-          const loadedThresholds = {
-            maintenance_yellow: dbThresholds.maintenance_yellow || 3,
-            maintenance_red: dbThresholds.maintenance_red || 7,
-            incident_yellow: dbThresholds.incident_yellow || 2,
-            incident_red: dbThresholds.incident_red || 5,
-            impact: dbThresholds.impact || 5
-          };
-          
-          setThresholds(loadedThresholds);
-          localStorage.setItem('columnThresholds', JSON.stringify(loadedThresholds));
-        } else {
-          const savedThresholds = localStorage.getItem('columnThresholds');
-          if (savedThresholds) {
-            const parsedThresholds = JSON.parse(savedThresholds);
-            setThresholds(parsedThresholds);
-          }
-        }
-      } else {
-        const savedThresholds = localStorage.getItem('columnThresholds');
-        if (savedThresholds) {
-          const parsedThresholds = JSON.parse(savedThresholds);
-          setThresholds(parsedThresholds);
-        }
-      }
-    } catch (error) {
-      
-      const savedThresholds = localStorage.getItem('columnThresholds');
-      if (savedThresholds) {
-        try {
-          const parsedThresholds = JSON.parse(savedThresholds);
-          setThresholds(parsedThresholds);
-        } catch (parseError) {
-        }
-      }
-    }
-  };
-
- // NEW: Sort KPI data by month (newest to oldest)
-  const sortKPIData = (data) => {
+  // FIXED: Proper chronological sorting function
+  const sortKPIDataChronologically = (data) => {
     if (!data || data.length === 0) return data;
 
     return data.sort((a, b) => {
-      // Get month values from both entries
-      const monthA = a.month || '';
-      const monthB = b.month || '';
+      // Extract year, month, and week data for both entries
+      const entryA = parseEntryDate(a.month, a.week);
+      const entryB = parseEntryDate(b.month, b.week);
 
-      // Parse the date information from month column
-      const dateA = parseMonthYear(monthA);
-      const dateB = parseMonthYear(monthB);
-
-      // Sort newest first (descending order)
-      return dateB.getTime() - dateA.getTime();
+      // Sort newest to oldest (descending order)
+      return entryB.sortDate.getTime() - entryA.sortDate.getTime();
     });
   };
 
-  // NEW: Parse month-year string to Date object for comparison
-  const parseMonthYear = (monthString) => {
-    if (!monthString || typeof monthString !== 'string') {
-      return new Date(0); // Return very old date for invalid entries
+  // Helper function to parse entry dates
+  const parseEntryDate = (monthString, weekString) => {
+    let year = new Date().getFullYear();
+    let month = 1; // January default
+    let weekStartDay = 1;
+
+    // Parse year and month from month string
+    if (monthString) {
+      const yearMatch = monthString.match(/(\d{4})/);
+      if (yearMatch) {
+        year = parseInt(yearMatch[1]);
+      }
+
+      const monthNames = {
+        'january': 1, 'jan': 1,
+        'february': 2, 'feb': 2,
+        'march': 3, 'mar': 3,
+        'april': 4, 'apr': 4,
+        'may': 5,
+        'june': 6, 'jun': 6,
+        'july': 7, 'jul': 7,
+        'august': 8, 'aug': 8,
+        'september': 9, 'sep': 9, 'sept': 9,
+        'october': 10, 'oct': 10,
+        'november': 11, 'nov': 11,
+        'december': 12, 'dec': 12
+      };
+
+      const monthStr = monthString.toLowerCase().replace(/\d+/g, '').trim();
+      for (const [name, num] of Object.entries(monthNames)) {
+        if (monthStr.includes(name)) {
+          month = num;
+          break;
+        }
+      }
     }
 
-    try {
-      // Handle different month formats:
-      // "January 2025", "Jan 2025", "2025-01", "01/2025", etc.
-      
-      const cleanMonth = monthString.trim();
-      
-      // Check for "Month YYYY" format (e.g., "January 2025", "Jan 2025")
-      const monthYearMatch = cleanMonth.match(/^([A-Za-z]+)\s+(\d{4})$/);
-      if (monthYearMatch) {
-        const monthName = monthYearMatch[1];
-        const year = parseInt(monthYearMatch[2]);
-        const monthNumber = getMonthNumber(monthName);
-        return new Date(year, monthNumber - 1, 1); // First day of month
+    // Parse week start day
+    if (weekString) {
+      // Handle "Month DD to Month DD" format (e.g., "Dec 30 to Jan 5", "July 21 to July 27")
+      const weekRangeMatch = weekString.match(/([A-Za-z]+)\s+(\d{1,2})\s+to\s+([A-Za-z]+)\s+(\d{1,2})/);
+      if (weekRangeMatch) {
+        const startMonth = weekRangeMatch[1].toLowerCase();
+        const startDay = parseInt(weekRangeMatch[2]);
+        const endMonth = weekRangeMatch[3].toLowerCase();
+        const endDay = parseInt(weekRangeMatch[4]);
+
+        // For cross-year weeks like "Dec 30 to Jan 5" where month is "January 2025"
+        if (startMonth.includes('dec') && endMonth.includes('jan') && month === 1) {
+          // This is a cross-year week - use January 1st as reference for consistent sorting
+          weekStartDay = 1;
+        } else if (startMonth.includes('jul') && endMonth.includes('aug')) {
+          // Cross-month week like "July 28 to August 3" - use start day
+          weekStartDay = startDay;
+          // If month context is August, adjust the month for sorting
+          if (month === 8) {
+            month = 7; // Use July for sorting since week starts in July
+          }
+        } else {
+          // Same month week - use start day
+          weekStartDay = startDay;
+        }
+      } else {
+        // Handle "DD-DD" format or extract first number
+        const dayMatch = weekString.match(/(\d{1,2})/);
+        if (dayMatch) {
+          weekStartDay = parseInt(dayMatch[1]);
+        }
       }
-
-      // Check for "YYYY-MM" format (e.g., "2025-01")
-      const yearMonthMatch = cleanMonth.match(/^(\d{4})-(\d{1,2})$/);
-      if (yearMonthMatch) {
-        const year = parseInt(yearMonthMatch[1]);
-        const month = parseInt(yearMonthMatch[2]);
-        return new Date(year, month - 1, 1);
-      }
-
-      // Check for "MM/YYYY" format (e.g., "01/2025")
-      const monthSlashYearMatch = cleanMonth.match(/^(\d{1,2})\/(\d{4})$/);
-      if (monthSlashYearMatch) {
-        const month = parseInt(monthSlashYearMatch[1]);
-        const year = parseInt(monthSlashYearMatch[2]);
-        return new Date(year, month - 1, 1);
-      }
-
-      // Check for "YYYY MM" format (e.g., "2025 01")
-      const yearSpaceMonthMatch = cleanMonth.match(/^(\d{4})\s+(\d{1,2})$/);
-      if (yearSpaceMonthMatch) {
-        const year = parseInt(yearSpaceMonthMatch[1]);
-        const month = parseInt(yearSpaceMonthMatch[2]);
-        return new Date(year, month - 1, 1);
-      }
-
-      // If no pattern matches, try to parse as a general date
-      const fallbackDate = new Date(cleanMonth);
-      if (!isNaN(fallbackDate.getTime())) {
-        return fallbackDate;
-      }
-
-      return new Date(0); // Return very old date for unparseable entries
-
-    } catch (error) {
-      return new Date(0);
     }
+
+    // Create sort date
+    const sortDate = new Date(year, month - 1, weekStartDay);
+
+    return {
+      year,
+      month,
+      weekStartDay,
+      sortDate,
+      originalMonth: monthString,
+      originalWeek: weekString
+    };
   };
 
   // Fetch dashboard data
@@ -180,252 +150,119 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
 
       const result = await response.json();
       
       if (result.success) {
-        // Store all data and apply sorting
-        const sortedAllData = sortKPIData(result.data || []);
-        setAllDashboardData(sortedAllData);
+        // FIXED: Use proper chronological sorting
+        const sortedData = sortKPIDataChronologically(result.data || []);
         
-        // Apply current filters to get displayed data
-        const filteredData = applyClientSideFilters(sortedAllData, filters);
-        setDashboardData(filteredData);
+        console.log('=== SORTED KPI DATA ===');
+        sortedData.forEach((entry, index) => {
+          const parsed = parseEntryDate(entry.month, entry.week);
+          console.log(`${index + 1}. ${entry.month} | ${entry.week} → ${parsed.sortDate.toDateString()}`);
+        });
         
+        setAllDashboardData(sortedData);
+        setDashboardData(sortedData);
         setDashboardColumns(result.columns || []);
       } else {
         setError(result.error || 'Failed to load dashboard data');
       }
 
     } catch (error) {
+      console.error('Dashboard data fetch error:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Apply filters on the client side
-  const applyClientSideFilters = (data, currentFilters) => {
-    if (!data || data.length === 0) return data;
-
-    let filteredData = [...data];
-
-    // Filter by year if selected
-    if (currentFilters.year) {
-      filteredData = filteredData.filter(entry => {
-        const monthColumn = entry.month || '';
-        const yearFromMonth = extractYearFromMonth(monthColumn);
-        return yearFromMonth === parseInt(currentFilters.year);
-      });
-    }
-
-    // Filter by month if selected (and year is also selected)
-    if (currentFilters.year && currentFilters.month) {
-      filteredData = filteredData.filter(entry => {
-        const monthColumn = entry.month || '';
-        const monthFromColumn = extractMonthFromMonth(monthColumn);
-        return monthFromColumn === parseInt(currentFilters.month);
-      });
-    }
-
-    return filteredData;
-  };
-
-  // Extract year from month column
-  const extractYearFromMonth = (monthString) => {
-    if (!monthString || typeof monthString !== 'string') {
-      return null;
-    }
-
+  // Load thresholds
+  const loadThresholds = async () => {
     try {
-      const cleanMonth = monthString.trim();
-      
-      // Check for "Month YYYY" format (e.g., "January 2025", "Jan 2025")
-      const monthYearMatch = cleanMonth.match(/^([A-Za-z]+)\s+(\d{4})$/);
-      if (monthYearMatch) {
-        return parseInt(monthYearMatch[2]);
+      const response = await fetch('/api/getthresholds');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.length > 0) {
+          const dbThresholds = result.data[0];
+          const loadedThresholds = {
+            maintenance_yellow: dbThresholds.maintenance_yellow || 3,
+            maintenance_red: dbThresholds.maintenance_red || 7,
+            incident_yellow: dbThresholds.incident_yellow || 2,
+            incident_red: dbThresholds.incident_red || 5,
+            impact: dbThresholds.impact || 5
+          };
+          setThresholds(loadedThresholds);
+        }
       }
-
-      // Check for "YYYY-MM" format (e.g., "2025-01")
-      const yearMonthMatch = cleanMonth.match(/^(\d{4})-(\d{1,2})$/);
-      if (yearMonthMatch) {
-        return parseInt(yearMonthMatch[1]);
-      }
-
-      // Check for "MM/YYYY" format (e.g., "01/2025")
-      const monthSlashYearMatch = cleanMonth.match(/^(\d{1,2})\/(\d{4})$/);
-      if (monthSlashYearMatch) {
-        return parseInt(monthSlashYearMatch[2]);
-      }
-
-      // Check for "YYYY MM" format (e.g., "2025 01")
-      const yearSpaceMonthMatch = cleanMonth.match(/^(\d{4})\s+(\d{1,2})$/);
-      if (yearSpaceMonthMatch) {
-        return parseInt(yearSpaceMonthMatch[1]);
-      }
-
-      return null;
     } catch (error) {
-      return null;
+      console.error('Error loading thresholds:', error);
     }
   };
 
-  // Extract month number from month column
-  const extractMonthFromMonth = (monthString) => {
-    if (!monthString || typeof monthString !== 'string') {
-      return null;
-    }
-
-    try {
-      const cleanMonth = monthString.trim();
-      
-      // Check for "Month YYYY" format (e.g., "January 2025", "Jan 2025")
-      const monthYearMatch = cleanMonth.match(/^([A-Za-z]+)\s+(\d{4})$/);
-      if (monthYearMatch) {
-        const monthName = monthYearMatch[1];
-        return getMonthNumber(monthName);
-      }
-
-      // Check for "YYYY-MM" format (e.g., "2025-01")
-      const yearMonthMatch = cleanMonth.match(/^(\d{4})-(\d{1,2})$/);
-      if (yearMonthMatch) {
-        return parseInt(yearMonthMatch[2]);
-      }
-
-      // Check for "MM/YYYY" format (e.g., "01/2025")
-      const monthSlashYearMatch = cleanMonth.match(/^(\d{1,2})\/(\d{4})$/);
-      if (monthSlashYearMatch) {
-        return parseInt(monthSlashYearMatch[1]);
-      }
-
-      // Check for "YYYY MM" format (e.g., "2025 01")
-      const yearSpaceMonthMatch = cleanMonth.match(/^(\d{4})\s+(\d{1,2})$/);
-      if (yearSpaceMonthMatch) {
-        return parseInt(yearSpaceMonthMatch[2]);
-      }
-
-      return null;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  // Convert month name to number
-  const getMonthNumber = (monthName) => {
-    const months = {
-      'january': 1, 'jan': 1,
-      'february': 2, 'feb': 2,
-      'march': 3, 'mar': 3,
-      'april': 4, 'apr': 4,
-      'may': 5,
-      'june': 6, 'jun': 6,
-      'july': 7, 'jul': 7,
-      'august': 8, 'aug': 8,
-      'september': 9, 'sep': 9, 'sept': 9,
-      'october': 10, 'oct': 10,
-      'november': 11, 'nov': 11,
-      'december': 12, 'dec': 12
-    };
-
-    const lowerMonth = monthName.toLowerCase();
-    return months[lowerMonth] || 1; // Default to January if not found
-  };
-
-  // FIXED: Single version of getAvailableYears that extracts from actual data
+  // Simple filter functions
   const getAvailableYears = () => {
-    if (!allDashboardData || allDashboardData.length === 0) {
-      return [];
-    }
-
     const years = new Set();
-    
     allDashboardData.forEach(entry => {
-      const monthColumn = entry.month || '';
-      const year = extractYearFromMonth(monthColumn);
-      if (year) {
-        years.add(year);
+      const monthStr = entry.month || '';
+      const yearMatch = monthStr.match(/(\d{4})/);
+      if (yearMatch) {
+        years.add(parseInt(yearMatch[1]));
       }
     });
-
-    // Convert to array and sort newest first
     return Array.from(years).sort((a, b) => b - a);
   };
 
-  // FIXED: Single version of getAvailableMonths that works with selected year
   const getAvailableMonths = (selectedYear) => {
-    if (!selectedYear || !allDashboardData || allDashboardData.length === 0) {
-      return [];
-    }
-
-    const months = new Set();
+    if (!selectedYear) return [];
     
+    const months = new Set();
     allDashboardData.forEach(entry => {
-      const monthColumn = entry.month || '';
-      const year = extractYearFromMonth(monthColumn);
-      const month = extractMonthFromMonth(monthColumn);
-      
-      if (year === parseInt(selectedYear) && month) {
-        months.add(month);
+      const monthStr = entry.month || '';
+      if (monthStr.includes(selectedYear)) {
+        const monthName = monthStr.replace(selectedYear, '').trim();
+        months.add(monthName);
       }
     });
-
-    // Convert to array with names and sort
-    const monthNames = [
-      { value: 1, name: 'January' },
-      { value: 2, name: 'February' },
-      { value: 3, name: 'March' },
-      { value: 4, name: 'April' },
-      { value: 5, name: 'May' },
-      { value: 6, name: 'June' },
-      { value: 7, name: 'July' },
-      { value: 8, name: 'August' },
-      { value: 9, name: 'September' },
-      { value: 10, name: 'October' },
-      { value: 11, name: 'November' },
-      { value: 12, name: 'December' }
-    ];
-
-    return monthNames
-      .filter(month => months.has(month.value))
-      .sort((a, b) => a.value - b.value);
+    
+    return Array.from(months).sort();
   };
 
-  // Handle filter changes with immediate filtering
+  // Handle filter changes
   const handleFilterChange = (filterType, value) => {
-    const newFilters = {
-      ...filters,
-      [filterType]: value
-    };
-
-    // If changing year, reset month
+    const newFilters = { ...filters, [filterType]: value };
     if (filterType === 'year') {
       newFilters.month = '';
     }
-
     setFilters(newFilters);
 
-    // Apply filters immediately
-    const filteredData = applyClientSideFilters(allDashboardData, newFilters);
-    setDashboardData(filteredData);
-  };
-
-  // Clear filters function
-  const clearFilters = () => {
-    const clearedFilters = {
-      year: '',
-      month: ''
-    };
-    setFilters(clearedFilters);
+    // Apply filters
+    let filtered = [...allDashboardData];
     
-    // Apply cleared filters immediately
-    const filteredData = applyClientSideFilters(allDashboardData, clearedFilters);
-    setDashboardData(filteredData);
+    if (newFilters.year) {
+      filtered = filtered.filter(entry => 
+        (entry.month || '').includes(newFilters.year)
+      );
+    }
+    
+    if (newFilters.month) {
+      filtered = filtered.filter(entry => 
+        (entry.month || '').includes(newFilters.month)
+      );
+    }
+    
+    setDashboardData(filtered);
   };
 
-  // Add new KPI to LOG_ENTRIES_DASHBOARD
+  const clearFilters = () => {
+    setFilters({ year: '', month: '' });
+    setDashboardData(allDashboardData);
+  };
+
+  // KPI CRUD operations
   const handleAddKPI = async () => {
     if (!newKPI.month.trim() || !newKPI.week.trim()) {
       alert('Month and Week are required');
@@ -436,9 +273,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     try {
       const response = await fetch('/api/addkpi', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           month: newKPI.month,
           week: newKPI.week,
@@ -451,36 +286,24 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
       if (result.success) {
-        // Refresh data which will automatically sort
         await fetchDashboardData();
         setShowAddKPIModal(false);
         setNewKPI({
-          month: '',
-          week: '',
-          maintenance_1: 0,
-          maintenance_2: 0,
-          incidents_1: 0,
-          incidents_2: 0,
-          business_impacted: 0
+          month: '', week: '', maintenance_1: 0, maintenance_2: 0,
+          incidents_1: 0, incidents_2: 0, business_impacted: 0
         });
         alert('✅ KPI entry added successfully!');
       } else {
-        throw new Error(result.error || 'Failed to add KPI entry');
+        throw new Error(result.error || 'Failed to add KPI');
       }
     } catch (err) {
-      alert('Failed to add KPI entry: ' + err.message);
+      alert('Failed to add KPI: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // Edit existing KPI entry
   const handleEditKPI = async () => {
     if (!editingKPI.month.trim() || !editingKPI.week.trim()) {
       alert('Month and Week are required');
@@ -491,9 +314,7 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     try {
       const response = await fetch('/api/updatekpi', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingKPI.id,
           month: editingKPI.month,
@@ -507,64 +328,44 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
       if (result.success) {
-        // Refresh data which will automatically sort
         await fetchDashboardData();
         setShowEditKPIModal(false);
         setEditingKPI(null);
         alert('✅ KPI entry updated successfully!');
       } else {
-        throw new Error(result.error || 'Failed to update KPI entry');
+        throw new Error(result.error || 'Failed to update KPI');
       }
     } catch (err) {
-      alert('Failed to update KPI entry: ' + err.message);
+      alert('Failed to update KPI: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // Delete KPI entry
   const handleDeleteKPI = async (kpiId) => {
-    if (!confirm('Are you sure you want to delete this KPI entry? This action cannot be undone.')) {
-      return;
-    }
+    if (!confirm('Are you sure you want to delete this KPI entry?')) return;
 
     try {
       const response = await fetch('/api/deletekpi', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id: kpiId,
-          user: user
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: kpiId, user: user })
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
       if (result.success) {
-        // Refresh data which will automatically sort
         await fetchDashboardData();
         alert('✅ KPI entry deleted successfully!');
       } else {
-        throw new Error(result.error || 'Failed to delete KPI entry');
+        throw new Error(result.error || 'Failed to delete KPI');
       }
     } catch (err) {
-      alert('Failed to delete KPI entry: ' + err.message);
+      alert('Failed to delete KPI: ' + err.message);
     }
   };
 
-  // Open edit modal
+  // Helper functions
   const openEditModal = (kpi) => {
     setEditingKPI({
       id: kpi.id,
@@ -580,48 +381,42 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
   };
 
   const handleKPIInputChange = (field, value) => {
-    setNewKPI(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setNewKPI(prev => ({ ...prev, [field]: value }));
   };
 
   const handleEditInputChange = (field, value) => {
-    setEditingKPI(prev => ({
-      ...prev,
-      [field]: value
+    setEditingKPI(prev => ({ ...prev, [field]: value }));
+  };
+
+  const getCurrentMonthYear = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.toLocaleString('default', { month: 'long' });
+    return `${month} ${year}`;
+  };
+
+  const getMonthOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    return months.map(month => ({
+      value: `${month} ${currentYear}`,
+      label: `${month} ${currentYear}`
     }));
   };
 
-  // Load thresholds immediately when component mounts
-  useEffect(() => {
-    loadThresholds();
-  }, []);
-
-  // Fetch dashboard data after thresholds are loaded
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  // UPDATED: Apply filters function
-  const applyFilters = () => {
-    const filteredData = applyClientSideFilters(allDashboardData, filters);
-    setDashboardData(filteredData);
-  };
-
- 
-
-  // Threshold functions with improved logic
+  // Threshold functions
   const getCellColorClass = (value, columnName) => {
-    if (!thresholds || value === null || value === undefined) {
-      return '';
-    }
-
+    if (!thresholds || value === null || value === undefined) return '';
+    
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return '';
-
+    
     const columnNameLower = columnName.toLowerCase();
-
+    
     if (columnNameLower.includes('maintenance')) {
       if (numValue <= thresholds.maintenance_yellow) return 'threshold-green';
       if (numValue <= thresholds.maintenance_red) return 'threshold-yellow';
@@ -633,19 +428,18 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
       if (numValue <= thresholds.incident_red) return 'threshold-yellow';
       return 'threshold-red';
     }
-
+    
     if (columnNameLower.includes('business') || columnNameLower.includes('impact')) {
       if (numValue <= 2) return 'threshold-green';
       if (numValue <= 5) return 'threshold-yellow';
       return 'threshold-red';
     }
-
+    
     return '';
   };
 
   const getCellStyle = (value, columnName) => {
     const colorClass = getCellColorClass(value, columnName);
-    
     switch (colorClass) {
       case 'threshold-green':
         return { backgroundColor: '#28a745', color: 'white', fontWeight: '500' };
@@ -658,51 +452,23 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
     }
   };
 
-  const handleThresholdSave = (newThresholds) => {
-    setThresholds(newThresholds);
-    localStorage.setItem('columnThresholds', JSON.stringify(newThresholds));
-  };
-
-// Add this helper function near the top of your component (after the imports)
-const getCurrentMonthYear = () => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.toLocaleString('default', { month: 'long' });
-  return `${month} ${year}`;
-};
-
-const getMonthOptions = () => {
-  const currentYear = new Date().getFullYear();
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-  return months.map(month => ({
-    value: `${month} ${currentYear}`,
-    label: `${month} ${currentYear}`
-  }));
-};
-
-  
-  // Dashboard formatting functions
   const formatColumnName = (column) => {
     if (column.IS_AVERAGE_COLUMN && column.AVERAGE_VALUE) {
-        const avgValue = parseFloat(column.AVERAGE_VALUE);
-        const formattedValue = !isNaN(avgValue) ? avgValue.toFixed(2) : '0.00';        
-        
-        if (column.COLUMN_NAME === "maintenance_1" || column.COLUMN_NAME === "incidents_1") {
-          return `${formattedValue} Avg Qty`;
-        } else if (column.COLUMN_NAME === "maintenance_2" || column.COLUMN_NAME === "incidents_2") {
-          return `${formattedValue} Avg Count`;
-        } else {
-          return `${formattedValue} Avg`;
-        }
-      }
+      const avgValue = parseFloat(column.AVERAGE_VALUE);
+      const formattedValue = !isNaN(avgValue) ? avgValue.toFixed(2) : '0.00';
       
-      return column.COLUMN_NAME
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (char) => char.toUpperCase());
+      if (column.COLUMN_NAME === "maintenance_1" || column.COLUMN_NAME === "incidents_1") {
+        return `${formattedValue} Avg Qty`;
+      } else if (column.COLUMN_NAME === "maintenance_2" || column.COLUMN_NAME === "incidents_2") {
+        return `${formattedValue} Avg Count`;
+      } else {
+        return `${formattedValue} Avg`;
+      }
+    }
+    
+    return column.COLUMN_NAME
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   const formatDashboardCellValue = (value, columnName, dataType) => {
@@ -721,7 +487,7 @@ const getMonthOptions = () => {
     if (dataType === 'bit' || typeof value === 'boolean') {
       return value ? '✅' : '❌';
     }
-  
+
     if (typeof value === 'number') {
       if (lowerColumnName.includes('count') || lowerColumnName.includes('total')) {
         return value.toLocaleString();
@@ -734,21 +500,27 @@ const getMonthOptions = () => {
     return value.toString();
   };
 
-  // Load thresholds and fetch data on component mount
+  const handleThresholdSave = (newThresholds) => {
+    setThresholds(newThresholds);
+  };
+
+  // Load data on mount
   useEffect(() => {
     loadThresholds();
-  }, []);
-
-  useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  // Set default month for new KPI
+  useEffect(() => {
+    if (showAddKPIModal && !newKPI.month) {
+      setNewKPI(prev => ({ ...prev, month: getCurrentMonthYear() }));
+    }
+  }, [showAddKPIModal]);
 
   if (isLoading) {
     return (
       <div className="loading-container">
-        <div className="loading-text">
-          ⏳ Loading KPI data...
-        </div>
+        <div className="loading-text">⏳ Loading KPI data...</div>
       </div>
     );
   }
@@ -756,34 +528,27 @@ const getMonthOptions = () => {
   if (error) {
     return (
       <div className="error-container">
-        <div className="error-text">
-          ❌ Error: {error}
-        </div>
-        <button onClick={fetchDashboardData} className="retry-btn">
-          🔄 Retry
-        </button>
+        <div className="error-text">❌ Error: {error}</div>
+        <button onClick={fetchDashboardData} className="retry-btn">🔄 Retry</button>
       </div>
     );
   }
 
   return (
     <div className="kpi-container">
-      {/* Dashboard Section Header */}
+      {/* Header */}
       <div className="dashboard-section-header">
         <h2>📈 Performance Analytics</h2>
         <div className="dashboard-actions">
           {hasPermission('Administrator') && (
-            <>
-              <button 
-                onClick={() => setShowAddKPIModal(true)}
-                className="add-kpi-btn"
-                title="Add new KPI entry"
-              >
-                ➕ Add KPI Entry
-              </button>
-            </>
+            <button 
+              onClick={() => setShowAddKPIModal(true)}
+              className="add-kpi-btn"
+              title="Add new KPI entry"
+            >
+              ➕ Add KPI Entry
+            </button>
           )}
-          
           <button 
             onClick={() => setShowThresholdManager(true)} 
             className="threshold-btn"
@@ -797,15 +562,11 @@ const getMonthOptions = () => {
         </div>
       </div>
 
-      {/* Dashboard Filters */}
+      {/* Filters */}
       <div className="dashboard-filters">
         <div className="filter-header">
           <h3>🔍 Analytics Filters</h3>
-          <div className="filter-actions">
-            <button onClick={clearFilters} className="clear-filters-btn">
-              🗑 Clear All
-            </button>
-          </div>
+          <button onClick={clearFilters} className="clear-filters-btn">🗑 Clear All</button>
         </div>
 
         <div className="filter-grid">
@@ -833,14 +594,14 @@ const getMonthOptions = () => {
             >
               <option value="">All Months</option>
               {filters.year && getAvailableMonths(filters.year).map(month => (
-                <option key={month.value} value={month.value}>{month.name}</option>
+                <option key={month} value={month}>{month}</option>
               ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* Dashboard Data Table */}
+      {/* Data Table */}
       {dashboardData.length === 0 ? (
         <div className="no-data">
           <div className="no-data-text">
@@ -855,14 +616,6 @@ const getMonthOptions = () => {
               className="add-first-kpi-btn"
             >
               ➕ Add Your First KPI Entry
-            </button>
-          )}
-          {allDashboardData.length > 0 && (
-            <button 
-              onClick={clearFilters}
-              className="btn-secondary"
-            >
-              🗑 Clear Filters
             </button>
           )}
         </div>
@@ -882,18 +635,12 @@ const getMonthOptions = () => {
                       <th 
                         key={column.COLUMN_NAME} 
                         className={`table-header-cell ${column.IS_AVERAGE_COLUMN ? 'average-header' : ''}`}
-                        title={column.IS_AVERAGE_COLUMN ? 
-                          `${column.ORIGINAL_NAME?.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())} - Average: ${column.AVERAGE_VALUE}` : 
-                          `${column.DATA_TYPE} ${column.IS_NULLABLE === 'NO' ? '(Required)' : '(Optional)'}`
-                        }
                       >
                         {formatColumnName(column)}
                       </th>
                     ))}
                   {hasPermission('Administrator') && (
-                    <th className="table-header-cell actions-header">
-                      Actions
-                    </th>
+                    <th className="table-header-cell actions-header">Actions</th>
                   )}
                 </tr>
               </thead>
@@ -907,15 +654,13 @@ const getMonthOptions = () => {
                       .filter(column => column.COLUMN_NAME.toLowerCase() !== 'id')
                       .map((column) => {
                         const cellValue = entry[column.COLUMN_NAME];
-                        const thresholdClass = getCellColorClass(cellValue, column.COLUMN_NAME);
                         const cellStyle = getCellStyle(cellValue, column.COLUMN_NAME);
 
                         return (
                           <td 
                             key={column.COLUMN_NAME} 
-                            className={`table-cell ${thresholdClass}`}
+                            className="table-cell"
                             style={cellStyle}
-                            title={cellValue}
                           >
                             <div className="cell-content">
                               {formatDashboardCellValue(cellValue, column.COLUMN_NAME, column.DATA_TYPE)}
@@ -957,12 +702,7 @@ const getMonthOptions = () => {
           <div className="add-kpi-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>➕ Add New KPI Entry</h3>
-              <button 
-                onClick={() => setShowAddKPIModal(false)}
-                className="modal-close"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowAddKPIModal(false)} className="modal-close">✕</button>
             </div>
 
             <div className="modal-body">
@@ -975,9 +715,7 @@ const getMonthOptions = () => {
                     className="filter-select"
                   >
                     {getMonthOptions().map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
+                      <option key={option.value} value={option.value}>{option.label}</option>
                     ))}
                   </select>
                 </div>
@@ -988,13 +726,8 @@ const getMonthOptions = () => {
                     type="text"
                     value={newKPI.week}
                     onChange={(e) => handleKPIInputChange('week', e.target.value)}
-                    placeholder="e.g., 14-20"
-                    maxLength={50}
-                    pattern="[0-9]{1,2}-[0-9]{1,2}"
+                    placeholder="e.g., Dec 30 to Jan 5"
                   />
-                  <small className="help-text">
-                    Format: DD-DD (will be auto-converted to readable dates)
-                  </small>
                 </div>
 
                 <div className="form-field">
@@ -1081,12 +814,7 @@ const getMonthOptions = () => {
           <div className="add-kpi-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>✏️ Edit KPI Entry</h3>
-              <button 
-                onClick={() => setShowEditKPIModal(false)}
-                className="modal-close"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowEditKPIModal(false)} className="modal-close">✕</button>
             </div>
 
             <div className="modal-body">
@@ -1097,8 +825,7 @@ const getMonthOptions = () => {
                     type="text"
                     value={editingKPI.month}
                     onChange={(e) => handleEditInputChange('month', e.target.value)}
-                    placeholder="e.g., January"
-                    maxLength={20}
+                    placeholder="e.g., January 2025"
                   />
                 </div>
 
@@ -1108,13 +835,8 @@ const getMonthOptions = () => {
                     type="text"
                     value={editingKPI.week}
                     onChange={(e) => handleEditInputChange('week', e.target.value)}
-                    placeholder="e.g., 14-20"
-                    maxLength={50}
-                    pattern="[0-9]{1,2}-[0-9]{1,2}"
+                    placeholder="e.g., Dec 30 to Jan 5"
                   />
-                  <small className="help-text">
-                    Format: DD-DD (will be auto-converted to readable dates)
-                  </small>
                 </div>
 
                 <div className="form-field">
@@ -1124,7 +846,6 @@ const getMonthOptions = () => {
                     min="0"
                     value={editingKPI.maintenance_1}
                     onChange={(e) => handleEditInputChange('maintenance_1', e.target.value)}
-                    placeholder="0"
                   />
                 </div>
 
@@ -1135,7 +856,6 @@ const getMonthOptions = () => {
                     min="0"
                     value={editingKPI.maintenance_2}
                     onChange={(e) => handleEditInputChange('maintenance_2', e.target.value)}
-                    placeholder="0"
                   />
                 </div>
 
@@ -1146,7 +866,6 @@ const getMonthOptions = () => {
                     min="0"
                     value={editingKPI.incidents_1}
                     onChange={(e) => handleEditInputChange('incidents_1', e.target.value)}
-                    placeholder="0"
                   />
                 </div>
 
@@ -1157,7 +876,6 @@ const getMonthOptions = () => {
                     min="0"
                     value={editingKPI.incidents_2}
                     onChange={(e) => handleEditInputChange('incidents_2', e.target.value)}
-                    placeholder="0"
                   />
                 </div>
 
@@ -1169,7 +887,6 @@ const getMonthOptions = () => {
                     max="10"
                     value={editingKPI.business_impacted}
                     onChange={(e) => handleEditInputChange('business_impacted', e.target.value)}
-                    placeholder="0"
                   />
                 </div>
               </div>
