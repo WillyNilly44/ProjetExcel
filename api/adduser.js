@@ -48,13 +48,13 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (username.length > 10) {
+    if (username.length > 25) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           success: false,
-          error: 'Username must be 10 characters or less'
+          error: 'Username must be 25 characters or less'
         })
       };
     }
@@ -91,7 +91,7 @@ exports.handler = async (event, context) => {
 
     // Check if username already exists
     const checkRequest = new sql.Request(pool);
-    checkRequest.input('username', sql.VarChar(10), username.toUpperCase());
+    checkRequest.input('username', sql.VarChar(25), username.toUpperCase());
     
     const existingUser = await checkRequest.query(`
       SELECT COUNT(*) as count 
@@ -142,7 +142,7 @@ exports.handler = async (event, context) => {
     // Insert new user
     const insertRequest = new sql.Request(pool);
     insertRequest.input('name', sql.VarChar(25), name);
-    insertRequest.input('username', sql.VarChar(10), username.toUpperCase());
+    insertRequest.input('username', sql.VarChar(25), username.toUpperCase());
     insertRequest.input('password', sql.VarChar(25), password);
     insertRequest.input('passwordHash', sql.VarChar(255), hashedPassword);
     insertRequest.input('levelId', sql.Int, parseInt(level_id));
