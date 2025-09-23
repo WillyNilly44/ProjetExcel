@@ -371,7 +371,7 @@ const UserManagement = () => {
                           onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value.toUpperCase() }))}
                           className="inline-input"
                           placeholder="Username"
-                          maxLength="10"
+                          maxLength="25"
                         />
                       ) : (
                         user.username
@@ -511,7 +511,7 @@ const UserManagement = () => {
                   required
                   maxLength="25"
                   autoComplete="off"
-                  placeholder="Enter username (max 10 chars)"
+                  placeholder="Enter username (max 25 chars)"
                 />
               </div>
 
