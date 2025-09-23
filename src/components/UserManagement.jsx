@@ -9,6 +9,11 @@ const UserManagement = () => {
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  
+  // ADD SEARCH STATE
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -33,6 +38,20 @@ const UserManagement = () => {
     fetchLevels();
   }, []);
 
+  // ADD SEARCH FILTER EFFECT
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredUsers(users);
+    } else {
+      const filtered = users.filter(user => 
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.level_Name && user.level_Name.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredUsers(filtered);
+    }
+  }, [users, searchTerm]);
+
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
@@ -47,6 +66,7 @@ const UserManagement = () => {
       const result = await response.json();
       if (response.ok && result.success) {
         setUsers(result.users);
+        setFilteredUsers(result.users); // Initialize filtered users
       } else {
         setError(result.error || 'Failed to fetch users');
       }
@@ -55,6 +75,11 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ADD CLEAR SEARCH FUNCTION
+  const clearSearch = () => {
+    setSearchTerm('');
   };
 
   const fetchLevels = async () => {
@@ -72,7 +97,6 @@ const UserManagement = () => {
       }
     } catch (err) {
       console.error('Error fetching levels:', err);
-      // Use default levels if API fails
       setLevels(userLevels);
     }
   };
@@ -93,7 +117,7 @@ const UserManagement = () => {
         username: newUser.username,
         password: newUser.password,
         level_id: parseInt(newUser.level_id),
-        must_change_password: 1 // New users must change password on first login
+        must_change_password: 1
       };
       
       const response = await fetch('/api/adduser', {
@@ -178,7 +202,6 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = async (userId, username) => {
-    // Prevent deleting current user
     if (currentUser && currentUser.id === userId) {
       setError('You cannot delete your own account');
       return;
@@ -215,15 +238,12 @@ const UserManagement = () => {
   };
 
   const getLevelInfo = (levelId, levelName) => {
-    // First try to find by ID
     let level = userLevels.find(l => l.id === levelId);
     
-    // If not found, try to find by name
     if (!level && levelName) {
       level = userLevels.find(l => l.name.toLowerCase() === levelName.toLowerCase());
     }
     
-    // Default fallback
     if (!level) {
       level = { id: 1, name: levelName || 'Viewer', icon: '👤', color: '#6b7280' };
     }
@@ -239,8 +259,6 @@ const UserManagement = () => {
     try {
       setLoading(true);
       
-      // For now, we'll update their must_change_password flag
-      // You might want to create a separate resetpassword API endpoint
       const response = await fetch('/api/updateuser', {
         method: 'PUT',
         headers: {
@@ -249,7 +267,7 @@ const UserManagement = () => {
         body: JSON.stringify({ 
           id: userId,
           reset_password: true,
-          password: 'temp123', // Temporary password
+          password: 'temp123',
           must_change_password: 1
         }),
       });
@@ -297,6 +315,47 @@ const UserManagement = () => {
         </button>
       </div>
 
+      {/* SEARCH BAR */}
+      <div className="search-controls">
+        <div className="search-bar">
+          <div className="search-input-wrapper">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Search users by name, username, or level..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+            {searchTerm && (
+              <button
+                onClick={clearSearch}
+                className="search-clear"
+                type="button"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* SEARCH RESULTS INFO */}
+        <div className="search-info">
+          {searchTerm ? (
+            <span className="search-results">
+              Found {filteredUsers.length} of {users.length} users
+              {filteredUsers.length === 0 && (
+                <span className="no-results"> - Try a different search term</span>
+              )}
+            </span>
+          ) : (
+            <span className="total-users">
+              Total: {users.length} users
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Status Messages */}
       {error && (
         <div className="alert alert-error">
@@ -330,14 +389,18 @@ const UserManagement = () => {
                   ⏳ Loading users...
                 </td>
               </tr>
-            ) : users.length === 0 ? (
+            ) : filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan="6" className="empty-cell">
-                  👤 No users found
+                  {searchTerm ? (
+                    <>🔍 No users found matching "{searchTerm}"</>
+                  ) : (
+                    <>👤 No users found</>
+                  )}
                 </td>
               </tr>
             ) : (
-              users.map(user => {
+              filteredUsers.map(user => {
                 const levelInfo = getLevelInfo(user.level_id, user.level_Name);
                 const isCurrentUser = currentUser && currentUser.id === user.id;
                 
@@ -468,7 +531,7 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {/* Add User Modal */}
+      {/* Add User Modal - Keep unchanged */}
       {showAddModal && (
         <div className="modal-overlay">
           <div className="modal-content">

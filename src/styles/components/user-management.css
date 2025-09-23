@@ -552,6 +552,137 @@ select.form-input {
   color: #fca5a5; /* Light red text */
 }
 
+/* Search Controls */
+.search-controls {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 1rem;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 2.75rem;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: #f8fafc;
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: rgba(15, 23, 42, 1);
+}
+
+.search-input::placeholder {
+  color: #64748b;
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.search-clear:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.search-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.search-results {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.no-results {
+  color: #f59e0b;
+  font-style: italic;
+}
+
+.total-users {
+  color: #10b981;
+}
+
+/* Highlight search matches (optional advanced feature) */
+.search-match {
+  background: rgba(59, 130, 246, 0.2);
+  padding: 0.125rem 0.25rem;
+  border-radius: 4px;
+  color: #93c5fd;
+}
+
+/* Responsive design for search */
+@media (max-width: 640px) {
+  .search-controls {
+    padding: 1rem;
+  }
+  
+  .search-input-wrapper {
+    max-width: 100%;
+  }
+  
+  .search-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Rest of existing styles... */
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .users-table-container {
