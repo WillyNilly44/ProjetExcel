@@ -17,9 +17,22 @@ export default function AddEntryModal({
   const [incidentSuggestions, setIncidentSuggestions] = useState([]); 
   const [showIncidentSuggestions, setShowIncidentSuggestions] = useState(false); 
   const [isRecurrence, setIsRecurrence] = useState(false);
-  const [recurrenceType, setRecurrenceType] = useState('weekly'); // 'weekly' or 'monthly'
+  const [recurrenceType, setRecurrenceType] = useState('weekly');
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
   const [selectedDayOfMonth, setSelectedDayOfMonth] = useState('');
+
+  // NEW: Application fields state
+  const [applicationFields, setApplicationFields] = useState({
+    company: '',
+    ticket_number: '',
+    project_name: '',
+    identified_user_impact: '',
+    post_maintenance_testing: '',
+    rollback_plan: '',
+    wiki_diagram_updated: false,
+    communication_to_user: '',
+    s3_support_ready: false
+  });
 
   useEffect(() => {
     if (isOpen && columns.length > 0) {
@@ -33,8 +46,26 @@ export default function AddEntryModal({
       });
       setFormData(initialData);
       setErrors({});
+      
+      // Reset application fields
+      setApplicationFields({
+        company: '',
+        ticket_number: '',
+        project_name: '',
+        identified_user_impact: '',
+        post_maintenance_testing: '',
+        rollback_plan: '',
+        wiki_diagram_updated: false,
+        communication_to_user: '',
+        s3_support_ready: false
+      });
     }
   }, [isOpen, columns, currentUser]);
+
+  // NEW: Check if log type is Application
+  const isApplicationLog = () => {
+    return formData.log_type === 'Application';
+  };
 
   const getDefaultValue = (column) => {
     const dataType = column.DATA_TYPE.toLowerCase();
@@ -71,6 +102,21 @@ export default function AddEntryModal({
     }
   };
 
+  // NEW: Handle application fields changes
+  const handleApplicationFieldChange = (fieldName, value) => {
+    setApplicationFields(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+    
+    if (errors[fieldName]) {
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: null
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -87,12 +133,50 @@ export default function AddEntryModal({
         isRecurrence,
         recurrence_type: isRecurrence ? recurrenceType : null,
         day_of_the_week: isRecurrence && recurrenceType === 'weekly' ? selectedDayOfWeek : null,
-        day_of_the_month: isRecurrence && recurrenceType === 'monthly' ? selectedDayOfMonth : null
+        day_of_the_month: isRecurrence && recurrenceType === 'monthly' ? selectedDayOfMonth : null,
+        applicationFields: isApplicationLog() ? {
+          ...applicationFields,
+          created_by: currentUser?.username || 'Unknown User'
+        } : null
       };
       
-      await onSave(submissionData);
+      // Step 1: Create the main log entry
+      const mainResponse = await fetch('/api/addentry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionData)
+      });
+      
+      const mainResult = await mainResponse.json();
+      
+      if (!mainResult.success) {
+        throw new Error(mainResult.error);
+      }
+      
+      // Step 2: If it's an application log, add the application fields
+      if (mainResult.isApplicationLog && mainResult.applicationFields) {
+        const appResponse = await fetch('/api/addApplicationFields', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            logEntryId: mainResult.id,
+            applicationFields: mainResult.applicationFields
+          })
+        });
+        
+        const appResult = await appResponse.json();
+        
+        if (!appResult.success) {
+          console.error('Application fields failed:', appResult.error);
+          // Don't throw - main entry was created successfully
+        }
+      }
+      
+      // Success!
       resetForm();
       onClose();
+      if (onSave) onSave(submissionData);
+      
     } catch (error) {
       setErrors({ submit: error.message });
     } finally {
@@ -121,9 +205,26 @@ export default function AddEntryModal({
         newErrors[fieldName] = `${displayName} is required`;
       }
     });
+
+    // NEW: Validate application fields if log type is Application
+    if (isApplicationLog()) {
+      if (!applicationFields.company.trim()) {
+        newErrors.company = 'Company is required for Application logs';
+      }
+    }
   
+    // Time validation - make sure end time is after start time
     if (formData.log_start && formData.log_end) {
-      if (formData.log_end <= formData.log_start) {
+      // Convert times to comparable format
+      const startTime = formData.log_start.includes(':') ? formData.log_start : '00:00';
+      const endTime = formData.log_end.includes(':') ? formData.log_end : '23:59';
+      
+      // Create date objects for comparison (same date, different times)
+      const today = new Date().toISOString().split('T')[0];
+      const startDateTime = new Date(`${today}T${startTime}:00`);
+      const endDateTime = new Date(`${today}T${endTime}:00`);
+      
+      if (endDateTime <= startDateTime) {
         newErrors.log_end = 'End time must be after start time';
       }
     }
@@ -204,7 +305,6 @@ export default function AddEntryModal({
     );
   };
 
-  // Generate day of month options
   const getDayOfMonthOptions = () => {
     const options = [];
     for (let i = 1; i <= 31; i++) {
@@ -213,7 +313,6 @@ export default function AddEntryModal({
         label: `${i}${getOrdinalSuffix(i)} day of the month`
       });
     }
-    // Add special options
     options.push({
       value: 'last',
       label: 'Last day of the month'
@@ -319,7 +418,6 @@ export default function AddEntryModal({
             }}
           />
           
-          {/* Autocomplete suggestions for incidents */}
           {showIncidentSuggestions && filteredSuggestions.length > 0 && (
             <div style={{
               position: 'absolute',
@@ -376,7 +474,6 @@ export default function AddEntryModal({
                 </div>
               )}
               
-              {/* Show "Type to add new" hint */}
               <div style={{
                 padding: '8px 12px',
                 fontSize: '12px',
@@ -468,7 +565,6 @@ export default function AddEntryModal({
             }}
           />
           
-          {/* Autocomplete suggestions */}
           {showDistrictSuggestions && filteredSuggestions.length > 0 && (
             <div style={{
               position: 'absolute',
@@ -547,9 +643,8 @@ export default function AddEntryModal({
         <div style={{ position: 'relative' }}>
           <input
             type="number"
-            value={value} // Use value directly as hours
+            value={value}
             onChange={(e) => {
-              // Store the value directly as hours (decimal)
               const hours = parseFloat(e.target.value) || '';
               handleInputChange(columnName, hours);
             }}
@@ -572,12 +667,36 @@ export default function AddEntryModal({
       );
     }
     
-    else if (dataType.includes('time') || columnName.toLowerCase().includes('time') && !columnName.toLowerCase().includes('expected_down_time')) {
+    else if (dataType.includes('time') || (columnName.toLowerCase().includes('time') && 
+         !columnName.toLowerCase().includes('estimated') && 
+         !columnName.toLowerCase().includes('actual') && 
+         !columnName.toLowerCase().includes('expected') &&
+         !columnName.toLowerCase().includes('down'))) {
+  
+      // Handle time fields like log_start, log_end
+      let timeValue = '';
+      if (value) {
+        // If it's already in HH:MM format, use it
+        if (typeof value === 'string' && value.match(/^\d{1,2}:\d{2}$/)) {
+          timeValue = value;
+        }
+        // If it has seconds, remove them for the input
+        else if (typeof value === 'string' && value.match(/^\d{1,2}:\d{2}:\d{2}$/)) {
+          timeValue = value.substring(0, 5);
+        }
+        else {
+          timeValue = value;
+        }
+      }
+      
       return (
         <input
           type="time"
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          value={timeValue}
+          onChange={(e) => {
+            // Store the time in HH:MM format - the API will handle adding seconds
+            handleInputChange(columnName, e.target.value);
+          }}
           style={{
             ...baseStyle,
             colorScheme: 'dark'
@@ -613,6 +732,282 @@ export default function AddEntryModal({
     }
   };
 
+  // NEW: Render application fields
+  const renderApplicationFields = () => {
+    if (!isApplicationLog()) return null;
+
+    const baseStyle = {
+      width: '100%',
+      padding: '12px 16px',
+      border: '2px solid #475569',
+      borderRadius: '8px',
+      fontSize: '14px',
+      backgroundColor: '#334155',
+      color: '#e2e8f0',
+      transition: 'border-color 0.2s ease',
+      outline: 'none'
+    };
+
+    return (
+      <div style={{
+        marginTop: '32px',
+        padding: '24px',
+        backgroundColor: '#1e40af',
+        border: '2px solid #3b82f6',
+        borderRadius: '12px',
+        animation: 'slideDown 0.3s ease-out'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{ fontSize: '24px' }}>📋</div>
+          <h4 style={{
+            margin: 0,
+            color: '#dbeafe',
+            fontSize: '18px',
+            fontWeight: '600'
+          }}>
+            Application Change Request Details
+          </h4>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '20px'
+        }}>
+          {/* Company */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              🏢 Company *
+            </label>
+            <input
+              type="text"
+              value={applicationFields.company}
+              onChange={(e) => handleApplicationFieldChange('company', e.target.value)}
+              placeholder="e.g., Acme Corp, Tech Solutions Inc."
+              style={{
+                ...baseStyle,
+                border: `2px solid ${errors.company ? '#ef4444' : '#60a5fa'}`,
+                backgroundColor: errors.company ? '#7f1d1d' : '#1e293b'
+              }}
+            />
+            {errors.company && (
+              <div style={{
+                fontSize: '13px',
+                color: '#fecaca',
+                padding: '4px 8px',
+                backgroundColor: '#7f1d1d',
+                borderRadius: '4px',
+                border: '1px solid #ef4444'
+              }}>
+                {errors.company}
+              </div>
+            )}
+          </div>
+
+          {/* Ticket Number */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              🎫 Ticket #
+            </label>
+            <input
+              type="text"
+              value={applicationFields.ticket_number}
+              onChange={(e) => handleApplicationFieldChange('ticket_number', e.target.value)}
+              placeholder="e.g., CHG-2025-001, INC-12345"
+              style={{
+                ...baseStyle,
+                border: '2px solid #60a5fa',
+                backgroundColor: '#1e293b'
+              }}
+            />
+          </div>
+
+          {/* Project Name */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              📂 Project Name
+            </label>
+            <input
+              type="text"
+              value={applicationFields.project_name}
+              onChange={(e) => handleApplicationFieldChange('project_name', e.target.value)}
+              placeholder="e.g., Server Migration Phase 2, Security Update Q1"
+              style={{
+                ...baseStyle,
+                border: '2px solid #60a5fa',
+                backgroundColor: '#1e293b'
+              }}
+            />
+          </div>
+
+          {/* Long text fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              👥 Identified User Impact
+            </label>
+            <textarea
+              value={applicationFields.identified_user_impact}
+              onChange={(e) => handleApplicationFieldChange('identified_user_impact', e.target.value)}
+              placeholder="Describe the expected impact on end users..."
+              rows="3"
+              style={{
+                ...baseStyle,
+                border: '2px solid #60a5fa',
+                backgroundColor: '#1e293b',
+                resize: 'vertical',
+                minHeight: '80px'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              🧪 Post-Maintenance Testing Requirement
+            </label>
+            <textarea
+              value={applicationFields.post_maintenance_testing}
+              onChange={(e) => handleApplicationFieldChange('post_maintenance_testing', e.target.value)}
+              placeholder="Describe testing procedures required after maintenance..."
+              rows="3"
+              style={{
+                ...baseStyle,
+                border: '2px solid #60a5fa',
+                backgroundColor: '#1e293b',
+                resize: 'vertical',
+                minHeight: '80px'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              🔄 Rollback Plan
+            </label>
+            <textarea
+              value={applicationFields.rollback_plan}
+              onChange={(e) => handleApplicationFieldChange('rollback_plan', e.target.value)}
+              placeholder="Describe the rollback procedure if changes need to be reverted..."
+              rows="3"
+              style={{
+                ...baseStyle,
+                border: '2px solid #60a5fa',
+                backgroundColor: '#1e293b',
+                resize: 'vertical',
+                minHeight: '80px'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
+            <label style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#dbeafe',
+              marginBottom: '4px'
+            }}>
+              📢 Communication to End User
+            </label>
+            <textarea
+              value={applicationFields.communication_to_user}
+              onChange={(e) => handleApplicationFieldChange('communication_to_user', e.target.value)}
+              placeholder="What communication will be sent to end users about this change..."
+              rows="3"
+              style={{
+                ...baseStyle,
+                border: '2px solid #60a5fa',
+                backgroundColor: '#1e293b',
+                resize: 'vertical',
+                minHeight: '80px'
+              }}
+            />
+          </div>
+
+          {/* Checkboxes */}
+          <div style={{ display: 'flex', gap: '24px', gridColumn: '1 / -1', marginTop: '16px' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#dbeafe'
+            }}>
+              <input
+                type="checkbox"
+                checked={applicationFields.wiki_diagram_updated}
+                onChange={(e) => handleApplicationFieldChange('wiki_diagram_updated', e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer'
+                }}
+              />
+              📚 Wiki or Diagram Updated?
+            </label>
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#dbeafe'
+            }}>
+              <input
+                type="checkbox"
+                checked={applicationFields.s3_support_ready}
+                onChange={(e) => handleApplicationFieldChange('s3_support_ready', e.target.checked)}
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer'
+                }}
+              />
+              ☁️ S3 Support Aware and Ready?
+            </label>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const resetForm = () => {
     setFormData({});
     setErrors({});
@@ -620,6 +1015,19 @@ export default function AddEntryModal({
     setRecurrenceType('weekly');
     setSelectedDayOfWeek('');
     setSelectedDayOfMonth('');
+    
+    // NEW: Reset application fields
+    setApplicationFields({
+      company: '',
+      ticket_number: '',
+      project_name: '',
+      identified_user_impact: '',
+      post_maintenance_testing: '',
+      rollback_plan: '',
+      wiki_diagram_updated: false,
+      communication_to_user: '',
+      s3_support_ready: false
+    });
   };
 
   if (!isOpen) return null;
@@ -646,7 +1054,7 @@ export default function AddEntryModal({
         backgroundColor: '#0f172a',
         borderRadius: '12px',
         width: '100%',
-        maxWidth: '700px',
+        maxWidth: '900px',
         maxHeight: '90vh',
         overflow: 'hidden',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
@@ -661,7 +1069,22 @@ export default function AddEntryModal({
           alignItems: 'center',
           backgroundColor: '#1e293b'
         }}>
-          <h2 style={{ margin: 0, color: '#f1f5f9', fontSize: '20px' }}>📝 Add New Log Entry</h2>
+          <h2 style={{ margin: 0, color: '#f1f5f9', fontSize: '20px' }}>
+            📝 Add New Log Entry
+            {isApplicationLog() && (
+              <span style={{
+                marginLeft: '12px',
+                padding: '4px 12px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}>
+                💻 Application Log
+              </span>
+            )}
+          </h2>
           <button
             onClick={onClose}
             style={{
@@ -735,7 +1158,10 @@ export default function AddEntryModal({
               ))}
             </div>
 
-            {/* Enhanced Recurrence Section */}
+            {/* NEW: Application Fields Section - Only shows when log_type is Application */}
+            {renderApplicationFields()}
+
+            {/* Your existing recurrence section stays exactly the same */}
             <div style={{
               marginTop: '32px',
               padding: '20px',
@@ -780,7 +1206,6 @@ export default function AddEntryModal({
                 )}
               </div>
               
-              {/* Recurrence Checkbox */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -817,7 +1242,6 @@ export default function AddEntryModal({
                 </label>
               </div>
               
-              {/* Recurrence Type Selection */}
               {isRecurrence && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{
@@ -851,7 +1275,7 @@ export default function AddEntryModal({
                         checked={recurrenceType === 'weekly'}
                         onChange={(e) => {
                           setRecurrenceType(e.target.value);
-                          setSelectedDayOfMonth(''); // Clear monthly selection
+                          setSelectedDayOfMonth('');
                         }}
                         style={{ margin: 0 }}
                       />
@@ -874,7 +1298,7 @@ export default function AddEntryModal({
                         checked={recurrenceType === 'monthly'}
                         onChange={(e) => {
                           setRecurrenceType(e.target.value);
-                          setSelectedDayOfWeek(''); // Clear weekly selection
+                          setSelectedDayOfWeek('');
                         }}
                         style={{ margin: 0 }}
                       />
@@ -884,7 +1308,6 @@ export default function AddEntryModal({
                 </div>
               )}
               
-              {/* Day of Week Selection (Weekly) */}
               {isRecurrence && recurrenceType === 'weekly' && (
                 <div style={{ marginTop: '16px' }}>
                   <label style={{
@@ -923,7 +1346,6 @@ export default function AddEntryModal({
                 </div>
               )}
 
-              {/* Day of Month Selection (Monthly) */}
               {isRecurrence && recurrenceType === 'monthly' && (
                 <div style={{ marginTop: '16px' }}>
                   <label style={{
@@ -981,7 +1403,6 @@ export default function AddEntryModal({
               )}
             </div>
 
-            {/* Submit error section */}
             {errors.submit && (
               <div style={{
                 marginTop: '24px',

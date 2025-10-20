@@ -367,7 +367,192 @@
   transform: none;
 }
 
-/* Responsive Design */
+/* Application fields section in detail modal */
+.application-fields-section {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 12px;
+  margin-top: 1.5rem;
+  overflow: hidden;
+  animation: slideInFromBottom 0.3s ease-out;
+}
+
+.application-fields-section .section-header {
+  background: rgba(16, 185, 129, 0.1);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.application-fields-section .section-title {
+  color: #10b981;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Status indicators for checkboxes */
+.status-indicator {
+  padding: 0.25rem 0.75rem !important;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.status-indicator.status-yes {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-indicator.status-no {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Special field styling */
+.company-name {
+  font-weight: 600;
+  color: #3b82f6 !important;
+}
+
+.ticket-number {
+  font-family: 'Courier New', monospace;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.project-name {
+  font-weight: 500;
+  color: #8b5cf6 !important;
+}
+
+/* Text fields */
+.text-field {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 1rem;
+}
+
+.text-field .detail-label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.text-field .detail-text {
+  color: #cbd5e1;
+  line-height: 1.6;
+  font-size: 0.9375rem;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 0.875rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Animations */
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Priority and status badges */
+.priority-badge, .status-badge, .category-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.category-badge {
+  background: rgba(139, 92, 246, 0.2);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+/* Detail grid and items */
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+  margin-top: 1rem;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  color: #e2e8f0;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.detail-text {
+  color: #cbd5e1;
+  line-height: 1.6;
+  font-size: 0.9375rem;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+  
+  .text-field {
+    padding: 0.75rem;
+  }
+  
+  .text-field .detail-text {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+  }
+}
+
 @media (max-width: 768px) {
   .entry-detail-modal {
     width: 95vw;

@@ -480,6 +480,100 @@ const getColumnGroups = () => {
     return 'text';
   };
 
+  // Add this function inside your EntryDetailModal component
+const renderApplicationFields = () => {
+  // Check if this entry has application fields
+  const hasAppFields = entry.app_company || entry.app_ticket_number || entry.app_project_name || 
+                      entry.identified_user_impact || entry.post_maintenance_testing || 
+                      entry.rollback_plan || entry.communication_to_user ||
+                      entry.wiki_diagram_updated !== null || entry.s3_support_ready !== null;
+
+  if (!hasAppFields) return null;
+
+  return (
+    <div className="application-fields-section">
+      <div className="section-header">
+        <h3 className="section-title">📋 Application Change Request Details</h3>
+      </div>
+      
+      <div className="detail-fields">
+        {/* Company */}
+        {entry.app_company && (
+          <div className="detail-field">
+            <div className="detail-label">🏢 Company</div>
+            <div className="detail-value company-name">{entry.app_company}</div>
+          </div>
+        )}
+        
+        {/* Application Ticket Number */}
+        {entry.app_ticket_number && (
+          <div className="detail-field">
+            <div className="detail-label">🎫 App Ticket #</div>
+            <div className="detail-value ticket-number">{entry.app_ticket_number}</div>
+          </div>
+        )}
+
+        {/* Project Name */}
+        {entry.app_project_name && (
+          <div className="detail-field">
+            <div className="detail-label">📂 Project Name</div>
+            <div className="detail-value project-name">{entry.app_project_name}</div>
+          </div>
+        )}
+
+        {/* Wiki/Diagram Updated */}
+        {entry.wiki_diagram_updated !== null && entry.wiki_diagram_updated !== undefined && (
+          <div className="detail-field">
+            <div className="detail-label">📚 Wiki/Diagram Updated</div>
+            <div className={`detail-value status-indicator ${entry.wiki_diagram_updated ? 'status-yes' : 'status-no'}`}>
+              {entry.wiki_diagram_updated ? '✅ Yes' : '❌ No'}
+            </div>
+          </div>
+        )}
+
+        {/* S3 Support Ready */}
+        {entry.s3_support_ready !== null && entry.s3_support_ready !== undefined && (
+          <div className="detail-field">
+            <div className="detail-label">☁️ S3 Support Ready</div>
+            <div className={`detail-value status-indicator ${entry.s3_support_ready ? 'status-yes' : 'status-no'}`}>
+              {entry.s3_support_ready ? '✅ Yes' : '❌ No'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Long text fields */}
+      {entry.identified_user_impact && (
+        <div className="text-field">
+          <div className="detail-label">👥 Identified User Impact</div>
+          <div className="detail-text">{entry.identified_user_impact}</div>
+        </div>
+      )}
+
+      {entry.post_maintenance_testing && (
+        <div className="text-field">
+          <div className="detail-label">🧪 Post-Maintenance Testing</div>
+          <div className="detail-text">{entry.post_maintenance_testing}</div>
+        </div>
+      )}
+
+      {entry.rollback_plan && (
+        <div className="text-field">
+          <div className="detail-label">🔄 Rollback Plan</div>
+          <div className="detail-text">{entry.rollback_plan}</div>
+        </div>
+      )}
+
+      {entry.communication_to_user && (
+        <div className="text-field">
+          <div className="detail-label">📢 Communication to Users</div>
+          <div className="detail-text">{entry.communication_to_user}</div>
+        </div>
+      )}
+    </div>
+  );
+};
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="entry-detail-modal" onClick={(e) => e.stopPropagation()}>
@@ -537,6 +631,7 @@ const getColumnGroups = () => {
             {renderFieldGroup('Status & Completion', columnGroups.status)}
             {renderFieldGroup('Dates & Times', columnGroups.dates)}
             {renderFieldGroup('Notes & Comments', columnGroups.notes)}
+            {renderApplicationFields()}
           </div>
         </div>
 

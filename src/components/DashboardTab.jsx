@@ -472,7 +472,7 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
       duplicateData.day_of_the_week = null;
 
       // Save to database
-      const response = await fetch('/api/addentryrec', {
+      const response = await fetch('/api/addentry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

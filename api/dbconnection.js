@@ -44,20 +44,64 @@ exports.handler = async (event, context) => {
   try {
     pool = await sql.connect(config);
     
-    // FIXED: Convert date fields to proper format when retrieving
+    // Query with LEFT JOINs to include both recurrence and application fields
     const query = `
       SELECT 
-        le.*,
-        CASE WHEN ler.day_of_the_week IS NOT NULL THEN 1 ELSE 0 END as is_recurring,
-        ler.day_of_the_week as recurrence_day
+        le.id,
+        le.incident,
+        le.district,
+        le.log_date,
+        le.event_main,
+        le.event_incid,
+        le.business_impact,
+        le.rca,
+        le.estimated_time,
+        
+        -- FIXED: Cast time fields as VARCHAR to preserve exact values
+        CAST(le.log_start AS VARCHAR(8)) as log_start,
+        CAST(le.log_end AS VARCHAR(8)) as log_end,
+        
+        le.real_bus_impact,
+        le.actual_time,
+        le.ticket_number,
+        le.assigned,
+        le.log_status,
+        le.note,
+        le.risk_level,
+        le.expected_down_time,
+        le.log_type,
+        le.uploader,
+        
+        -- Recurrence info
+        CASE WHEN ler.day_of_the_week IS NOT NULL OR ler.day_of_the_month IS NOT NULL THEN 1 ELSE 0 END as is_recurring,
+        ler.recurrence_type,
+        ler.day_of_the_week as recurrence_day_of_week,
+        ler.day_of_the_month as recurrence_day_of_month,
+        ler.monthly_pattern as recurrence_monthly_pattern,
+        
+        -- Application Fields (will be null if no application data exists)
+        af.company as app_company,
+        af.ticket_number as app_ticket_number,
+        af.project_name as app_project_name,
+        af.identified_user_impact,
+        af.post_maintenance_testing,
+        af.rollback_plan,
+        af.wiki_diagram_updated,
+        af.communication_to_user,
+        af.s3_support_ready,
+        af.created_by as app_created_by,
+        af.created_at as app_created_at
+        
       FROM LOG_ENTRIES le
       LEFT JOIN LOG_ENTRIES_RECURRENCES ler ON le.id = ler.log_entry_id
+      LEFT JOIN LOG_ENTRIES_APPLICATION_FIELDS af ON le.id = af.log_entry_id
       ORDER BY le.log_date DESC, le.id DESC
     `;
     
     const result = await pool.request().query(query);
     let data = result.recordset;
     
+    // Get column info for the main LOG_ENTRIES table
     const columnQuery = `
       SELECT 
         COLUMN_NAME, 
@@ -87,6 +131,7 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
+    console.error('Database error:', error);
     
     return {
       statusCode: 500,
@@ -104,6 +149,7 @@ exports.handler = async (event, context) => {
       try {
         await pool.close();
       } catch (closeError) {
+        console.error('Error closing pool:', closeError);
       }
     }
   }

@@ -56,7 +56,7 @@ app.get('/api/health', (req, res) => {
 const loginHandler = require('./api/login');
 const changePasswordHandler = require('./api/changepassword');
 const dbConnectionHandler = require('./api/dbconnection');
-const addEntryHandler = require('./api/addentryrec');
+const addEntryHandler = require('./api/addentry');
 const deleteEntryHandler = require('./api/deleteentry');
 const updateEntryHandler = require('./api/updateentry');
 const getUsersHandler = require('./api/getusers');
@@ -70,6 +70,7 @@ const thresholdRoutes = require('./api/thresholds');
 const addKpiHandler = require('./api/addkpi');
 const updateKpiHandler = require('./api/updatekpi');
 const deleteKpiHandler = require('./api/deletekpi');
+const addApplicationFieldsHandler = require('./api/addApplicationFields');
 
 app.post('/api/login', async (req, res) => {
   const event = {
@@ -101,7 +102,7 @@ app.post('/api/dbconnection', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
-app.post('/api/addentryrec', async (req, res) => {
+app.post('/api/addentry', async (req, res) => {
   const event = {
     httpMethod: 'POST',
     body: JSON.stringify(req.body),
@@ -756,6 +757,16 @@ app.post('/api/addcolumn', async (req, res) => {
       error: `Failed to add column: ${errorMessage}`
     });
   }
+});
+
+app.post('/api/addApplicationFields', async (req, res) => {
+  const event = {
+    httpMethod: 'POST',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await addApplicationFieldsHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
 app.get('*', (req, res) => {
