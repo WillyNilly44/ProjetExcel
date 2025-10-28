@@ -275,7 +275,7 @@ const UserManagement = () => {
       const result = await response.json();
       
       if (response.ok && result.success) {
-        alert(`Password reset successfully for ${username}. New temporary password: temp123`);
+        alert(`Password reset successfully for ${username}. New temporary password: SanimaxTemp`);
         fetchUsers();
         setError(null);
       } else {
