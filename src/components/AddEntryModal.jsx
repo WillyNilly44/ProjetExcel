@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import '../styles/components/modals.css';
+import '../styles/components/forms.css';
 
 export default function AddEntryModal({ 
   isOpen, 
@@ -12,16 +14,16 @@ export default function AddEntryModal({
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [districtSuggestions, setDistrictSuggestions] = useState([]);
-  const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
-  const [incidentSuggestions, setIncidentSuggestions] = useState([]); 
-  const [showIncidentSuggestions, setShowIncidentSuggestions] = useState(false); 
+  const [currentStep, setCurrentStep] = useState(1);
   const [isRecurrence, setIsRecurrence] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState('weekly');
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState('');
   const [selectedDayOfMonth, setSelectedDayOfMonth] = useState('');
-
-  // NEW: Application fields state
+  // monthly pattern support
+  const [monthlyPattern, setMonthlyPattern] = useState('day'); // 'day' or 'weekday'
+  const [monthlyDay, setMonthlyDay] = useState(''); // numeric day or 'last'
+  const [monthlyWeekOccurrence, setMonthlyWeekOccurrence] = useState('first'); // first, second, third, fourth, last
+  const [monthlyWeekday, setMonthlyWeekday] = useState('monday');
   const [applicationFields, setApplicationFields] = useState({
     company: '',
     ticket_number: '',
@@ -34,128 +36,530 @@ export default function AddEntryModal({
     s3_support_ready: false
   });
 
-  useEffect(() => {
-    if (isOpen && columns.length > 0) {
-      const initialData = {};
-      columns.forEach(column => {
-        if (!['id', 'created_at', 'updated_at'].includes(column.COLUMN_NAME.toLowerCase())) {
-          let defaultValue = getDefaultValue(column);
-          
-          initialData[column.COLUMN_NAME] = defaultValue;
-        }
-      });
-      setFormData(initialData);
-      setErrors({});
-      
-      // Reset application fields
-      setApplicationFields({
-        company: '',
-        ticket_number: '',
-        project_name: '',
-        identified_user_impact: '',
-        post_maintenance_testing: '',
-        rollback_plan: '',
-        wiki_diagram_updated: false,
-        communication_to_user: '',
-        s3_support_ready: false
-      });
-    }
-  }, [isOpen, columns, currentUser]);
-
-  // NEW: Check if log type is Application
-  const isApplicationLog = () => {
-    return formData.log_type === 'Application';
+  // Helper functions
+  const isRequiredField = (columnName) => {
+    const requiredFields = [
+      'log_type', 'approver', 'log_status', 'actual_time', 'log_start',
+      'incident', 'district', 'log_date', 'event_main', 'event_incid'
+    ];
+    return requiredFields.includes(columnName.toLowerCase());
   };
 
-  const getDefaultValue = (column) => {
-    const dataType = column.DATA_TYPE.toLowerCase();
-    const columnName = column.COLUMN_NAME.toLowerCase();
+  // Fields to hide from step 2 display
+  const isHiddenField = (columnName) => {
+    const hiddenFields = [
+      'uploader', // Hide uploader from step 2
+      'recurrence_type', 'day_of_the_week', 'day_of_the_month' // Hide recurrence fields from step 2
+    ];
+    
+    // Hide ticket_number from optional fields if it's an application log (we show it in application section)
+    if (isApplicationLog() && columnName.toLowerCase() === 'ticket_number') {
+      return true;
+    }
+    
+    return hiddenFields.includes(columnName.toLowerCase());
+  };
 
-    if (dataType.includes('bit') || dataType.includes('boolean')) {
-      return false;
-    } else if (dataType.includes('date')) {
-      return new Date().toISOString().split('T')[0];
-    } else if (dataType.includes('time')) {
-      return '08:00'; 
-    } else if (columnName === 'log_status') {
-      return 'Scheduled'; 
-    } else if (columnName === 'log_type') {
-      return 'Operational'; 
-    } else if (columnName === 'uploader') {
-      return currentUser?.username || 'Unknown User';
-    } else {
+  const formatColumnName = (columnName) => {
+    // Handle specific field mappings
+    const fieldMappings = {
+      'rca': 'Root Call Analysis',
+      'incident': 'Incident Name',
+      'real_bus_impact': 'Real Business Impact'
+    };
+    
+    const lowerColumnName = columnName.toLowerCase();
+    if (fieldMappings[lowerColumnName]) {
+      return fieldMappings[lowerColumnName];
+    }
+    
+    // Default formatting for other fields
+    return columnName.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  };
+
+  const isApplicationLog = () => formData.log_type === 'Application';
+
+  // Calculate log end time based on log start + actual time
+  const calculateLogEnd = (logStart, actualTime) => {
+    if (!logStart || !actualTime) return '';
+    
+    try {
+      // Parse the start time
+      const [startHours, startMinutes] = logStart.split(':').map(Number);
+      
+      // Parse actual time (assuming it's in hours format like "2.5" or "1")
+      const actualHours = parseFloat(actualTime);
+      if (isNaN(actualHours)) return '';
+      
+      // Calculate total minutes
+      const startTotalMinutes = startHours * 60 + startMinutes;
+      const actualMinutes = actualHours * 60;
+      const endTotalMinutes = startTotalMinutes + actualMinutes;
+      
+      // Convert back to hours and minutes
+      const endHours = Math.floor(endTotalMinutes / 60) % 24; // Handle day overflow
+      const endMinutes = Math.floor(endTotalMinutes % 60);
+      
+      // Format as HH:MM
+      return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
+    } catch (error) {
+      console.warn('Error calculating log end time:', error);
       return '';
     }
   };
 
+  const getDefaultValue = (column) => {
+    const columnName = column.COLUMN_NAME.toLowerCase();
+    const dataType = column.DATA_TYPE.toLowerCase();
+
+    if (dataType.includes('bit')) return false;
+    if (dataType.includes('date')) return new Date().toISOString().split('T')[0];
+    if (dataType.includes('time')) return '08:00';
+    if (columnName === 'log_status') return 'Scheduled';
+    if (columnName === 'log_type') return 'Operational';
+    if (columnName === 'uploader') return currentUser?.username || 'Unknown User';
+    if (columnName === 'event_main' || columnName === 'event_incid') return '0'; // Default to Maintenance
+    if (columnName === 'actual_time') return '1'; // Default 1 hour
+    return '';
+  };
+
+  // Initialize form
+  useEffect(() => {
+    if (isOpen && columns.length > 0) {
+      const initialData = {};
+      columns.forEach(column => {
+        if (column.COLUMN_NAME.toLowerCase() !== 'id') {
+          initialData[column.COLUMN_NAME] = getDefaultValue(column);
+        }
+      });
+      
+      // Calculate initial log_end if we have log_start and actual_time
+      if (initialData.log_start && initialData.actual_time) {
+        initialData.log_end = calculateLogEnd(initialData.log_start, initialData.actual_time);
+      }
+      
+      setFormData(initialData);
+      setErrors({});
+      setCurrentStep(1);
+      setIsRecurrence(false); // Reset recurrence state
+      setRecurrenceType('weekly');
+      setSelectedDayOfWeek('');
+      setSelectedDayOfMonth('');
+      setMonthlyPattern('day');
+      setMonthlyDay('');
+      setMonthlyWeekOccurrence('first');
+      setMonthlyWeekday('monday');
+      setApplicationFields({
+        company: '', ticket_number: '', project_name: '',
+        identified_user_impact: '', post_maintenance_testing: '',
+        rollback_plan: '', wiki_diagram_updated: false,
+        communication_to_user: '', s3_support_ready: false
+      });
+    }
+  }, [isOpen, columns, currentUser]);
+
+  // Sync application ticket_number with main form when log_type changes
+  useEffect(() => {
+    if (isApplicationLog() && applicationFields.ticket_number) {
+      setFormData(prev => ({ ...prev, ticket_number: applicationFields.ticket_number }));
+    }
+  }, [formData.log_type, applicationFields.ticket_number]);
+
+  // Auto-update log_end when log_start or actual_time changes
+  useEffect(() => {
+    if (formData.log_start && formData.actual_time) {
+      const newLogEnd = calculateLogEnd(formData.log_start, formData.actual_time);
+      if (newLogEnd && newLogEnd !== formData.log_end) {
+        setFormData(prev => ({ ...prev, log_end: newLogEnd }));
+      }
+    }
+  }, [formData.log_start, formData.actual_time]);
+
   const handleInputChange = (columnName, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [columnName]: value
-    }));
-    
+    setFormData(prev => ({ ...prev, [columnName]: value }));
     if (errors[columnName]) {
-      setErrors(prev => ({
-        ...prev,
-        [columnName]: null
-      }));
+      setErrors(prev => ({ ...prev, [columnName]: null }));
     }
   };
 
-  // NEW: Handle application fields changes
   const handleApplicationFieldChange = (fieldName, value) => {
-    setApplicationFields(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
+    setApplicationFields(prev => ({ ...prev, [fieldName]: value }));
+    
+    // Also update the main form data for ticket_number
+    if (fieldName === 'ticket_number') {
+      setFormData(prev => ({ ...prev, ticket_number: value }));
+    }
     
     if (errors[fieldName]) {
-      setErrors(prev => ({
-        ...prev,
-        [fieldName]: null
-      }));
+      setErrors(prev => ({ ...prev, [fieldName]: null }));
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
+  // Handle event type change (both event_main and event_incid)
+  const handleEventTypeChange = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      event_main: value,
+      event_incid: value
+    }));
+    // Clear any errors for both fields
+    if (errors.event_main) {
+      setErrors(prev => ({ ...prev, event_main: null }));
     }
+    if (errors.event_incid) {
+      setErrors(prev => ({ ...prev, event_incid: null }));
+    }
+  };
+
+  // Simple input renderer
+  const renderSimpleInput = (column) => {
+    const columnName = column.COLUMN_NAME;
+    const value = formData[columnName] || '';
+    const hasError = errors[columnName];
+
+    const inputStyle = {
+      width: '100%',
+      padding: '8px 12px',
+      border: `1px solid ${hasError ? '#dc2626' : '#d1d5db'}`,
+      borderRadius: '6px',
+      fontSize: '14px',
+      outline: 'none',
+      transition: 'border-color 0.2s'
+    };
+
+    // Special case: Skip event_incid as it will be combined with event_main
+    if (columnName.toLowerCase() === 'event_incid') {
+      return null; // Don't render separately
+    }
+
+    // Special case: Log End (auto-calculated, read-only)
+    if (columnName.toLowerCase() === 'log_end') {
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="time"
+            value={value}
+            readOnly
+            style={{
+              ...inputStyle,
+              backgroundColor: '#f9fafb',
+              color: '#6b7280',
+              cursor: 'not-allowed'
+            }}
+          />
+          <div style={{
+            position: 'absolute',
+            right: '8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '12px',
+            color: '#6b7280',
+            pointerEvents: 'none'
+          }}>
+            🧮 Auto
+          </div>
+        </div>
+      );
+    }
+
+    // Special case: Event Type (combines event_main and event_incid)
+    if (columnName.toLowerCase() === 'event_main') {
+      return (
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#374151'
+          }}>
+            Event Type *
+          </label>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              padding: '10px 16px',
+              backgroundColor: formData.event_incid === '1' ? '#dc2626' : '#f3f4f6',
+              borderRadius: '6px',
+              border: `2px solid ${formData.event_incid === '1' ? '#dc2626' : '#d1d5db'}`,
+              transition: 'all 0.2s ease',
+              minWidth: '140px',
+              justifyContent: 'center'
+            }}>
+              <input
+                type="radio"
+                name="event_type"
+                value="1"
+                checked={formData.event_incid === '1'}
+                onChange={(e) => handleEventTypeChange(e.target.value)}
+                style={{ margin: 0 }}
+              />
+              <span style={{ 
+                color: formData.event_incid === '1' ? 'white' : '#374151',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                🚨 Incident
+              </span>
+            </label>
+
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              padding: '10px 16px',
+              backgroundColor: formData.event_incid === '0' ? '#059669' : '#f3f4f6',
+              borderRadius: '6px',
+              border: `2px solid ${formData.event_incid === '0' ? '#059669' : '#d1d5db'}`,
+              transition: 'all 0.2s ease',
+              minWidth: '140px',
+              justifyContent: 'center'
+            }}>
+              <input
+                type="radio"
+                name="event_type"
+                value="0"
+                checked={formData.event_incid === '0'}
+                onChange={(e) => handleEventTypeChange(e.target.value)}
+                style={{ margin: 0 }}
+              />
+              <span style={{ 
+                color: formData.event_incid === '0' ? 'white' : '#374151',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                🔧 Maintenance
+              </span>
+            </label>
+          </div>
+          {(errors.event_main || errors.event_incid) && (
+            <div style={{
+              marginTop: '4px',
+              fontSize: '12px',
+              color: '#dc2626'
+            }}>
+              Event Type is required
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Special cases for other fields
+    if (columnName.toLowerCase() === 'log_type') {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Select...</option>
+          <option value="Operational">🔧 Operational</option>
+          <option value="Application">💻 Application</option>
+        </select>
+      );
+    }
+
+    if (columnName.toLowerCase() === 'log_status') {
+      return (
+        <select
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={inputStyle}
+        >
+          <option value="">Select...</option>
+          <option value="Completed">✅ Completed</option>
+          <option value="Scheduled">📅 Scheduled</option>
+        </select>
+      );
+    }
+
+    if (column.DATA_TYPE.toLowerCase().includes('time')) {
+      return (
+        <input
+          type="time"
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={inputStyle}
+        />
+      );
+    }
+
+    if (column.DATA_TYPE.toLowerCase().includes('date')) {
+      return (
+        <input
+          type="date"
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={inputStyle}
+        />
+      );
+    }
+
+    // Special case for actual_time - number input with step
+    if (columnName.toLowerCase() === 'actual_time') {
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => handleInputChange(columnName, e.target.value)}
+            style={{
+              ...inputStyle,
+              paddingRight: '50px'
+            }}
+            placeholder="Enter hours"
+            step="0.5"
+            min="0"
+            max="24"
+          />
+          <div style={{
+            position: 'absolute',
+            right: '8px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '12px',
+            color: '#6b7280',
+            pointerEvents: 'none'
+          }}>
+            ⏱️ hrs
+          </div>
+        </div>
+      );
+    }
+
+    if (column.DATA_TYPE.toLowerCase().includes('int')) {
+      return (
+        <input
+          type="number"
+          value={value}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={inputStyle}
+          placeholder="Enter number"
+        />
+      );
+    }
+
+    // Default text input
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => handleInputChange(columnName, e.target.value)}
+        style={inputStyle}
+        placeholder={`Enter ${formatColumnName(columnName).toLowerCase()}`}
+      />
+    );
+  };
+
+  // Validation
+  const validateStep = (step) => {
+    const newErrors = {};
     
+    if (step === 1) {
+      const requiredFields = ['log_type', 'log_date', 'incident', 'district', 'event_main', 'event_incid'];
+      requiredFields.forEach(field => {
+        if (!formData[field] && formData[field] !== '0') {
+          newErrors[field] = 'Required';
+        }
+      });
+    }
+
+    if (step === 2 && isApplicationLog()) {
+      if (!applicationFields.company.trim()) {
+        newErrors.company = 'Company is required for Application logs';
+      }
+      if (!applicationFields.ticket_number.trim()) {
+        newErrors.ticket_number = 'Ticket Number is required for Application logs';
+      }
+    }
+
+    // Step 3 validation for recurrence fields
+    if (step === 3 && isRecurrence) {
+      if (recurrenceType === 'weekly' && !selectedDayOfWeek) {
+        newErrors.dayOfWeek = 'Please select a day of the week';
+      }
+      if (recurrenceType === 'monthly') {
+        if (monthlyPattern === 'day') {
+          if (!monthlyDay) newErrors.monthlyDay = 'Please select a day of the month';
+        } else {
+          if (!monthlyWeekOccurrence) newErrors.monthlyWeekOccurrence = 'Please select occurrence (e.g. first)';
+          if (!monthlyWeekday) newErrors.monthlyWeekday = 'Please select weekday';
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) return;
+
     setIsLoading(true);
-    
     try {
+      // Build submission data with only relevant fields
       const submissionData = {
         ...formData,
         uploader: currentUser?.username || 'Unknown User',
-        isRecurrence,
-        recurrence_type: isRecurrence ? recurrenceType : null,
-        day_of_the_week: isRecurrence && recurrenceType === 'weekly' ? selectedDayOfWeek : null,
-        day_of_the_month: isRecurrence && recurrenceType === 'monthly' ? selectedDayOfMonth : null,
-        applicationFields: isApplicationLog() ? {
-          ...applicationFields,
-          created_by: currentUser?.username || 'Unknown User'
-        } : null
+        isRecurrence
       };
       
-      // Step 1: Create the main log entry
+      // Only add recurrence fields if recurrence is enabled
+      if (isRecurrence) {
+        submissionData.recurrence_type = recurrenceType;
+        
+        if (recurrenceType === 'weekly') {
+          submissionData.day_of_the_week = selectedDayOfWeek;
+        } else if (recurrenceType === 'monthly') {
+          submissionData.monthly_pattern = monthlyPattern;
+          
+          if (monthlyPattern === 'day') {
+            submissionData.day_of_the_month = monthlyDay;
+          } else if (monthlyPattern === 'weekday') {
+            submissionData.monthly_week_occurrence = monthlyWeekOccurrence;
+            submissionData.monthly_weekday = monthlyWeekday;
+          }
+        }
+      }
+
+      // Only add application fields if it's an application log
+      if (isApplicationLog()) {
+        submissionData.applicationFields = {
+          ...applicationFields,
+          created_by: currentUser?.username || 'Unknown User'
+        };
+      }
+
       const mainResponse = await fetch('/api/addentry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submissionData)
       });
-      
+
       const mainResult = await mainResponse.json();
-      
-      if (!mainResult.success) {
-        throw new Error(mainResult.error);
-      }
-      
-      // Step 2: If it's an application log, add the application fields
+      if (!mainResult.success) throw new Error(mainResult.error);
+
       if (mainResult.isApplicationLog && mainResult.applicationFields) {
-        const appResponse = await fetch('/api/addApplicationFields', {
+        await fetch('/api/addApplicationFields', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -163,20 +567,10 @@ export default function AddEntryModal({
             applicationFields: mainResult.applicationFields
           })
         });
-        
-        const appResult = await appResponse.json();
-        
-        if (!appResult.success) {
-          console.error('Application fields failed:', appResult.error);
-          // Don't throw - main entry was created successfully
-        }
       }
-      
-      // Success!
-      resetForm();
+
       onClose();
       if (onSave) onSave(submissionData);
-      
     } catch (error) {
       setErrors({ submit: error.message });
     } finally {
@@ -184,856 +578,12 @@ export default function AddEntryModal({
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    
-    const requiredFields = {
-      'incident': 'Incident',
-      'district': 'District', 
-      'log_date': 'Log Date',
-      'business_impact': 'Business Impact',
-      'log_start': 'Log Start Time',
-      'log_end': 'Log End Time', 
-      'log_status': 'Log Status',
-      'log_type': 'Log Type',
-      'uploader': 'Uploader'
-    };
-    
-    Object.entries(requiredFields).forEach(([fieldName, displayName]) => {
-      const value = formData[fieldName];
-      if (!value && value !== false && value !== 0) {
-        newErrors[fieldName] = `${displayName} is required`;
-      }
-    });
-
-    // NEW: Validate application fields if log type is Application
-    if (isApplicationLog()) {
-      if (!applicationFields.company.trim()) {
-        newErrors.company = 'Company is required for Application logs';
-      }
-    }
-  
-    // Time validation - make sure end time is after start time
-    if (formData.log_start && formData.log_end) {
-      // Convert times to comparable format
-      const startTime = formData.log_start.includes(':') ? formData.log_start : '00:00';
-      const endTime = formData.log_end.includes(':') ? formData.log_end : '23:59';
-      
-      // Create date objects for comparison (same date, different times)
-      const today = new Date().toISOString().split('T')[0];
-      const startDateTime = new Date(`${today}T${startTime}:00`);
-      const endDateTime = new Date(`${today}T${endTime}:00`);
-      
-      if (endDateTime <= startDateTime) {
-        newErrors.log_end = 'End time must be after start time';
-      }
-    }
-    
-    if (isRecurrence) {
-      if (recurrenceType === 'weekly' && !selectedDayOfWeek) {
-        newErrors.recurrence = 'Please select a day of the week for weekly recurrence';
-      }
-      if (recurrenceType === 'monthly' && !selectedDayOfMonth) {
-        newErrors.recurrence = 'Please select a day of the month for monthly recurrence';
-      }
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const formatColumnName = (columnName) => {
-    return columnName
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      if (getExistingDistricts) {
-        try {
-          const existingDistricts = getExistingDistricts();
-          setDistrictSuggestions(existingDistricts || []);
-        } catch (error) {
-          setDistrictSuggestions([]);
-        }
-      } else {
-        setDistrictSuggestions([]);
-      }
-
-      if (getExistingIncidents) {
-        try {
-          const existingIncidents = getExistingIncidents();
-          setIncidentSuggestions(existingIncidents || []);
-        } catch (error) {
-          setIncidentSuggestions([]);
-        }
-      } else {
-        setIncidentSuggestions([]);
-      }
-    } else {
-      setDistrictSuggestions([]);
-      setIncidentSuggestions([]);
-    }
-  }, [isOpen, getExistingDistricts, getExistingIncidents]);
-
-  const getFilteredDistrictSuggestions = (inputValue) => {
-    if (!districtSuggestions || districtSuggestions.length === 0) {
-      return [];
-    }
-    
-    if (!inputValue || inputValue.length === 0) {
-      return districtSuggestions;
-    }
-    
-    return districtSuggestions.filter(district =>
-      district && district.toLowerCase().startsWith(inputValue.toLowerCase())
-    );
-  };
-
-  const getFilteredIncidentSuggestions = (inputValue) => {
-    if (!incidentSuggestions || incidentSuggestions.length === 0) {
-      return [];
-    }
-    
-    if (!inputValue || inputValue.length === 0) {
-      return incidentSuggestions;
-    }
-    
-    return incidentSuggestions.filter(incident =>
-      incident && incident.toLowerCase().includes(inputValue.toLowerCase())
-    );
-  };
-
-  const getDayOfMonthOptions = () => {
-    const options = [];
-    for (let i = 1; i <= 31; i++) {
-      options.push({
-        value: i.toString(),
-        label: `${i}${getOrdinalSuffix(i)} day of the month`
-      });
-    }
-    options.push({
-      value: 'last',
-      label: 'Last day of the month'
-    });
-    options.push({
-      value: 'last-weekday',
-      label: 'Last weekday of the month'
-    });
-    return options;
-  };
-
-  const getOrdinalSuffix = (num) => {
-    const lastDigit = num % 10;
-    const lastTwoDigits = num % 100;
-    
-    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
-      return 'th';
-    }
-    
-    switch (lastDigit) {
-      case 1: return 'st';
-      case 2: return 'nd';
-      case 3: return 'rd';
-      default: return 'th';
-    }
-  };
-
-  const renderInput = (column) => {
-    const columnName = column.COLUMN_NAME;
-    const dataType = column.DATA_TYPE.toLowerCase();
-    const value = formData[columnName] || '';
-    const hasError = errors[columnName];
-
-    const baseStyle = {
-      width: '100%',
-      padding: '12px 16px',
-      border: `2px solid ${hasError ? '#ef4444' : '#475569'}`,
-      borderRadius: '8px',
-      fontSize: '14px',
-      backgroundColor: hasError ? '#7f1d1d' : '#334155',
-      color: '#e2e8f0',
-      transition: 'border-color 0.2s ease',
-      outline: 'none'
-    };
-
-    const focusStyle = {
-      borderColor: '#60a5fa',
-      boxShadow: '0 0 0 3px rgba(96, 165, 250, 0.1)'
-    };
-
-    if (columnName.toLowerCase().includes('uploader')) {
-      const uploaderValue = currentUser?.username || 'Unknown User';
-      
-      return (
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={uploaderValue}
-            readOnly
-            style={{
-              ...baseStyle,
-              backgroundColor: '#1e293b',
-              color: '#94a3b8',
-              cursor: 'not-allowed',
-              fontWeight: '500'
-            }}
-          />
-          <div style={{
-            fontSize: '12px',
-            color: '#94a3b8',
-            marginTop: '4px',
-            fontStyle: 'italic'
-          }}>
-            Automatically set to current user
-          </div>
-        </div>
-      );
-    }
-    
-    else if (columnName.toLowerCase().includes('incident')) {
-      const filteredSuggestions = getFilteredIncidentSuggestions(value);
-      
-      return (
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => {
-              const inputValue = e.target.value;
-              handleInputChange(columnName, inputValue);
-              setShowIncidentSuggestions(inputValue.length > 0 && filteredSuggestions.length > 0);
-            }}
-            onFocus={() => {
-              const filteredSuggestions = getFilteredIncidentSuggestions(value);
-              setShowIncidentSuggestions(filteredSuggestions.length > 0);
-            }}
-            onBlur={() => {
-              setTimeout(() => setShowIncidentSuggestions(false), 200);
-            }}
-            style={{
-              ...baseStyle,
-              fontWeight: '500'
-            }}
-          />
-          
-          {showIncidentSuggestions && filteredSuggestions.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              backgroundColor: '#1e293b',
-              border: '2px solid #475569',
-              borderTop: 'none',
-              borderRadius: '0 0 8px 8px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              zIndex: 1000,
-              maxHeight: '150px',
-              overflowY: 'auto'
-            }}>
-              {filteredSuggestions.slice(0, 8).map((incident, index) => (
-                <div
-                  key={incident}
-                  onClick={() => {
-                    handleInputChange(columnName, incident);
-                    setShowIncidentSuggestions(false);
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: index < filteredSuggestions.length - 1 ? '1px solid #334155' : 'none',
-                    backgroundColor: '#1e293b',
-                    transition: 'background-color 0.2s ease',
-                    fontSize: '14px',
-                    fontWeight: '400',
-                    color: '#e2e8f0'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#334155';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#1e293b';
-                  }}
-                >
-                  {incident}
-                </div>
-              ))}
-              
-              {filteredSuggestions.length > 8 && (
-                <div style={{
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  backgroundColor: '#334155'
-                }}>
-                  +{filteredSuggestions.length - 8} more...
-                </div>
-              )}
-              
-              <div style={{
-                padding: '8px 12px',
-                fontSize: '12px',
-                color: '#94a3b8',
-                fontStyle: 'italic',
-                textAlign: 'center',
-                backgroundColor: '#334155',
-                borderTop: '1px solid #475569'
-              }}>
-                💡 Keep typing to add a new incident
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-    
-    else if (columnName.toLowerCase() === 'log_type') {
-      return (
-        <select
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          style={{
-            ...baseStyle,
-            cursor: 'pointer'
-          }}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
-        >
-          <option value="">Select log type...</option>
-          <option value="Operational">🔧 Operational</option>
-          <option value="Application">💻 Application</option>
-        </select>
-      );
-    }
-    
-    else if (columnName.toLowerCase() === 'log_status') {
-      return (
-        <select
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          style={{
-            ...baseStyle,
-            cursor: 'pointer'
-          }}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
-        >
-          <option value="">Select status...</option>
-          <option value="Completed">✅ Completed</option>
-          <option value="Scheduled">📅 Scheduled</option>
-        </select>
-      );
-    }
-    
-    else if (columnName.toLowerCase().includes('district')) {
-      const filteredSuggestions = getFilteredDistrictSuggestions(value);
-      
-      return (
-        <div style={{ position: 'relative' }}>
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => {
-              let inputValue = e.target.value.toUpperCase(); 
-              
-              if (inputValue.length > 3) {
-                inputValue = inputValue.slice(0, 3);
-              }
-              inputValue = inputValue.replace(/[^A-Z]/g, '');
-              
-              handleInputChange(columnName, inputValue);
-              const currentFilteredSuggestions = getFilteredDistrictSuggestions(inputValue);
-              setShowDistrictSuggestions(currentFilteredSuggestions.length > 0);
-            }}
-            onFocus={() => {
-              const currentFilteredSuggestions = getFilteredDistrictSuggestions(value);
-              setShowDistrictSuggestions(currentFilteredSuggestions.length > 0);
-            }}
-            onBlur={() => {
-              setTimeout(() => setShowDistrictSuggestions(false), 200);
-            }}
-            maxLength={3}
-            style={{
-              ...baseStyle,
-              textTransform: 'uppercase',
-              fontWeight: '500',
-              letterSpacing: '1px'
-            }}
-          />
-          
-          {showDistrictSuggestions && filteredSuggestions.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              backgroundColor: '#1e293b',
-              border: '2px solid #475569',
-              borderTop: 'none',
-              borderRadius: '0 0 8px 8px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              zIndex: 1000,
-              maxHeight: '150px',
-              overflowY: 'auto'
-            }}>
-              {filteredSuggestions.slice(0, 8).map((district, index) => (
-                <div
-                  key={district}
-                  onClick={() => {
-                    handleInputChange(columnName, district);
-                    setShowDistrictSuggestions(false);
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: index < filteredSuggestions.length - 1 ? '1px solid #334155' : 'none',
-                    backgroundColor: '#1e293b',
-                    transition: 'background-color 0.2s ease',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    letterSpacing: '1px',
-                    color: '#e2e8f0'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#334155';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#1e293b';
-                  }}
-                >
-                  {district}
-                </div>
-              ))}
-              
-              {filteredSuggestions.length > 8 && (
-                <div style={{
-                  padding: '8px 12px',
-                  fontSize: '12px',
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  backgroundColor: '#334155'
-                }}>
-                  +{filteredSuggestions.length - 8} more...
-                </div>
-              )}
-              
-              <div style={{
-                padding: '8px 12px',
-                fontSize: '12px',
-                color: '#94a3b8',
-                fontStyle: 'italic',
-                textAlign: 'center',
-                backgroundColor: '#334155',
-                borderTop: '1px solid #475569'
-              }}>
-                💡 Type to filter existing or add new district
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    } 
-    else if (columnName.toLowerCase().includes('estimated_time') || columnName.toLowerCase().includes('actual_time')) {
-      return (
-        <div style={{ position: 'relative' }}>
-          <input
-            type="number"
-            value={value}
-            onChange={(e) => {
-              const hours = parseFloat(e.target.value) || '';
-              handleInputChange(columnName, hours);
-            }}
-            placeholder="Enter hours (e.g., 2.5)"
-            step="0.25" 
-            min="0"
-            style={baseStyle}
-            onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-            onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
-          />
-          <div style={{
-            fontSize: '12px',
-            color: '#94a3b8',
-            marginTop: '4px',
-            fontStyle: 'italic'
-          }}>
-            {value && `= ${Math.round(parseFloat(value) * 60)} minutes`}
-          </div>
-        </div>
-      );
-    }
-    
-    else if (dataType.includes('time') || (columnName.toLowerCase().includes('time') && 
-         !columnName.toLowerCase().includes('estimated') && 
-         !columnName.toLowerCase().includes('actual') && 
-         !columnName.toLowerCase().includes('expected') &&
-         !columnName.toLowerCase().includes('down'))) {
-  
-      // Handle time fields like log_start, log_end
-      let timeValue = '';
-      if (value) {
-        // If it's already in HH:MM format, use it
-        if (typeof value === 'string' && value.match(/^\d{1,2}:\d{2}$/)) {
-          timeValue = value;
-        }
-        // If it has seconds, remove them for the input
-        else if (typeof value === 'string' && value.match(/^\d{1,2}:\d{2}:\d{2}$/)) {
-          timeValue = value.substring(0, 5);
-        }
-        else {
-          timeValue = value;
-        }
-      }
-      
-      return (
-        <input
-          type="time"
-          value={timeValue}
-          onChange={(e) => {
-            // Store the time in HH:MM format - the API will handle adding seconds
-            handleInputChange(columnName, e.target.value);
-          }}
-          style={{
-            ...baseStyle,
-            colorScheme: 'dark'
-          }}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
-        />
-      );
-    } else if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
-      return (
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          placeholder={`Enter ${formatColumnName(columnName).toLowerCase()}`}
-          style={baseStyle}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
-        />
-      );
-    } else {
-      return (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => handleInputChange(columnName, e.target.value)}
-          placeholder={`Enter ${formatColumnName(columnName).toLowerCase()}`}
-          style={baseStyle}
-          onFocus={(e) => Object.assign(e.target.style, focusStyle)}
-          onBlur={(e) => Object.assign(e.target.style, { borderColor: hasError ? '#ef4444' : '#475569', boxShadow: 'none' })}
-        />
-      );
-    }
-  };
-
-  // NEW: Render application fields
-  const renderApplicationFields = () => {
-    if (!isApplicationLog()) return null;
-
-    const baseStyle = {
-      width: '100%',
-      padding: '12px 16px',
-      border: '2px solid #475569',
-      borderRadius: '8px',
-      fontSize: '14px',
-      backgroundColor: '#334155',
-      color: '#e2e8f0',
-      transition: 'border-color 0.2s ease',
-      outline: 'none'
-    };
-
-    return (
-      <div style={{
-        marginTop: '32px',
-        padding: '24px',
-        backgroundColor: '#1e40af',
-        border: '2px solid #3b82f6',
-        borderRadius: '12px',
-        animation: 'slideDown 0.3s ease-out'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
-          <div style={{ fontSize: '24px' }}>📋</div>
-          <h4 style={{
-            margin: 0,
-            color: '#dbeafe',
-            fontSize: '18px',
-            fontWeight: '600'
-          }}>
-            Application Change Request Details
-          </h4>
-        </div>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '20px'
-        }}>
-          {/* Company */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              🏢 Company *
-            </label>
-            <input
-              type="text"
-              value={applicationFields.company}
-              onChange={(e) => handleApplicationFieldChange('company', e.target.value)}
-              placeholder="e.g., Acme Corp, Tech Solutions Inc."
-              style={{
-                ...baseStyle,
-                border: `2px solid ${errors.company ? '#ef4444' : '#60a5fa'}`,
-                backgroundColor: errors.company ? '#7f1d1d' : '#1e293b'
-              }}
-            />
-            {errors.company && (
-              <div style={{
-                fontSize: '13px',
-                color: '#fecaca',
-                padding: '4px 8px',
-                backgroundColor: '#7f1d1d',
-                borderRadius: '4px',
-                border: '1px solid #ef4444'
-              }}>
-                {errors.company}
-              </div>
-            )}
-          </div>
-
-          {/* Ticket Number */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              🎫 Ticket #
-            </label>
-            <input
-              type="text"
-              value={applicationFields.ticket_number}
-              onChange={(e) => handleApplicationFieldChange('ticket_number', e.target.value)}
-              placeholder="e.g., CHG-2025-001, INC-12345"
-              style={{
-                ...baseStyle,
-                border: '2px solid #60a5fa',
-                backgroundColor: '#1e293b'
-              }}
-            />
-          </div>
-
-          {/* Project Name */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              📂 Project Name
-            </label>
-            <input
-              type="text"
-              value={applicationFields.project_name}
-              onChange={(e) => handleApplicationFieldChange('project_name', e.target.value)}
-              placeholder="e.g., Server Migration Phase 2, Security Update Q1"
-              style={{
-                ...baseStyle,
-                border: '2px solid #60a5fa',
-                backgroundColor: '#1e293b'
-              }}
-            />
-          </div>
-
-          {/* Long text fields */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              👥 Identified User Impact
-            </label>
-            <textarea
-              value={applicationFields.identified_user_impact}
-              onChange={(e) => handleApplicationFieldChange('identified_user_impact', e.target.value)}
-              placeholder="Describe the expected impact on end users..."
-              rows="3"
-              style={{
-                ...baseStyle,
-                border: '2px solid #60a5fa',
-                backgroundColor: '#1e293b',
-                resize: 'vertical',
-                minHeight: '80px'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              🧪 Post-Maintenance Testing Requirement
-            </label>
-            <textarea
-              value={applicationFields.post_maintenance_testing}
-              onChange={(e) => handleApplicationFieldChange('post_maintenance_testing', e.target.value)}
-              placeholder="Describe testing procedures required after maintenance..."
-              rows="3"
-              style={{
-                ...baseStyle,
-                border: '2px solid #60a5fa',
-                backgroundColor: '#1e293b',
-                resize: 'vertical',
-                minHeight: '80px'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              🔄 Rollback Plan
-            </label>
-            <textarea
-              value={applicationFields.rollback_plan}
-              onChange={(e) => handleApplicationFieldChange('rollback_plan', e.target.value)}
-              placeholder="Describe the rollback procedure if changes need to be reverted..."
-              rows="3"
-              style={{
-                ...baseStyle,
-                border: '2px solid #60a5fa',
-                backgroundColor: '#1e293b',
-                resize: 'vertical',
-                minHeight: '80px'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', gridColumn: '1 / -1' }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#dbeafe',
-              marginBottom: '4px'
-            }}>
-              📢 Communication to End User
-            </label>
-            <textarea
-              value={applicationFields.communication_to_user}
-              onChange={(e) => handleApplicationFieldChange('communication_to_user', e.target.value)}
-              placeholder="What communication will be sent to end users about this change..."
-              rows="3"
-              style={{
-                ...baseStyle,
-                border: '2px solid #60a5fa',
-                backgroundColor: '#1e293b',
-                resize: 'vertical',
-                minHeight: '80px'
-              }}
-            />
-          </div>
-
-          {/* Checkboxes */}
-          <div style={{ display: 'flex', gap: '24px', gridColumn: '1 / -1', marginTop: '16px' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#dbeafe'
-            }}>
-              <input
-                type="checkbox"
-                checked={applicationFields.wiki_diagram_updated}
-                onChange={(e) => handleApplicationFieldChange('wiki_diagram_updated', e.target.checked)}
-                style={{
-                  width: '18px',
-                  height: '18px',
-                  cursor: 'pointer'
-                }}
-              />
-              📚 Wiki or Diagram Updated?
-            </label>
-
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#dbeafe'
-            }}>
-              <input
-                type="checkbox"
-                checked={applicationFields.s3_support_ready}
-                onChange={(e) => handleApplicationFieldChange('s3_support_ready', e.target.checked)}
-                style={{
-                  width: '18px',
-                  height: '18px',
-                  cursor: 'pointer'
-                }}
-              />
-              ☁️ S3 Support Aware and Ready?
-            </label>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const resetForm = () => {
-    setFormData({});
-    setErrors({});
-    setIsRecurrence(false);
-    setRecurrenceType('weekly');
-    setSelectedDayOfWeek('');
-    setSelectedDayOfMonth('');
-    
-    // NEW: Reset application fields
-    setApplicationFields({
-      company: '',
-      ticket_number: '',
-      project_name: '',
-      identified_user_impact: '',
-      post_maintenance_testing: '',
-      rollback_plan: '',
-      wiki_diagram_updated: false,
-      communication_to_user: '',
-      s3_support_ready: false
-    });
-  };
-
   if (!isOpen) return null;
 
-  const filteredColumns = columns.filter(column => 
-    !['id', 'created_at', 'updated_at', 'uploader'].includes(column.COLUMN_NAME.toLowerCase())
+  const filteredColumns = columns.filter(col => col.COLUMN_NAME.toLowerCase() !== 'id');
+  const requiredCols = filteredColumns.filter(col => isRequiredField(col.COLUMN_NAME));
+  const optionalCols = filteredColumns.filter(col => 
+    !isRequiredField(col.COLUMN_NAME) && !isHiddenField(col.COLUMN_NAME)
   );
 
   return (
@@ -1043,7 +593,7 @@ export default function AddEntryModal({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.9)',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1051,37 +601,36 @@ export default function AddEntryModal({
       padding: '20px'
     }}>
       <div style={{
-        backgroundColor: '#0f172a',
-        borderRadius: '12px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
         width: '100%',
-        maxWidth: '900px',
+        maxWidth: '600px',
         maxHeight: '90vh',
         overflow: 'hidden',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-        border: '1px solid #1e293b'
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        {/* Modal Header */}
+        {/* Header */}
         <div style={{
-          padding: '24px',
-          borderBottom: '1px solid #1e293b',
+          padding: '20px',
+          borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#1e293b'
+          alignItems: 'center'
         }}>
-          <h2 style={{ margin: 0, color: '#f1f5f9', fontSize: '20px' }}>
-            📝 Add New Log Entry
+          <h2 style={{ margin: 0, fontSize: '18px', color: '#111827' }}>
+            📝 Add New Entry
             {isApplicationLog() && (
               <span style={{
-                marginLeft: '12px',
-                padding: '4px 12px',
+                marginLeft: '8px',
+                padding: '2px 8px',
                 backgroundColor: '#3b82f6',
                 color: 'white',
                 borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: '500'
+                fontSize: '12px'
               }}>
-                💻 Application Log
+                💻 Application
               </span>
             )}
           </h2>
@@ -1090,401 +639,634 @@ export default function AddEntryModal({
             style={{
               background: 'none',
               border: 'none',
-              fontSize: '28px',
+              fontSize: '20px',
               cursor: 'pointer',
-              color: '#64748b',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '6px'
+              color: '#6b7280',
+              padding: '4px'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#334155'}
-            onMouseOut={(e) => e.target.style.backgroundColor = 'transparent'}
           >
             ×
           </button>
         </div>
 
-        {/* Modal Body */}
-        <form onSubmit={handleSubmit}>
-          <div style={{
-            padding: '24px',
-            backgroundColor: '#0f172a',
-            maxHeight: '60vh',
-            overflowY: 'auto'
-          }}>
-            {/* Existing form grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 300px))',
-              gap: '24px 32px',
-              justifyContent: 'start'
-            }}>
-              {filteredColumns.map(column => (
-                <div key={column.COLUMN_NAME} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  maxWidth: '280px'
-                }}>
-                  <label style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#e2e8f0',
-                    marginBottom: '4px'
-                  }}>
-                    {formatColumnName(column.COLUMN_NAME)}
-                    {column.IS_NULLABLE === 'NO' && (
-                      <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>
-                    )}
-                  </label>
-                  {renderInput(column)}
-                  {errors[column.COLUMN_NAME] && (
-                    <div style={{
-                      marginTop: '6px',
-                      fontSize: '13px',
-                      color: '#fecaca',
-                      padding: '4px 8px',
-                      backgroundColor: '#7f1d1d',
-                      borderRadius: '4px',
-                      border: '1px solid #ef4444'
-                    }}>
-                      {errors[column.COLUMN_NAME]}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* NEW: Application Fields Section - Only shows when log_type is Application */}
-            {renderApplicationFields()}
-
-            {/* Your existing recurrence section stays exactly the same */}
-            <div style={{
-              marginTop: '32px',
-              padding: '20px',
-              backgroundColor: isRecurrence ? '#1e40af' : '#1e293b',
-              border: `2px solid ${isRecurrence ? '#3b82f6' : '#334155'}`,
-              borderRadius: '8px',
-              transition: 'all 0.3s ease'
-            }}>
-              <div style={{
+        {/* Step Indicator */}
+        <div style={{
+          padding: '16px 20px',
+          backgroundColor: '#f9fafb',
+          borderBottom: '1px solid #e5e7eb'
+        }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {[1, 2, 3].map(step => (
+              <div key={step} style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                backgroundColor: currentStep >= step ? '#3b82f6' : '#e5e7eb',
+                color: currentStep >= step ? 'white' : '#6b7280',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px'
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '500'
               }}>
-                <div style={{ fontSize: '24px' }}>
-                  {isRecurrence ? '🔄' : '⭕'}
-                </div>
-                <h4 style={{
-                  margin: 0,
-                  color: isRecurrence ? '#dbeafe' : '#e2e8f0',
-                  fontSize: '16px',
-                  fontWeight: '600'
-                }}>
-                  Recurrence Settings
-                </h4>
-                {isRecurrence && (
-                  <div style={{
-                    padding: '4px 8px',
+                {step}
+              </div>
+            ))}
+            <span style={{ marginLeft: '12px', fontSize: '14px', color: '#6b7280' }}>
+              {currentStep === 1 && '📋 Basic Information'}
+              {currentStep === 2 && (isApplicationLog() ? '💻 Application Details' : '📄 Additional Details')}
+              {currentStep === 3 && '✅ Review & Submit'}
+            </span>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{
+          padding: '20px',
+          flex: 1,
+          overflowY: 'auto'
+        }}>
+          {/* Step 1: Required Fields */}
+          {currentStep === 1 && (
+            <div>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#111827' }}>
+                ⚡ Required Information
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '16px'
+              }}>
+                {requiredCols.map(column => {
+                  // Skip event_incid since it's combined with event_main
+                  if (column.COLUMN_NAME.toLowerCase() === 'event_incid') {
+                    return null;
+                  }
+                  
+                  return (
+                    <div key={column.COLUMN_NAME} style={{
+                      gridColumn: column.COLUMN_NAME.toLowerCase() === 'event_main' ? '1 / -1' : 'auto'
+                    }}>
+                      {column.COLUMN_NAME.toLowerCase() !== 'event_main' && (
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '4px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#374151'
+                        }}>
+                          {formatColumnName(column.COLUMN_NAME)} 
+                          {column.COLUMN_NAME.toLowerCase() === 'log_end' && 
+                            <span style={{ color: '#6b7280', fontWeight: '400' }}> (Auto-calculated)</span>
+                          }
+                          {column.COLUMN_NAME.toLowerCase() !== 'log_end' && ' *'}
+                        </label>
+                      )}
+                      {renderSimpleInput(column)}
+                      {errors[column.COLUMN_NAME] && column.COLUMN_NAME.toLowerCase() !== 'event_main' && (
+                        <div style={{
+                          marginTop: '4px',
+                          fontSize: '12px',
+                          color: '#dc2626'
+                        }}>
+                          {errors[column.COLUMN_NAME]}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Application Details or Optional Fields */}
+          {currentStep === 2 && (
+            <div>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#111827' }}>
+                📄 Additional Details
+                {isApplicationLog() && (
+                  <span style={{
+                    marginLeft: '8px',
+                    padding: '2px 8px',
                     backgroundColor: '#3b82f6',
                     color: 'white',
                     borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '500'
+                    fontSize: '12px'
                   }}>
-                    {recurrenceType === 'weekly' && selectedDayOfWeek && `Every ${selectedDayOfWeek}`}
-                    {recurrenceType === 'monthly' && selectedDayOfMonth && (
-                      selectedDayOfMonth === 'last' ? 'Last day of month' :
-                      selectedDayOfMonth === 'last-weekday' ? 'Last weekday of month' :
-                      `${selectedDayOfMonth}${getOrdinalSuffix(parseInt(selectedDayOfMonth))} of month`
-                    )}
+                    💻 + Application Fields
+                  </span>
+                )}
+              </h3>
+              
+              {/* Application-specific fields (only show when Application is selected) */}
+              {isApplicationLog() && (
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '6px',
+                  marginBottom: '20px',
+                  border: '1px solid #bfdbfe'
+                }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af', fontWeight: '600' }}>
+                    💻 Application-Specific Fields
+                  </h4>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: '4px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        color: '#374151'
+                      }}>
+                        Company *
+                      </label>
+                      <input
+                        type="text"
+                        value={applicationFields.company}
+                        onChange={(e) => handleApplicationFieldChange('company', e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: `1px solid ${errors.company ? '#dc2626' : '#d1d5db'}`,
+                          borderRadius: '6px',
+                          fontSize: '14px'
+                        }}
+                        placeholder="🏢 Enter company name"
+                      />
+                      {errors.company && (
+                        <div style={{ marginTop: '4px', fontSize: '12px', color: '#dc2626' }}>
+                          {errors.company}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '4px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#374151'
+                        }}>
+                          Ticket Number *
+                        </label>
+                        <input
+                          type="text"
+                          value={applicationFields.ticket_number}
+                          onChange={(e) => handleApplicationFieldChange('ticket_number', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: `1px solid ${errors.ticket_number ? '#dc2626' : '#d1d5db'}`,
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                          placeholder="🎫 e.g., CHG-2025-001"
+                        />
+                        {errors.ticket_number && (
+                          <div style={{ marginTop: '4px', fontSize: '12px', color: '#dc2626' }}>
+                            {errors.ticket_number}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '4px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#374151'
+                        }}>
+                          Project Name
+                        </label>
+                        <input
+                          type="text"
+                          value={applicationFields.project_name}
+                          onChange={(e) => handleApplicationFieldChange('project_name', e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                          placeholder="📁 Enter project name"
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '14px',
+                        color: '#374151',
+                        cursor: 'pointer'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={applicationFields.wiki_diagram_updated}
+                          onChange={(e) => handleApplicationFieldChange('wiki_diagram_updated', e.target.checked)}
+                        />
+                        📚 Wiki/Diagram Updated
+                      </label>
+
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '14px',
+                        color: '#374151',
+                        cursor: 'pointer'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={applicationFields.s3_support_ready}
+                          onChange={(e) => handleApplicationFieldChange('s3_support_ready', e.target.checked)}
+                        />
+                        ☁️ S3 Support Ready
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Regular optional fields (always show) */}
+              {optionalCols.length > 0 ? (
+                <div>
+                  <h4 style={{ 
+                    margin: '0 0 12px 0', 
+                    fontSize: '14px', 
+                    color: '#374151', 
+                    fontWeight: '600' 
+                  }}>
+                    📋 Standard Optional Fields
+                  </h4>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '16px'
+                  }}>
+                    {optionalCols.map(column => (
+                      <div key={column.COLUMN_NAME}>
+                        <label style={{
+                          display: 'block',
+                          marginBottom: '4px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#374151'
+                        }}>
+                          {formatColumnName(column.COLUMN_NAME)}
+                          {column.COLUMN_NAME.toLowerCase() === 'log_end' && 
+                            <span style={{ color: '#6b7280', fontWeight: '400' }}> (Auto-calculated)</span>
+                          }
+                        </label>
+                        {renderSimpleInput(column)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                !isApplicationLog() && (
+                  <div style={{
+                    padding: '40px 20px',
+                    textAlign: 'center',
+                    color: '#6b7280',
+                    fontSize: '14px'
+                  }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                    <div>All required fields are completed!</div>
+                    <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                      Continue to review and submit your entry.
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Review & Recurrence */}
+          {currentStep === 3 && (
+            <div>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#111827' }}>
+                ✅ Review & Submit
+              </h3>
+              
+              {/* Recurrence Settings */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '6px',
+                marginBottom: '16px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  marginBottom: isRecurrence ? '16px' : '0'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={isRecurrence}
+                    onChange={(e) => setIsRecurrence(e.target.checked)}
+                  />
+                  🔄 This is a recurring event
+                </label>
+
+                {isRecurrence && (
+                  <div style={{ 
+                    padding: '16px',
+                    backgroundColor: 'white',
+                    borderRadius: '6px',
+                    border: '1px solid #d1d5db'
+                  }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#374151', fontWeight: '600' }}>
+                      📅 Recurrence Settings
+                    </h4>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <label style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '6px',
+                          cursor: 'pointer'
+                        }}>
+                          <input
+                            type="radio"
+                            name="recurrenceType"
+                            value="weekly"
+                            checked={recurrenceType === 'weekly'}
+                            onChange={(e) => setRecurrenceType(e.target.value)}
+                          />
+                          📅 Weekly
+                        </label>
+                        <label style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '6px',
+                          cursor: 'pointer'
+                        }}>
+                          <input
+                            type="radio"
+                            name="recurrenceType"
+                            value="monthly"
+                            checked={recurrenceType === 'monthly'}
+                            onChange={(e) => setRecurrenceType(e.target.value)}
+                          />
+                          📆 Monthly
+                        </label>
+                      </div>
+
+                      {recurrenceType === 'weekly' && (
+                        <div>
+                          <label style={{
+                            display: 'block',
+                            marginBottom: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            color: '#374151'
+                          }}>
+                            Select Day of Week:
+                          </label>
+                          <select
+                            value={selectedDayOfWeek}
+                            onChange={(e) => setSelectedDayOfWeek(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              border: `1px solid ${errors.dayOfWeek ? '#dc2626' : '#d1d5db'}`,
+                              borderRadius: '6px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            <option value="">Select day...</option>
+                            <option value="monday">Monday</option>
+                            <option value="tuesday">Tuesday</option>
+                            <option value="wednesday">Wednesday</option>
+                            <option value="thursday">Thursday</option>
+                            <option value="friday">Friday</option>
+                            <option value="saturday">Saturday</option>
+                            <option value="sunday">Sunday</option>
+                          </select>
+                          {errors.dayOfWeek && (
+                            <div style={{ marginTop: '4px', fontSize: '12px', color: '#dc2626' }}>
+                              {errors.dayOfWeek}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {recurrenceType === 'monthly' && (
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: '#374151' }}>
+                            Monthly pattern:
+                          </label>
+                          <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input type="radio" name="monthlyPattern" value="day" checked={monthlyPattern === 'day'} onChange={() => setMonthlyPattern('day')} />
+                              Day of month
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                              <input type="radio" name="monthlyPattern" value="weekday" checked={monthlyPattern === 'weekday'} onChange={() => setMonthlyPattern('weekday')} />
+                              Nth weekday
+                            </label>
+                          </div>
+                          
+                          {monthlyPattern === 'day' && (
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>Select day:</label>
+                              <select
+                                value={monthlyDay}
+                                onChange={(e) => setMonthlyDay(e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 12px',
+                                  border: `1px solid ${errors.monthlyDay ? '#dc2626' : '#d1d5db'}`,
+                                  borderRadius: '6px',
+                                  fontSize: '14px'
+                                }}
+                              >
+                                <option value="">Select day...</option>
+                                {Array.from({length: 31}, (_, i) => (<option key={i+1} value={i+1}>{i+1}</option>))}
+                                <option value="last">Last day of month</option>
+                              </select>
+                              {errors.monthlyDay && (<div style={{ marginTop: '4px', color: '#dc2626', fontSize: '12px' }}>{errors.monthlyDay}</div>)}
+                            </div>
+                          )}
+
+                          {monthlyPattern === 'weekday' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                              <div>
+                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>Occurrence:</label>
+                                <select value={monthlyWeekOccurrence} onChange={(e) => setMonthlyWeekOccurrence(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${errors.monthlyWeekOccurrence ? '#dc2626' : '#d1d5db'}`, borderRadius: '6px' }}>
+                                  <option value="first">First</option>
+                                  <option value="second">Second</option>
+                                  <option value="third">Third</option>
+                                  <option value="fourth">Fourth</option>
+                                  <option value="last">Last</option>
+                                </select>
+                                {errors.monthlyWeekOccurrence && (<div style={{ marginTop: '4px', color: '#dc2626', fontSize: '12px' }}>{errors.monthlyWeekOccurrence}</div>)}
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>Weekday:</label>
+                                <select value={monthlyWeekday} onChange={(e) => setMonthlyWeekday(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: `1px solid ${errors.monthlyWeekday ? '#dc2626' : '#d1d5db'}`, borderRadius: '6px' }}>
+                                  <option value="monday">Monday</option>
+                                  <option value="tuesday">Tuesday</option>
+                                  <option value="wednesday">Wednesday</option>
+                                  <option value="thursday">Thursday</option>
+                                  <option value="friday">Friday</option>
+                                  <option value="saturday">Saturday</option>
+                                  <option value="sunday">Sunday</option>
+                                </select>
+                                {errors.monthlyWeekday && (<div style={{ marginTop: '4px', color: '#dc2626', fontSize: '12px' }}>{errors.monthlyWeekday}</div>)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginBottom: '16px'
-              }}>
-                <input
-                  type="checkbox"
-                  id="isRecurrence"
-                  checked={isRecurrence}
-                  onChange={(e) => {
-                    setIsRecurrence(e.target.checked);
-                    if (!e.target.checked) {
-                      setSelectedDayOfWeek('');
-                      setSelectedDayOfMonth('');
-                    }
-                  }}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    cursor: 'pointer'
-                  }}
-                />
-                <label 
-                  htmlFor="isRecurrence"
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#e2e8f0',
-                    cursor: 'pointer'
-                  }}
-                >
-                  This is a recurring event
-                </label>
-              </div>
-              
-              {isRecurrence && (
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#e2e8f0',
-                    marginBottom: '8px'
-                  }}>
-                    🔁 Recurrence Type *
-                  </label>
-                  <div style={{
-                    display: 'flex',
-                    gap: '12px',
-                    marginBottom: '16px'
-                  }}>
-                    <label style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      padding: '8px 16px',
-                      backgroundColor: recurrenceType === 'weekly' ? '#3b82f6' : '#334155',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease'
-                    }}>
-                      <input
-                        type="radio"
-                        name="recurrenceType"
-                        value="weekly"
-                        checked={recurrenceType === 'weekly'}
-                        onChange={(e) => {
-                          setRecurrenceType(e.target.value);
-                          setSelectedDayOfMonth('');
-                        }}
-                        style={{ margin: 0 }}
-                      />
-                      <span style={{ color: '#e2e8f0', fontSize: '14px' }}>📅 Weekly</span>
-                    </label>
-                    <label style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      padding: '8px 16px',
-                      backgroundColor: recurrenceType === 'monthly' ? '#3b82f6' : '#334155',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease'
-                    }}>
-                      <input
-                        type="radio"
-                        name="recurrenceType"
-                        value="monthly"
-                        checked={recurrenceType === 'monthly'}
-                        onChange={(e) => {
-                          setRecurrenceType(e.target.value);
-                          setSelectedDayOfWeek('');
-                        }}
-                        style={{ margin: 0 }}
-                      />
-                      <span style={{ color: '#e2e8f0', fontSize: '14px' }}>🗓️ Monthly</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-              
-              {isRecurrence && recurrenceType === 'weekly' && (
-                <div style={{ marginTop: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#e2e8f0',
-                    marginBottom: '8px'
-                  }}>
-                    📅 Day of the Week *
-                  </label>
-                  <select
-                    value={selectedDayOfWeek}
-                    onChange={(e) => setSelectedDayOfWeek(e.target.value)}
-                    style={{
-                      width: '100%',
-                      maxWidth: '300px',
-                      padding: '12px 16px',
-                      border: `2px solid ${errors.recurrence ? '#ef4444' : '#334155'}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: errors.recurrence ? '#7f1d1d' : '#1e293b',
-                      color: '#e2e8f0',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="">Select a day...</option>
-                    <option value="monday">📅 Monday</option>
-                    <option value="tuesday">📅 Tuesday</option>
-                    <option value="wednesday">📅 Wednesday</option>
-                    <option value="thursday">📅 Thursday</option>
-                    <option value="friday">📅 Friday</option>
-                    <option value="saturday">📅 Saturday</option>
-                    <option value="sunday">📅 Sunday</option>
-                  </select>
-                </div>
-              )}
 
-              {isRecurrence && recurrenceType === 'monthly' && (
-                <div style={{ marginTop: '16px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    color: '#e2e8f0',
-                    marginBottom: '8px'
-                  }}>
-                    🗓️ Day of the Month *
-                  </label>
-                  <select
-                    value={selectedDayOfMonth}
-                    onChange={(e) => setSelectedDayOfMonth(e.target.value)}
-                    style={{
-                      width: '100%',
-                      maxWidth: '300px',
-                      padding: '12px 16px',
-                      border: `2px solid ${errors.recurrence ? '#ef4444' : '#334155'}`,
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      backgroundColor: errors.recurrence ? '#7f1d1d' : '#1e293b',
-                      color: '#e2e8f0',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="">Select a day...</option>
-                    {getDayOfMonthOptions().map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  
-                  <div style={{
-                    fontSize: '12px',
-                    color: '#94a3b8',
-                    marginTop: '6px',
-                    fontStyle: 'italic'
-                  }}>
-                    💡 If the selected day doesn't exist in a month (e.g., 31st in February), it will use the last available day of that month.
-                  </div>
+              {/* Summary */}
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '6px',
+                border: '1px solid #d1d5db'
+              }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#374151', fontWeight: '600' }}>
+                  📋 Entry Summary
+                </h4>
+                <div style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.5' }}>
+                  <div><strong>Type:</strong> {formData.log_type || 'Not specified'}</div>
+                  <div><strong>Date:</strong> {formData.log_date || 'Not specified'}</div>
+                  <div><strong>Status:</strong> {formData.log_status || 'Not specified'}</div>
+                  <div><strong>Start Time:</strong> {formData.log_start || 'Not specified'}</div>
+                  <div><strong>Duration:</strong> {formData.actual_time ? `${formData.actual_time} hours` : 'Not specified'}</div>
+                  <div><strong>End Time:</strong> {formData.log_end ? `${formData.log_end} (Auto-calculated)` : 'Not calculated'}</div>
+                  <div><strong>Event Type:</strong> {formData.event_incid === '1' ? '🚨 Incident' : formData.event_incid === '0' ? '🔧 Maintenance' : 'Not specified'}</div>
+                  <div><strong>Uploader:</strong> {currentUser?.username || 'Unknown User'}</div>
+                  {isApplicationLog() && (
+                    <div><strong>Company:</strong> {applicationFields.company || 'Not specified'}</div>
+                  )}
+                  {isRecurrence && (
+                    <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#e0f2fe', borderRadius: '4px' }}>
+                      <strong>🔄 Recurrence:</strong>{' '}
+                      {recurrenceType === 'weekly' && `Weekly on ${selectedDayOfWeek}`}
+                      {recurrenceType === 'monthly' && monthlyPattern === 'day' && `Monthly on ${monthlyDay === 'last' ? 'last day' : `day ${monthlyDay}`}`}
+                      {recurrenceType === 'monthly' && monthlyPattern === 'weekday' && `Monthly on the ${monthlyWeekOccurrence} ${monthlyWeekday}`}
+                    </div>
+                  )}
                 </div>
-              )}
-              
-              {errors.recurrence && (
+              </div>
+
+              {errors.submit && (
                 <div style={{
-                  fontSize: '12px',
-                  color: '#fecaca',
-                  marginTop: '6px',
-                  fontStyle: 'italic'
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '6px',
+                  color: '#dc2626',
+                  fontSize: '14px'
                 }}>
-                  {errors.recurrence}
+                  ⚠️ Error: {errors.submit}
                 </div>
               )}
             </div>
+          )}
+        </div>
 
-            {errors.submit && (
-              <div style={{
-                marginTop: '24px',
-                padding: '16px',
-                backgroundColor: '#7f1d1d',
-                border: '1px solid #ef4444',
-                borderRadius: '8px',
-                color: '#fecaca',
-                fontSize: '14px'
-              }}>
-                <strong>Error:</strong> {errors.submit}
-              </div>
+        {/* Footer */}
+        <div style={{
+          padding: '20px',
+          borderTop: '1px solid #e5e7eb',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            {currentStep > 1 && (
+              <button
+                onClick={handleBack}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  backgroundColor: 'white',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                ← Back
+              </button>
             )}
           </div>
 
-          {/* Modal Footer */}
-          <div style={{
-            padding: '24px',
-            borderTop: '1px solid #1e293b',
-            display: 'flex',
-            gap: '16px',
-            justifyContent: 'flex-end',
-            backgroundColor: '#1e293b'
-          }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
-              type="button"
               onClick={onClose}
-              disabled={isLoading}
               style={{
-                padding: '12px 24px',
-                border: '2px solid #334155',
-                borderRadius: '8px',
-                backgroundColor: '#0f172a',
-                color: '#e2e8f0',
+                padding: '8px 16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                backgroundColor: 'white',
+                color: '#374151',
                 cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#1e293b';
-                e.target.style.borderColor = '#475569';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = '#0f172a';
-                e.target.style.borderColor = '#334155';
+                fontSize: '14px'
               }}
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                padding: '12px 24px',
-                border: 'none',
-                borderRadius: '8px',
-                backgroundColor: isLoading ? '#64748b' : '#3b82f6',
-                color: 'white',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
-              }}
-              onMouseOver={(e) => {
-                if (!isLoading) {
-                  e.target.style.backgroundColor = '#2563eb';
-                  e.target.style.transform = 'translateY(-1px)';
-                }
-              }}
-              onMouseOut={(e) => {
-                if (!isLoading) {
-                  e.target.style.backgroundColor = '#3b82f6';
-                  e.target.style.transform = 'translateY(0)';
-                }
-              }}
-            >
-              {isLoading ? '⏳ Saving...' : '💾 Save Entry'}
-            </button>
+
+            {currentStep < 3 ? (
+              <button
+                onClick={handleNext}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={isLoading}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  backgroundColor: isLoading ? '#9ca3af' : '#10b981',
+                  color: 'white',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                {isLoading ? '⏳ Saving...' : '💾 Save Entry'}
+              </button>
+            )}
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
