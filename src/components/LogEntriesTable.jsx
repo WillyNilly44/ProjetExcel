@@ -24,6 +24,7 @@ export default function LogEntriesTable({
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [columnOrder, setColumnOrder] = useState([]);
   const [showColumnManager, setShowColumnManager] = useState(false);
+  const [currentView, setCurrentView] = useState('application'); // 'application' or 'operational'
   const [dateFilters, setDateFilters] = useState({
     year: '',
     month: '',
@@ -48,6 +49,90 @@ export default function LogEntriesTable({
   const [showAddColumnModal, setShowAddColumnModal] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
 
+  // Define view presets
+  const getViewPresets = () => {
+    return {
+      'application': {
+        name: '💻 Application View',
+        description: 'Focused view for application logs',
+        columns: [
+          'id', 'incident', 'district', 'log_date', 'log_start', 'actual_time',
+          'ticket_number', 'assigned', 'log_status', 'notes', 'log_type', 'uploader'
+        ]
+      },
+      'operational': {
+        name: '🔧 Operational View',
+        description: 'Full view excluding recurrence fields',
+        // This will include all columns except recurrence-related ones
+        excludeFields: [
+          'recurrence_type', 'day_of_the_week', 'day_of_the_month',
+          'monthly_pattern', 'monthly_week_occurrence', 'monthly_weekday'
+        ]
+      }
+    };
+  };
+
+  // Apply a view preset
+  const applyView = (viewKey) => {
+    const presets = getViewPresets();
+    const preset = presets[viewKey];
+    
+    if (!preset) return;
+    
+    const allColumnNames = columns.map(col => col.COLUMN_NAME);
+    let finalColumns;
+    
+    if (preset.columns) {
+      // Application view - use specific columns
+      const validPresetColumns = preset.columns.filter(colName => 
+        allColumnNames.some(existingCol => existingCol.toLowerCase() === colName.toLowerCase())
+      );
+      
+      // Map to actual column names (preserving case)
+      finalColumns = validPresetColumns.map(presetCol => 
+        allColumnNames.find(existingCol => existingCol.toLowerCase() === presetCol.toLowerCase())
+      ).filter(Boolean);
+      
+      // Ensure ID is always included
+      if (!finalColumns.some(col => col.toLowerCase() === 'id')) {
+        const idColumn = allColumnNames.find(col => col.toLowerCase() === 'id');
+        if (idColumn) {
+          finalColumns.unshift(idColumn);
+        }
+      }
+    } else if (preset.excludeFields) {
+      // Operational view - include all except excluded fields
+      finalColumns = allColumnNames.filter(colName => 
+        !preset.excludeFields.some(excludeField => 
+          colName.toLowerCase() === excludeField.toLowerCase()
+        )
+      );
+    }
+    
+    setVisibleColumns(finalColumns);
+    setColumnOrder(finalColumns);
+    setCurrentView(viewKey);
+    
+    // Auto-set log type filter based on view
+    setDateFilters(prev => ({
+      ...prev,
+      logType: viewKey === 'application' ? 'application' : viewKey === 'operational' ? 'operational' : prev.logType
+    }));
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem('logEntries_visibleColumns', JSON.stringify(finalColumns));
+      localStorage.setItem('logEntries_columnOrder', JSON.stringify(finalColumns));
+      localStorage.setItem('logEntries_currentView', viewKey);
+      localStorage.setItem('logEntries_dateFilters', JSON.stringify({
+        ...dateFilters,
+        logType: viewKey === 'application' ? 'application' : viewKey === 'operational' ? 'operational' : dateFilters.logType
+      }));
+    } catch (e) {
+      console.warn('Failed to save view to localStorage:', e);
+    }
+  };
+
   // CONSOLIDATED useEffect for column management
   useEffect(() => {
     if (columns.length > 0) {
@@ -55,6 +140,18 @@ export default function LogEntriesTable({
       
       const savedVisible = localStorage.getItem('logEntries_visibleColumns');
       const savedOrder = localStorage.getItem('logEntries_columnOrder');
+      const savedView = localStorage.getItem('logEntries_currentView');
+      const savedFilters = localStorage.getItem('logEntries_dateFilters');
+      
+      // Load saved filters first
+      if (savedFilters) {
+        try {
+          const parsedFilters = JSON.parse(savedFilters);
+          setDateFilters(parsedFilters);
+        } catch (e) {
+          console.warn('Failed to parse saved filters');
+        }
+      }
       
       if (savedVisible && savedOrder) {
         try {
@@ -71,14 +168,15 @@ export default function LogEntriesTable({
           
           setVisibleColumns(finalVisible);
           setColumnOrder(finalOrder);
+          setCurrentView(savedView || 'application');
           
         } catch (e) {
-          setVisibleColumns(allColumnNames);
-          setColumnOrder(allColumnNames);
+          // Default to application view on first load
+          applyView('application');
         }
       } else {
-        setVisibleColumns(allColumnNames);
-        setColumnOrder(allColumnNames);
+        // Default to application view on first load
+        applyView('application');
       }
 
       // Load filter options when data and columns are available
@@ -725,25 +823,46 @@ export default function LogEntriesTable({
   const handleColumnManagerSave = (newVisibleColumns, newColumnOrder) => {
     setVisibleColumns(newVisibleColumns);
     setColumnOrder(newColumnOrder);
+    setCurrentView('custom'); // Mark as custom when manually changed
+    
+    // When switching to custom, remove auto log type filter
+    setDateFilters(prev => ({
+      ...prev,
+      logType: '' // Clear log type filter for custom view
+    }));
     
     try {
       localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
       localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
+      localStorage.setItem('logEntries_currentView', 'custom');
+      localStorage.setItem('logEntries_dateFilters', JSON.stringify({
+        ...dateFilters,
+        logType: ''
+      }));
     } catch (e) {
     }
   };
 
   const clearFilters = () => {
-    setDateFilters({
+    const newFilters = {
       year: '',
       month: '',
       week: '',
-      logType: '',
+      logType: currentView === 'application' ? 'application' : currentView === 'operational' ? 'operational' : '',
       district: '',
       incident: '',
       assigned: '',
       uploader: ''
-    });
+    };
+    
+    setDateFilters(newFilters);
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem('logEntries_dateFilters', JSON.stringify(newFilters));
+    } catch (e) {
+      console.warn('Failed to save filters to localStorage');
+    }
   };
 
   const handleFilterChange = (filterType, value) => {
@@ -755,6 +874,13 @@ export default function LogEntriesTable({
         newFilters.week = '';
       } else if (filterType === 'month') {
         newFilters.week = '';
+      }
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('logEntries_dateFilters', JSON.stringify(newFilters));
+      } catch (e) {
+        console.warn('Failed to save filters to localStorage');
       }
       
       return newFilters;
@@ -862,7 +988,7 @@ export default function LogEntriesTable({
         </div>
         
         <div className="toolbar-container">
-          {/* Add View Toggle Buttons */}
+          {/* View Toggle Buttons */}
           <div className="view-toggle">
             <button
               className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
@@ -879,6 +1005,33 @@ export default function LogEntriesTable({
               📅 Calendar
             </button>
           </div>
+
+          {/* View Presets - only show in table mode */}
+          {viewMode === 'table' && (
+            <div className="view-presets">
+              <div className="preset-buttons">
+                <button
+                  className={`preset-btn ${currentView === 'application' ? 'active' : ''}`}
+                  onClick={() => applyView('application')}
+                  title="Application view - shows only Application log entries"
+                >
+                  💻 Application
+                </button>
+                <button
+                  className={`preset-btn ${currentView === 'operational' ? 'active' : ''}`}
+                  onClick={() => applyView('operational')}
+                  title="Operational view - shows only Operational log entries"
+                >
+                  🔧 Operational
+                </button>
+                {currentView === 'custom' && (
+                  <span className="custom-indicator">
+                    🎛️ Custom
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           <ToolbarDropdown
             isLoading={isLoading}
@@ -922,6 +1075,15 @@ export default function LogEntriesTable({
           <div className="filter-header">
             <h3 className="filter-title">🔍 Filters</h3>
             <div className="filter-actions">
+              {/* Current view indicator */}
+              <span className="current-view-indicator">
+                View: {getViewPresets()[currentView]?.name || '🎛️ Custom View'}
+                {(currentView === 'application' || currentView === 'operational') && (
+                  <span style={{ marginLeft: '4px', fontSize: '10px' }}>
+                    (Auto-filtered)
+                  </span>
+                )}
+              </span>
               {getActiveFilterCount() > 0 && (
                 <span className="active-filter-count">
                   {getActiveFilterCount()} filter{getActiveFilterCount() > 1 ? 's' : ''} active
@@ -945,11 +1107,25 @@ export default function LogEntriesTable({
                     value={dateFilters.logType}
                     onChange={(e) => handleFilterChange('logType', e.target.value)}
                     className="filter-select"
+                    disabled={currentView === 'application' || currentView === 'operational'}
+                    title={currentView === 'application' || currentView === 'operational' ? 
+                      'Log type is automatically set based on current view' : 
+                      'Filter by log type'
+                    }
                   >
                     <option value="">All Types</option>
                     <option value="operational">Operational</option>
                     <option value="application">Application</option>
                   </select>
+                  {(currentView === 'application' || currentView === 'operational') && (
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#6b7280',
+                      marginTop: '2px'
+                    }}>
+                      Auto-filtered by view
+                    </div>
+                  )}
                 </div>
                 
                 {/* Year Filter */}
