@@ -87,10 +87,10 @@ function AppContent() {
     const lowerColumnName = columnName ? columnName.toLowerCase() : '';
     
     // Handle log start and log end columns - show only time in 24-hour format
-    if (lowerColumnName.includes('log_start') || 
-        lowerColumnName.includes('log_end') || 
-        lowerColumnName === 'log start' ||
-        lowerColumnName === 'log end') {
+    if (lowerColumnName.includes('time_start') || 
+        lowerColumnName.includes('time_end') || 
+        lowerColumnName === 'time start' ||
+        lowerColumnName === 'time end') {
       
       try {
         const date = new Date(value);

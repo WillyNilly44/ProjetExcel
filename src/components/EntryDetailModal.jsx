@@ -261,7 +261,7 @@ const getColumnGroups = () => {
 
     // Duration fields (estimated/actual time in hours) - CHECK THIS FIRST!
     if (lowerColumnName.includes('estimated_time') || 
-        lowerColumnName.includes('actual_time') || 
+        lowerColumnName.includes('duration') || 
         lowerColumnName.includes('expected_down_time')) {
     
       // Ensure we have a number value
@@ -317,7 +317,6 @@ const getColumnGroups = () => {
       );
     }
 
-    // Time fields (log_start, log_end) - IMPROVED HANDLING
     if (dataType.includes('time') || 
         (lowerColumnName.includes('time') && 
          !lowerColumnName.includes('estimated') && 

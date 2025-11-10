@@ -38,7 +38,7 @@ const PDFExport = ({
           { COLUMN_NAME: 'note', DISPLAY_NAME: 'Note' },
           { COLUMN_NAME: 'datetime_combined', DISPLAY_NAME: 'Date & Time' },
           { COLUMN_NAME: 'risk_level', DISPLAY_NAME: 'Risk Level' },
-          { COLUMN_NAME: 'actual_time', DISPLAY_NAME: 'Duration' },
+          { COLUMN_NAME: 'duration', DISPLAY_NAME: 'Duration' },
           { COLUMN_NAME: 'expected_down_time', DISPLAY_NAME: 'Est. Downtime' },
           { COLUMN_NAME: 'log_status', DISPLAY_NAME: 'Status' },
           { COLUMN_NAME: 'district', DISPLAY_NAME: 'District' }
