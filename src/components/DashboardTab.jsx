@@ -17,9 +17,9 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
       { key: 'ticket_number', label: 'Ticket #' },
       { key: 'assigned', label: 'Assignee' },
       { key: 'note', label: 'Note' },
-      { key: 'datetime', label: 'Date & Time' }, // Combined log_date and log_start
+      { key: 'datetime', label: 'Date & Time' }, 
       { key: 'risk_level', label: 'Risk Level' },
-      { key: 'actual_time', label: 'Duration' },
+      { key: 'duration', label: 'Duration' },
       { key: 'expected_down_time', label: 'Estimated Downtime' },
       { key: 'log_status', label: 'Status' },
       { key: 'district', label: 'District' }
@@ -158,7 +158,7 @@ const DashboardTab = ({ data = [], columns = [], formatCellValue, hasPermission 
   // FIXED: Format combined date and time without timezone conversion
   const formatDateTime = (entry) => {
     const dateCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('log_date'));
-    const timeCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('log_start'));
+    const timeCol = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('time_start'));
     
     const dateValue = dateCol ? entry[dateCol.COLUMN_NAME] : null;
     const timeValue = timeCol ? entry[timeCol.COLUMN_NAME] : null;

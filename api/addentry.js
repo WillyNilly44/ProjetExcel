@@ -100,7 +100,7 @@ exports.handler = async (event, context) => {
           request.input(`param${index}`, sql.Date, new Date(value + 'T00:00:00'));
         }
         // Time handling - FIXED: Store as string to avoid timezone conversion
-        else if ((columnName.includes('log_start') || columnName.includes('log_end') || 
+        else if ((columnName.includes('time_start') || columnName.includes('time_end') || 
                   columnName.includes('start_time') || columnName.includes('end_time')) &&
                  value.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
         

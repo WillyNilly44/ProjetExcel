@@ -56,7 +56,7 @@ export default function LogEntriesTable({
         name: '💻 Application View',
         description: 'Focused view for application logs',
         columns: [
-          'id', 'incident', 'district', 'log_date', 'log_start', 'actual_time',
+          'id', 'incident', 'district', 'log_date', 'time_start', 'duration',
           'ticket_number', 'assigned', 'log_status', 'notes', 'log_type', 'uploader'
         ]
       },

@@ -45,8 +45,8 @@ export default function AddEntryModal({
   // Helper functions
   const isRequiredField = (columnName) => {
     const requiredFields = [
-      'log_type', 'approver', 'log_status', 'actual_time', 'log_start',
-      'incident', 'district', 'log_date', 'event_main', 'event_incid'
+      'log_type', 'approver', 'log_status', 'duration', 'time_start',
+      'incident', 'district', 'log_date', 'maintenance_event', 'incident_event'
     ];
     return requiredFields.includes(columnName.toLowerCase());
   };
@@ -67,19 +67,6 @@ export default function AddEntryModal({
   };
 
   const formatColumnName = (columnName) => {
-    // Handle specific field mappings
-    const fieldMappings = {
-      'rca': 'Root Call Analysis',
-      'incident': 'Incident Name',
-      'real_bus_impact': 'Real Business Impact'
-    };
-    
-    const lowerColumnName = columnName.toLowerCase();
-    if (fieldMappings[lowerColumnName]) {
-      return fieldMappings[lowerColumnName];
-    }
-    
-    // Default formatting for other fields
     return columnName.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
@@ -124,8 +111,8 @@ export default function AddEntryModal({
     if (columnName === 'log_status') return 'Scheduled';
     if (columnName === 'log_type') return 'Operational';
     if (columnName === 'uploader') return currentUser?.username || 'Unknown User';
-    if (columnName === 'event_main' || columnName === 'event_incid') return '0'; // Default to Maintenance
-    if (columnName === 'actual_time') return '1'; // Default 1 hour
+    if (columnName === 'maintenance_event' || columnName === 'incident_event') return '0'; // Default to Maintenance
+    if (columnName === 'duration') return '1'; // Default 1 hour
     return '';
   };
 
@@ -195,9 +182,8 @@ export default function AddEntryModal({
         }
       });
       
-      // Calculate initial log_end if we have log_start and actual_time
-      if (initialData.log_start && initialData.actual_time) {
-        initialData.log_end = calculateLogEnd(initialData.log_start, initialData.actual_time);
+      if (initialData.time_start && initialData.duration) {
+        initialData.time_end = calculateLogEnd(initialData.time_start, initialData.duration);
       }
       
       setFormData(initialData);
@@ -227,15 +213,15 @@ export default function AddEntryModal({
     }
   }, [formData.log_type, applicationFields.ticket_number]);
 
-  // Auto-update log_end when log_start or actual_time changes
+
   useEffect(() => {
-    if (formData.log_start && formData.actual_time) {
-      const newLogEnd = calculateLogEnd(formData.log_start, formData.actual_time);
-      if (newLogEnd && newLogEnd !== formData.log_end) {
-        setFormData(prev => ({ ...prev, log_end: newLogEnd }));
+    if (formData.time_start && formData.duration) {
+      const newLogEnd = calculateLogEnd(formData.time_start, formData.duration);
+      if (newLogEnd && newLogEnd !== formData.time_end) {
+        setFormData(prev => ({ ...prev, time_end: newLogEnd }));
       }
     }
-  }, [formData.log_start, formData.actual_time]);
+  }, [formData.time_start, formData.duration]);
 
   const handleInputChange = (columnName, value) => {
     setFormData(prev => ({ ...prev, [columnName]: value }));
@@ -257,19 +243,18 @@ export default function AddEntryModal({
     }
   };
 
-  // Handle event type change (both event_main and event_incid)
   const handleEventTypeChange = (value) => {
     setFormData(prev => ({
       ...prev,
-      event_main: value,
-      event_incid: value
+      maintenance_event: value,
+      incident_event: value
     }));
     // Clear any errors for both fields
-    if (errors.event_main) {
-      setErrors(prev => ({ ...prev, event_main: null }));
+    if (errors.maintenance_event) {
+      setErrors(prev => ({ ...prev, maintenance_event: null }));
     }
-    if (errors.event_incid) {
-      setErrors(prev => ({ ...prev, event_incid: null }));
+    if (errors.incident_event) {
+      setErrors(prev => ({ ...prev, incident_event: null }));
     }
   };
 
@@ -289,13 +274,12 @@ export default function AddEntryModal({
       transition: 'border-color 0.2s'
     };
 
-    // Special case: Skip event_incid as it will be combined with event_main
-    if (columnName.toLowerCase() === 'event_incid') {
+    if (columnName.toLowerCase() === 'incident_event') {
       return null; // Don't render separately
     }
 
     // Special case: Log End (auto-calculated, read-only)
-    if (columnName.toLowerCase() === 'log_end') {
+    if (columnName.toLowerCase() === 'time_end') {
       return (
         <div style={{ position: 'relative' }}>
           <input
@@ -324,8 +308,7 @@ export default function AddEntryModal({
       );
     }
 
-    // Special case: Event Type (combines event_main and event_incid)
-    if (columnName.toLowerCase() === 'event_main') {
+    if (columnName.toLowerCase() === 'maintenance_event') {
       return (
         <div style={{ gridColumn: '1 / -1' }}>
           <label style={{
@@ -348,9 +331,9 @@ export default function AddEntryModal({
               gap: '8px',
               cursor: 'pointer',
               padding: '10px 16px',
-              backgroundColor: formData.event_incid === '1' ? '#dc2626' : '#f3f4f6',
+              backgroundColor: formData.incident_event === '1' ? '#dc2626' : '#f3f4f6',
               borderRadius: '6px',
-              border: `2px solid ${formData.event_incid === '1' ? '#dc2626' : '#d1d5db'}`,
+              border: `2px solid ${formData.incident_event === '1' ? '#dc2626' : '#d1d5db'}`,
               transition: 'all 0.2s ease',
               minWidth: '140px',
               justifyContent: 'center'
@@ -359,12 +342,12 @@ export default function AddEntryModal({
                 type="radio"
                 name="event_type"
                 value="1"
-                checked={formData.event_incid === '1'}
+                checked={formData.incident_event === '1'}
                 onChange={(e) => handleEventTypeChange(e.target.value)}
                 style={{ margin: 0 }}
               />
               <span style={{ 
-                color: formData.event_incid === '1' ? 'white' : '#374151',
+                color: formData.incident_event === '1' ? 'white' : '#374151',
                 fontSize: '14px',
                 fontWeight: '500'
               }}>
@@ -378,9 +361,9 @@ export default function AddEntryModal({
               gap: '8px',
               cursor: 'pointer',
               padding: '10px 16px',
-              backgroundColor: formData.event_incid === '0' ? '#059669' : '#f3f4f6',
+              backgroundColor: formData.incident_event === '0' ? '#059669' : '#f3f4f6',
               borderRadius: '6px',
-              border: `2px solid ${formData.event_incid === '0' ? '#059669' : '#d1d5db'}`,
+              border: `2px solid ${formData.incident_event === '0' ? '#059669' : '#d1d5db'}`,
               transition: 'all 0.2s ease',
               minWidth: '140px',
               justifyContent: 'center'
@@ -389,12 +372,12 @@ export default function AddEntryModal({
                 type="radio"
                 name="event_type"
                 value="0"
-                checked={formData.event_incid === '0'}
+                checked={formData.incident_event === '0'}
                 onChange={(e) => handleEventTypeChange(e.target.value)}
                 style={{ margin: 0 }}
               />
               <span style={{ 
-                color: formData.event_incid === '0' ? 'white' : '#374151',
+                color: formData.incident_event === '0' ? 'white' : '#374151',
                 fontSize: '14px',
                 fontWeight: '500'
               }}>
@@ -402,7 +385,7 @@ export default function AddEntryModal({
               </span>
             </label>
           </div>
-          {(errors.event_main || errors.event_incid) && (
+          {(errors.maintenance_event || errors.incident_event) && (
             <div style={{
               marginTop: '4px',
               fontSize: '12px',
@@ -547,8 +530,7 @@ export default function AddEntryModal({
       );
     }
 
-    // Special case for actual_time - number input with step
-    if (columnName.toLowerCase() === 'actual_time') {
+    if (columnName.toLowerCase() === 'duration') {
       return (
         <div style={{ position: 'relative' }}>
           <input
@@ -608,7 +590,7 @@ export default function AddEntryModal({
     const newErrors = {};
     
     if (step === 1) {
-      const requiredFields = ['log_type', 'log_date', 'incident', 'district', 'event_main', 'event_incid'];
+      const requiredFields = ['log_type', 'log_date', 'incident', 'district', 'maintenance_event', 'incident_event'];
       requiredFields.forEach(field => {
         if (!formData[field] && formData[field] !== '0') {
           newErrors[field] = 'Required';
@@ -874,16 +856,15 @@ export default function AddEntryModal({
                 gap: '20px'
               }}>
                 {requiredCols.map(column => {
-                  // Skip event_incid since it's combined with event_main
-                  if (column.COLUMN_NAME.toLowerCase() === 'event_incid') {
+                  if (column.COLUMN_NAME.toLowerCase() === 'incident_event') {
                     return null;
                   }
                   
                   return (
                     <div key={column.COLUMN_NAME} style={{
-                      gridColumn: column.COLUMN_NAME.toLowerCase() === 'event_main' ? '1 / -1' : 'auto'
+                      gridColumn: column.COLUMN_NAME.toLowerCase() === 'maintenance_event' ? '1 / -1' : 'auto'
                     }}>
-                      {column.COLUMN_NAME.toLowerCase() !== 'event_main' && (
+                      {column.COLUMN_NAME.toLowerCase() !== 'maintenance_event' && (
                         <label style={{
                           display: 'block',
                           marginBottom: '6px',
@@ -892,14 +873,14 @@ export default function AddEntryModal({
                           color: '#374151'
                         }}>
                           {formatColumnName(column.COLUMN_NAME)} 
-                          {column.COLUMN_NAME.toLowerCase() === 'log_end' && 
+                          {column.COLUMN_NAME.toLowerCase() === 'time_end' && 
                             <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
                           }
-                          {column.COLUMN_NAME.toLowerCase() !== 'log_end' && ' *'}
+                          {column.COLUMN_NAME.toLowerCase() !== 'time_end' && ' *'}
                         </label>
                       )}
                       {renderSimpleInput(column)}
-                      {errors[column.COLUMN_NAME] && column.COLUMN_NAME.toLowerCase() !== 'event_main' && (
+                      {errors[column.COLUMN_NAME] && column.COLUMN_NAME.toLowerCase() !== 'maintenance_event' && (
                         <div style={{
                           marginTop: '6px',
                           fontSize: '12px',
@@ -1101,7 +1082,7 @@ export default function AddEntryModal({
                           color: '#374151'
                         }}>
                           {formatColumnName(column.COLUMN_NAME)}
-                          {column.COLUMN_NAME.toLowerCase() === 'log_end' && 
+                          {column.COLUMN_NAME.toLowerCase() === 'time_end' && 
                             <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
                           }
                         </label>
@@ -1333,10 +1314,10 @@ export default function AddEntryModal({
                   <div><strong>Type:</strong> {formData.log_type || 'Not specified'}</div>
                   <div><strong>Date:</strong> {formData.log_date || 'Not specified'}</div>
                   <div><strong>Status:</strong> {formData.log_status || 'Not specified'}</div>
-                  <div><strong>Start Time:</strong> {formData.log_start || 'Not specified'}</div>
-                  <div><strong>Duration:</strong> {formData.actual_time ? `${formData.actual_time} hours` : 'Not specified'}</div>
-                  <div><strong>End Time:</strong> {formData.log_end ? `${formData.log_end} (Auto-calculated)` : 'Not calculated'}</div>
-                  <div><strong>Event Type:</strong> {formData.event_incid === '1' ? '🚨 Incident' : formData.event_incid === '0' ? '🔧 Maintenance' : 'Not specified'}</div>
+                  <div><strong>Start Time:</strong> {formData.time_start || 'Not specified'}</div>
+                  <div><strong>Duration:</strong> {formData.duration ? `${formData.duration} hours` : 'Not specified'}</div>
+                  <div><strong>End Time:</strong> {formData.time_end ? `${formData.time_end} (Auto-calculated)` : 'Not calculated'}</div>
+                  <div><strong>Event Type:</strong> {formData.incident_event === '1' ? '🚨 Incident' : formData.incident_event === '0' ? '🔧 Maintenance' : 'Not specified'}</div>
                   <div><strong>Uploader:</strong> {currentUser?.username || 'Unknown User'}</div>
                   {isApplicationLog() && (
                     <div><strong>Company:</strong> {applicationFields.company || 'Not specified'}</div>
