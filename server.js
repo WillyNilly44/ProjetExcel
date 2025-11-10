@@ -8,11 +8,9 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dist')));
-
 
 const config = {
   server: process.env.AWS_RDS_HOST,
@@ -71,6 +69,28 @@ const addKpiHandler = require('./api/addkpi');
 const updateKpiHandler = require('./api/updatekpi');
 const deleteKpiHandler = require('./api/deletekpi');
 const addApplicationFieldsHandler = require('./api/addApplicationFields');
+const approveEntryHandler = require('./api/approveentry');
+const getPendingApprovalsHandler = require('./api/getpendingapprovals');
+
+// Approval System Endpoints
+app.post('/api/approveentry', async (req, res) => {
+  const event = {
+    httpMethod: 'POST',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await approveEntryHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+app.get('/api/getpendingapprovals', async (req, res) => {
+  const event = {
+    httpMethod: 'GET',
+    headers: req.headers
+  };
+  const result = await getPendingApprovalsHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
 
 app.post('/api/login', async (req, res) => {
   const event = {
@@ -776,4 +796,5 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Ready to connect to AWS RDS database`);
+  console.log(`⚖️ Approval system endpoints enabled`);
 });
