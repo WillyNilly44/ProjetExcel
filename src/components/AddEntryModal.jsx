@@ -9,6 +9,7 @@ export default function AddEntryModal({
   columns = [], 
   getExistingDistricts, 
   getExistingIncidents,
+  data = [], // Add data prop to get existing values
   currentUser 
 }) {
   const [formData, setFormData] = useState({});
@@ -34,6 +35,11 @@ export default function AddEntryModal({
     wiki_diagram_updated: false,
     communication_to_user: '',
     s3_support_ready: false
+  });
+  const [dropdownOptions, setDropdownOptions] = useState({
+    districts: [],
+    incidents: [],
+    assigned: []
   });
 
   // Helper functions
@@ -122,6 +128,62 @@ export default function AddEntryModal({
     if (columnName === 'actual_time') return '1'; // Default 1 hour
     return '';
   };
+
+  // Get unique values for dropdowns
+  const getUniqueValues = (fieldName) => {
+    if (!data || !Array.isArray(data)) {
+      console.log('No data available for dropdowns:', data);
+      return [];
+    }
+    
+    // Try multiple possible field name variations
+    const possibleFieldNames = [
+      fieldName,
+      fieldName.toLowerCase(),
+      fieldName.toUpperCase(),
+      fieldName.charAt(0).toUpperCase() + fieldName.slice(1).toLowerCase()
+    ];
+    
+    let actualFieldName = null;
+    const sampleRow = data[0] || {};
+    
+    // Find the actual field name in the data
+    for (const possibleName of possibleFieldNames) {
+      if (sampleRow.hasOwnProperty(possibleName)) {
+        actualFieldName = possibleName;
+        break;
+      }
+    }
+    
+    if (!actualFieldName) {
+      console.log(`Field '${fieldName}' not found in data. Available fields:`, Object.keys(sampleRow));
+      return [];
+    }
+    
+    console.log(`Using field name '${actualFieldName}' for '${fieldName}'`);
+    
+    const values = data
+      .map(row => row[actualFieldName])
+      .filter(value => value && value.toString().trim() !== '')
+      .map(value => value.toString().trim());
+    
+    console.log(`Found ${values.length} unique values for ${fieldName}:`, [...new Set(values)]);
+    return [...new Set(values)].sort();
+  };
+  
+  // Load dropdown options
+  useEffect(() => {
+    if (data && data.length > 0) {
+      console.log('Loading dropdown options from data:', data.length, 'rows');
+      console.log('Sample row keys:', Object.keys(data[0] || {}));
+      
+      setDropdownOptions({
+        districts: getUniqueValues('district'),
+        incidents: getUniqueValues('incident'),
+        assigned: getUniqueValues('assigned')
+      });
+    }
+  }, [data]);
 
   // Initialize form
   useEffect(() => {
@@ -353,7 +415,7 @@ export default function AddEntryModal({
       );
     }
 
-    // Special cases for other fields
+    // Special cases for dropdown fields
     if (columnName.toLowerCase() === 'log_type') {
       return (
         <select
@@ -379,6 +441,87 @@ export default function AddEntryModal({
           <option value="Completed">✅ Completed</option>
           <option value="Scheduled">📅 Scheduled</option>
         </select>
+      );
+    }
+
+    // District dropdown/input combo
+    if (columnName.toLowerCase() === 'district') {
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            list={`${columnName}-options`}
+            value={value}
+            onChange={(e) => handleInputChange(columnName, e.target.value)}
+            style={inputStyle}
+            placeholder="🏢 Enter or select district..."
+          />
+          <datalist id={`${columnName}-options`}>
+            {dropdownOptions.districts.map(district => (
+              <option key={district} value={district} />
+            ))}
+          </datalist>
+          {/* Debug info - remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+              Debug: {dropdownOptions.districts.length} districts loaded
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Incident dropdown/input combo
+    if (columnName.toLowerCase() === 'incident') {
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            list={`${columnName}-options`}
+            value={value}
+            onChange={(e) => handleInputChange(columnName, e.target.value)}
+            style={inputStyle}
+            placeholder="📋 Enter or select incident..."
+          />
+          <datalist id={`${columnName}-options`}>
+            {dropdownOptions.incidents.map(incident => (
+              <option key={incident} value={incident} />
+            ))}
+          </datalist>
+          {/* Debug info - remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+              Debug: {dropdownOptions.incidents.length} incidents loaded
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    // Assigned dropdown/input combo
+    if (columnName.toLowerCase() === 'assigned') {
+      return (
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            list={`${columnName}-options`}
+            value={value}
+            onChange={(e) => handleInputChange(columnName, e.target.value)}
+            style={inputStyle}
+            placeholder="👤 Enter or select assignee..."
+          />
+          <datalist id={`${columnName}-options`}>
+            {dropdownOptions.assigned.map(person => (
+              <option key={person} value={person} />
+            ))}
+          </datalist>
+          {/* Debug info - remove in production */}
+          {process.env.NODE_ENV === 'development' && (
+            <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>
+              Debug: {dropdownOptions.assigned.length} assignees loaded
+            </div>
+          )}
+        </div>
       );
     }
 
@@ -602,48 +745,62 @@ export default function AddEntryModal({
     }}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
-        width: '100%',
-        maxWidth: '600px',
-        maxHeight: '90vh',
+        borderRadius: '12px',
+        width: '90%',
+        maxWidth: '800px',
+        maxHeight: '85vh',
         overflow: 'hidden',
-        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        animation: 'modalSlideIn 0.3s ease-out'
       }}>
         {/* Header */}
         <div style={{
-          padding: '20px',
+          padding: '24px 24px 16px 24px',
           borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          backgroundColor: '#f8fafc'
         }}>
-          <h2 style={{ margin: 0, fontSize: '18px', color: '#111827' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h2 style={{ margin: 0, fontSize: '20px', color: '#111827', fontWeight: '600' }}>
             📝 Add New Entry
-            {isApplicationLog() && (
-              <span style={{
-                marginLeft: '8px',
-                padding: '2px 8px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                borderRadius: '12px',
-                fontSize: '12px'
-              }}>
-                💻 Application
-              </span>
-            )}
           </h2>
+          {isApplicationLog() && (
+            <span style={{
+              padding: '4px 12px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              borderRadius: '16px',
+              fontSize: '12px',
+              fontWeight: '500'
+            }}>
+              💻 Application
+            </span>
+          )}
+          </div>
           <button
             onClick={onClose}
             style={{
               background: 'none',
               border: 'none',
-              fontSize: '20px',
+              fontSize: '24px',
               cursor: 'pointer',
               color: '#6b7280',
-              padding: '4px'
+              padding: '8px',
+              borderRadius: '6px',
+              transition: 'all 0.2s ease'
             }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#f3f4f6';
+              e.target.style.color = '#374151';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = '#6b7280';
+             }}
           >
             ×
           </button>
@@ -651,51 +808,70 @@ export default function AddEntryModal({
 
         {/* Step Indicator */}
         <div style={{
-          padding: '16px 20px',
-          backgroundColor: '#f9fafb',
+          padding: '20px 24px 16px 24px',
+          backgroundColor: '#fafafc',
           borderBottom: '1px solid #e5e7eb'
         }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
             {[1, 2, 3].map(step => (
-              <div key={step} style={{
-                width: '30px',
-                height: '30px',
-                borderRadius: '50%',
-                backgroundColor: currentStep >= step ? '#3b82f6' : '#e5e7eb',
-                color: currentStep >= step ? 'white' : '#6b7280',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
-                {step}
-              </div>
+              <React.Fragment key={step}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: currentStep >= step ? '#3b82f6' : '#e5e7eb',
+                  color: currentStep >= step ? 'white' : '#6b7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  transition: 'all 0.3s ease',
+                  boxShadow: currentStep >= step ? '0 2px 4px rgba(59, 130, 246, 0.2)' : 'none'
+                }}>
+                  {currentStep > step ? '✓' : step}
+                </div>
+                {step < 3 && (
+                  <div style={{
+                    width: '40px',
+                    height: '2px',
+                    backgroundColor: currentStep > step ? '#3b82f6' : '#e5e7eb',
+                    transition: 'all 0.3s ease'
+                  }} />
+                )}
+              </React.Fragment>
             ))}
-            <span style={{ marginLeft: '12px', fontSize: '14px', color: '#6b7280' }}>
-              {currentStep === 1 && '📋 Basic Information'}
-              {currentStep === 2 && (isApplicationLog() ? '💻 Application Details' : '📄 Additional Details')}
-              {currentStep === 3 && '✅ Review & Submit'}
-            </span>
+          </div>
+          <div style={{ 
+            textAlign: 'center', 
+            marginTop: '12px',
+            fontSize: '14px', 
+            color: '#6b7280',
+            fontWeight: '500'
+          }}>
+            {currentStep === 1 && '📋 Basic Information'}
+            {currentStep === 2 && (isApplicationLog() ? '💻 Application Details' : '📄 Additional Details')}
+            {currentStep === 3 && '✅ Review & Submit'}
           </div>
         </div>
 
         {/* Content */}
         <div style={{
-          padding: '20px',
+          padding: '24px',
           flex: 1,
-          overflowY: 'auto'
+          overflowY: 'auto',
+          backgroundColor: '#ffffff'
         }}>
           {/* Step 1: Required Fields */}
           {currentStep === 1 && (
             <div>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#111827' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#111827', fontWeight: '600' }}>
                 ⚡ Required Information
               </h3>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
-                gap: '16px'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '20px'
               }}>
                 {requiredCols.map(column => {
                   // Skip event_incid since it's combined with event_main
@@ -710,14 +886,14 @@ export default function AddEntryModal({
                       {column.COLUMN_NAME.toLowerCase() !== 'event_main' && (
                         <label style={{
                           display: 'block',
-                          marginBottom: '4px',
+                          marginBottom: '6px',
                           fontSize: '14px',
-                          fontWeight: '500',
+                          fontWeight: '600',
                           color: '#374151'
                         }}>
                           {formatColumnName(column.COLUMN_NAME)} 
                           {column.COLUMN_NAME.toLowerCase() === 'log_end' && 
-                            <span style={{ color: '#6b7280', fontWeight: '400' }}> (Auto-calculated)</span>
+                            <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
                           }
                           {column.COLUMN_NAME.toLowerCase() !== 'log_end' && ' *'}
                         </label>
@@ -725,9 +901,10 @@ export default function AddEntryModal({
                       {renderSimpleInput(column)}
                       {errors[column.COLUMN_NAME] && column.COLUMN_NAME.toLowerCase() !== 'event_main' && (
                         <div style={{
-                          marginTop: '4px',
+                          marginTop: '6px',
                           fontSize: '12px',
-                          color: '#dc2626'
+                          color: '#dc2626',
+                          fontWeight: '500'
                         }}>
                           {errors[column.COLUMN_NAME]}
                         </div>
@@ -742,16 +919,17 @@ export default function AddEntryModal({
           {/* Step 2: Application Details or Optional Fields */}
           {currentStep === 2 && (
             <div>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#111827' }}>
+              <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', color: '#111827', fontWeight: '600' }}>
                 📄 Additional Details
                 {isApplicationLog() && (
                   <span style={{
-                    marginLeft: '8px',
-                    padding: '2px 8px',
+                    marginLeft: '12px',
+                    padding: '4px 12px',
                     backgroundColor: '#3b82f6',
                     color: 'white',
-                    borderRadius: '12px',
-                    fontSize: '12px'
+                    borderRadius: '16px',
+                    fontSize: '12px',
+                    fontWeight: '500'
                   }}>
                     💻 + Application Fields
                   </span>
@@ -761,17 +939,18 @@ export default function AddEntryModal({
               {/* Application-specific fields (only show when Application is selected) */}
               {isApplicationLog() && (
                 <div style={{
-                  padding: '16px',
+                  padding: '20px',
                   backgroundColor: '#eff6ff',
-                  borderRadius: '6px',
-                  marginBottom: '20px',
-                  border: '1px solid #bfdbfe'
+                  borderRadius: '10px',
+                  marginBottom: '24px',
+                  border: '1px solid #bfdbfe',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                 }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af', fontWeight: '600' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af', fontWeight: '600' }}>
                     💻 Application-Specific Fields
                   </h4>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div>
                       <label style={{
                         display: 'block',
@@ -802,7 +981,7 @@ export default function AddEntryModal({
                       )}
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                       <div>
                         <label style={{
                           display: 'block',
@@ -900,8 +1079,8 @@ export default function AddEntryModal({
               {optionalCols.length > 0 ? (
                 <div>
                   <h4 style={{ 
-                    margin: '0 0 12px 0', 
-                    fontSize: '14px', 
+                    margin: '0 0 16px 0', 
+                    fontSize: '16px', 
                     color: '#374151', 
                     fontWeight: '600' 
                   }}>
@@ -909,21 +1088,21 @@ export default function AddEntryModal({
                   </h4>
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '16px'
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '20px'
                   }}>
                     {optionalCols.map(column => (
                       <div key={column.COLUMN_NAME}>
                         <label style={{
                           display: 'block',
-                          marginBottom: '4px',
+                          marginBottom: '6px',
                           fontSize: '14px',
-                          fontWeight: '500',
+                          fontWeight: '600',
                           color: '#374151'
                         }}>
                           {formatColumnName(column.COLUMN_NAME)}
                           {column.COLUMN_NAME.toLowerCase() === 'log_end' && 
-                            <span style={{ color: '#6b7280', fontWeight: '400' }}> (Auto-calculated)</span>
+                            <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
                           }
                         </label>
                         {renderSimpleInput(column)}
@@ -934,14 +1113,14 @@ export default function AddEntryModal({
               ) : (
                 !isApplicationLog() && (
                   <div style={{
-                    padding: '40px 20px',
+                    padding: '60px 20px',
                     textAlign: 'center',
                     color: '#6b7280',
                     fontSize: '14px'
                   }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                    <div style={{ fontSize: '64px', marginBottom: '20px' }}>✅</div>
                     <div>All required fields are completed!</div>
-                    <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                    <div style={{ marginTop: '10px', fontSize: '12px' }}>
                       Continue to review and submit your entry.
                     </div>
                   </div>
@@ -1192,24 +1371,35 @@ export default function AddEntryModal({
 
         {/* Footer */}
         <div style={{
-          padding: '20px',
+          padding: '20px 24px',
           borderTop: '1px solid #e5e7eb',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          backgroundColor: '#f8fafc'
         }}>
           <div>
             {currentStep > 1 && (
               <button
                 onClick={handleBack}
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 20px',
                   border: '1px solid #d1d5db',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   backgroundColor: 'white',
                   color: '#374151',
                   cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#f3f4f6';
+                  e.target.style.borderColor = '#9ca3af';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'white';
+                  e.target.style.borderColor = '#d1d5db';
                 }}
               >
                 ← Back
@@ -1217,17 +1407,27 @@ export default function AddEntryModal({
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={onClose}
               style={{
-                padding: '8px 16px',
+                padding: '10px 20px',
                 border: '1px solid #d1d5db',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 backgroundColor: 'white',
                 color: '#374151',
                 cursor: 'pointer',
-                fontSize: '14px'
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#f3f4f6';
+                e.target.style.borderColor = '#9ca3af';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = 'white';
+                e.target.style.borderColor = '#d1d5db';
               }}
             >
               Cancel
@@ -1237,13 +1437,26 @@ export default function AddEntryModal({
               <button
                 onClick={handleNext}
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 20px',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   backgroundColor: '#3b82f6',
                   color: 'white',
                   cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#2563eb';
+                  e.target.style.transform = 'translateY(-1px)';
+                  e.target.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = '#3b82f6';
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
                 }}
               >
                 Next →
@@ -1253,13 +1466,16 @@ export default function AddEntryModal({
                 onClick={handleSubmit}
                 disabled={isLoading}
                 style={{
-                  padding: '8px 16px',
+                  padding: '10px 20px',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   backgroundColor: isLoading ? '#9ca3af' : '#10b981',
                   color: 'white',
                   cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                 }}
               >
                 {isLoading ? '⏳ Saving...' : '💾 Save Entry'}
@@ -1268,6 +1484,18 @@ export default function AddEntryModal({
           </div>
         </div>
       </div>
+      <style>{`
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
     </div>
   );
 }
