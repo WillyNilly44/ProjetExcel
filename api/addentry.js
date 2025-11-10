@@ -20,6 +20,8 @@ exports.handler = async (event, context) => {
     };
   }
 
+  let connection;
+  
   try {
     
     const requiredEnvVars = ['AWS_RDS_HOST', 'AWS_RDS_DATABASE', 'AWS_RDS_USER', 'AWS_RDS_PASSWORD'];
@@ -55,9 +57,8 @@ exports.handler = async (event, context) => {
       }
     };
 
-    const pool = await sql.connect(config);
+    connection = await sql.connect(config);
 
-   
     const columns = Object.keys(logData).filter(key => 
       logData[key] !== undefined && 
       logData[key] !== '' && 
@@ -77,7 +78,7 @@ exports.handler = async (event, context) => {
     `;
 
     
-    const request = pool.request();
+    const request = connection.request();
     columns.forEach((column, index) => {
       let value = logData[column];
       const columnName = column.toLowerCase();
@@ -141,21 +142,40 @@ exports.handler = async (event, context) => {
     const newId = result.recordset[0]?.newId;
     
 
+    // Check if entry requires approval (3rd Party users)
+    const requiresApproval = requestData.userLevel === '3rd Party';
+    
+    if (requiresApproval) {
+      // Insert into APPROVALS table
+      await connection.request()
+        .input('log_entry_id', sql.Int, newId)
+        .input('submitted_by', sql.VarChar(100), requestData.uploader)
+        .query(`
+          INSERT INTO APPROVALS (log_entry_id, submitted_by, status, submitted_at) 
+          VALUES (@log_entry_id, @submitted_by, 'pending', GETDATE())
+        `);
+    }
+
+    let response = {
+      success: true,
+      id: newId,
+      requiresApproval: requiresApproval,
+      message: `Entry ${newId} created successfully!`,
+      isApplicationLog: logData.log_type === 'Application',
+      applicationFields: logData.log_type === 'Application' ? applicationFields : null
+    };
+
+    if (requiresApproval) {
+      response.message = `Entry ${newId} submitted for approval! It will be visible once approved by an Administrator.`;
+    }
+
     // Close connection
-    await pool.close();
+    await connection.close();
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        success: true,
-        message: 'Log entry created successfully',
-        id: newId, // Frontend expects this field name
-        newId: newId, // Keep for compatibility
-        isApplicationLog: logData.log_type === 'Application',
-        applicationFields: applicationFields, // Pass through for second API call
-        timestamp: new Date().toISOString()
-      })
+      body: JSON.stringify(response)
     };
 
   } catch (error) {

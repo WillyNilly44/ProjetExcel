@@ -44,7 +44,7 @@ exports.handler = async (event, context) => {
   try {
     pool = await sql.connect(config);
     
-    // Query with LEFT JOINs to include both recurrence and application fields
+    // Query with LEFT JOINs to include recurrence, application fields, and approval status
     const query = `
       SELECT 
         le.id,
@@ -90,11 +90,21 @@ exports.handler = async (event, context) => {
         af.communication_to_user,
         af.s3_support_ready,
         af.created_by as app_created_by,
-        af.created_at as app_created_at
+        af.created_at as app_created_at,
+        
+        -- Approval information
+        appr.status as approval_status,
+        appr.submitted_by as approval_submitted_by,
+        appr.submitted_at as approval_submitted_at,
+        appr.reviewed_by as approval_reviewed_by,
+        appr.reviewed_at as approval_reviewed_at,
+        appr.review_comments as approval_comments,
+        CASE WHEN appr.id IS NOT NULL THEN 1 ELSE 0 END as has_approval_record
         
       FROM LOG_ENTRIES le
       LEFT JOIN LOG_ENTRIES_RECURRENCES ler ON le.id = ler.log_entry_id
       LEFT JOIN LOG_ENTRIES_APPLICATION_FIELDS af ON le.id = af.log_entry_id
+      LEFT JOIN APPROVALS appr ON le.id = appr.log_entry_id
       ORDER BY le.log_date DESC, le.id DESC
     `;
     
@@ -116,6 +126,16 @@ exports.handler = async (event, context) => {
     
     const columnResult = await pool.request().query(columnQuery);
     
+    // Separate query to get pending approvals count for admin users
+    const pendingApprovalsQuery = `
+      SELECT COUNT(*) as pending_count
+      FROM APPROVALS
+      WHERE status = 'pending'
+    `;
+    
+    const pendingResult = await pool.request().query(pendingApprovalsQuery);
+    const pendingCount = pendingResult.recordset[0].pending_count;
+    
     return {
       statusCode: 200,
       headers,
@@ -124,6 +144,7 @@ exports.handler = async (event, context) => {
         data: data,
         columns: columnResult.recordset,
         totalRecords: data.length,
+        pendingApprovals: pendingCount,
         server: config.server,
         database: config.database,
         timestamp: new Date().toISOString()

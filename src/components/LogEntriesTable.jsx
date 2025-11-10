@@ -19,12 +19,14 @@ export default function LogEntriesTable({
   connectionInfo = null,
   onRefresh = () => {}
 }) {
-  const { user } = useAuth(); 
+  const { user, canApproveEntries } = useAuth(); 
   const [showAddModal, setShowAddModal] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [columnOrder, setColumnOrder] = useState([]);
   const [showColumnManager, setShowColumnManager] = useState(false);
-  const [currentView, setCurrentView] = useState('application'); // 'application' or 'operational'
+  const [currentView, setCurrentView] = useState('application');
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
   const [dateFilters, setDateFilters] = useState({
     year: '',
     month: '',
@@ -461,15 +463,111 @@ export default function LogEntriesTable({
     return virtualEntry;
   };
 
+  // Fetch pending approvals for administrators
+  const fetchPendingApprovals = async () => {
+    if (!canApproveEntries()) return;
+    
+    try {
+      const response = await fetch('/api/getpendingapprovals');
+      const result = await response.json();
+      
+      if (result.success) {
+        setPendingApprovals(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch pending approvals:', error);
+    }
+  };
+
+  // Load pending approvals when component mounts or user changes
+  useEffect(() => {
+    if (canApproveEntries()) {
+      fetchPendingApprovals();
+    }
+  }, [user, canApproveEntries]);
+
+  // Update pending approvals count when data changes
+  useEffect(() => {
+    if (data && data.length > 0) {
+      const pendingCount = data.filter(entry => entry.approval_status === 'pending').length;
+      setPendingApprovalsCount(pendingCount);
+    }
+  }, [data]);
+
+  // Handle entry approval
+  const handleApproveEntry = async (entryId, action, comments = '') => {
+    if (!canApproveEntries()) {
+      alert('You do not have permission to approve entries');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/approveentry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId: entryId,
+          action: action, // 'approve' or 'reject'
+          approverUsername: user?.username,
+          comments: comments
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        alert(`✅ ${result.message}`);
+        await onRefresh(); // Refresh the main data
+      } else {
+        throw new Error(result.error);
+      }
+
+    } catch (error) {
+      alert('Failed to update approval status: ' + error.message);
+    }
+  };
+
   // SINGLE getFilteredData function with filtering AND sorting
   const getFilteredData = () => {
     if (!data || data.length === 0) return [];
 
     const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
     
+    // Filter based on user permissions and view preferences
+    let baseFilteredData = expandedData;
+    
+    // If user is 3rd Party, only show their own entries
+    if (user?.userlevel === '3rd Party') {
+      const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
+      if (uploaderColumn) {
+        baseFilteredData = baseFilteredData.filter(entry => 
+          entry[uploaderColumn.COLUMN_NAME] === user.username
+        );
+      }
+    } else {
+      // For administrators viewing pending approvals only
+      if (showPendingOnly && canApproveEntries()) {
+        // Show only entries with pending approval status
+        baseFilteredData = baseFilteredData.filter(entry => 
+          entry.approval_status === 'pending'
+        );
+      } else {
+        // For normal users, hide entries with pending approvals
+        if (!canApproveEntries()) {
+          baseFilteredData = baseFilteredData.filter(entry => 
+            entry.approval_status !== 'pending'
+          );
+        }
+      }
+    }
+    
     // Apply filters first
     const hasFilters = Object.values(dateFilters).some(value => value && value !== '');
-    let filteredData = expandedData;
+    let filteredData = baseFilteredData;
     
     if (hasFilters) {
       const dateColumn = columns.find(col => 
@@ -997,6 +1095,20 @@ export default function LogEntriesTable({
           <h2>📋 Log Viewing Tool</h2>
           <div className={`status-text ${getConnectionStatusClass()}`}>
             {connectionStatus}
+            {/* Show pending approval count for administrators */}
+            {canApproveEntries() && pendingApprovalsCount > 0 && (
+              <span style={{ 
+                marginLeft: '12px', 
+                padding: '4px 8px', 
+                backgroundColor: '#f59e0b', 
+                color: 'white', 
+                borderRadius: '12px', 
+                fontSize: '12px',
+                fontWeight: '600' 
+              }}>
+                ⏳ {pendingApprovalsCount} pending approval{pendingApprovalsCount !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
         
@@ -1051,6 +1163,11 @@ export default function LogEntriesTable({
             columnsLength={columns.length}
             showVirtualEntries={showVirtualEntries}
             setShowVirtualEntries={setShowVirtualEntries}
+            showPendingOnly={showPendingOnly}
+            setShowPendingOnly={setShowPendingOnly}
+            canApproveEntries={canApproveEntries()}
+            pendingApprovals={pendingApprovals}
+            pendingApprovalsCount={pendingApprovalsCount}
             showFilters={showFilters}
             setShowFilters={setShowFilters}
             setShowColumnManager={setShowColumnManager}
@@ -1303,6 +1420,8 @@ export default function LogEntriesTable({
             formatCellValue={formatCellValue}
             onRowClick={handleRowClick}
             hasPermission={hasPermission}
+            canApproveEntries={canApproveEntries()}
+            onApprove={handleApproveEntry}
             getColumnType={getColumnType}
             sortConfig={sortConfig}
             onSort={handleSort}

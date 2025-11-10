@@ -2,19 +2,21 @@
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
-const VirtualTable = ({ 
-  data, 
-  columns, 
-  getDisplayColumns, 
-  formatColumnName, 
-  formatCellValue, 
-  onRowClick, 
-  hasPermission, 
+export default function VirtualTable({
+  data,
+  columns,
+  getDisplayColumns,
+  formatColumnName,
+  formatCellValue,
+  onRowClick,
+  hasPermission,
+  canApproveEntries, // This should be a boolean, not a function
+  onApprove,
   getColumnType,
-  sortConfig = { key: null, direction: null },
-  onSort = () => {},
-  getSortIcon = () => '⇅'
-}) => {
+  sortConfig,
+  onSort,
+  getSortIcon
+}) {
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(600);
   const containerRef = useRef(null);
@@ -60,6 +62,30 @@ const VirtualTable = ({
     
     return '80px';
   }, []);
+
+  const getColumnStyle = useCallback((columnName, dataType) => {
+    const baseStyle = {
+      padding: '0.75rem 0.5rem',
+      verticalAlign: 'middle',
+      borderRight: '1px solid #374151',
+      backgroundColor: 'inherit'
+    };
+    
+    if (dataType === 'bit' || typeof data[0]?.[columnName] === 'boolean') {
+      baseStyle.textAlign = 'center';
+    }
+    
+    if (columnName.toLowerCase().includes('status')) {
+      baseStyle.fontWeight = '500';
+      baseStyle.color = '#059669';
+    }
+    
+    if (columnName.toLowerCase().includes('note') || columnName.toLowerCase().includes('description')) {
+      baseStyle.maxWidth = '200px';
+    }
+    
+    return baseStyle;
+  }, [data]);
   
   // Calculate visible range
   const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
@@ -115,6 +141,111 @@ const VirtualTable = ({
     );
   }
   
+  const renderCell = (item, column) => {
+    const value = item[column.COLUMN_NAME];
+    const columnType = getColumnType(column.COLUMN_NAME, column.DATA_TYPE);
+
+    // Check if entry has pending approval (from the main data)
+    const hasPendingApproval = item.approval_status === 'pending';
+
+    let cellContent = formatCellValue(value);
+
+    // Handle different column types
+    if (columnType === 'boolean') {
+      cellContent = value ? '✅' : '❌';
+    } else if (columnType === 'status') {
+      const statusClass = value === 'Completed' ? 'status-completed' : 
+                         value === 'Scheduled' ? 'status-scheduled' : 
+                         'status-default';
+      cellContent = <span className={statusClass}>{cellContent}</span>;
+    }
+
+    // Special handling for approval status fields
+    if (column.COLUMN_NAME === 'approval_status') {
+      if (value === 'pending') {
+        cellContent = <span className="approval-pending">⏳ Pending</span>;
+      } else if (value === 'approved') {
+        cellContent = <span className="approval-approved">✅ Approved</span>;
+      } else if (value === 'rejected') {
+        cellContent = <span className="approval-rejected">❌ Rejected</span>;
+      } else if (!value) {
+        cellContent = <span className="approval-none">— No Review</span>;
+      }
+    }
+
+    return (
+      <td 
+        key={column.COLUMN_NAME} 
+        style={{
+          ...getColumnStyle(column.COLUMN_NAME, column.DATA_TYPE),
+          backgroundColor: hasPendingApproval ? '#fef3c7' : 'transparent',
+          opacity: hasPendingApproval && !canApproveEntries ? 0.7 : 1
+        }}
+        onClick={() => onRowClick?.(item)}
+      >
+        {/* Add pending indicator */}
+        {hasPendingApproval && (
+          <span style={{ 
+            fontSize: '10px', 
+            color: '#f59e0b', 
+            marginRight: '4px' 
+          }}>
+            ⏳
+          </span>
+        )}
+        {cellContent}
+      </td>
+    );
+  };
+
+  const renderRow = (item, index) => {
+    const hasPendingApproval = item.approval_status === 'pending';
+    const isVirtual = item.is_virtual;
+    
+    return (
+      <tr 
+        key={item.id || index}
+        className={`
+          table-row 
+          ${isVirtual ? 'virtual-row' : ''} 
+          ${hasPendingApproval ? 'pending-approval-row' : ''}
+          ${index % 2 === 0 ? 'even' : 'odd'}
+        `}
+        style={{
+          backgroundColor: hasPendingApproval ? '#fffbeb' : undefined,
+          borderLeft: hasPendingApproval ? '4px solid #f59e0b' : undefined
+        }}
+      >
+        {getDisplayColumns().map(column => renderCell(item, column))}
+        {/* Add approval action column for administrators when viewing pending approvals */}
+        {canApproveEntries && hasPendingApproval && (
+          <td className="approval-actions">
+            <button
+              className="approve-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onApprove?.(item.id, 'approve');
+              }}
+              title="Approve this entry"
+            >
+              ✅
+            </button>
+            <button
+              className="reject-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onApprove?.(item.id, 'reject');
+              }}
+              title="Reject this entry"
+            >
+              ❌
+            </button>
+          </td>
+        )}
+      </tr>
+    );
+  };
+
   return (
     <div className="virtual-table-container" ref={containerRef}>
       <div
@@ -163,6 +294,22 @@ const VirtualTable = ({
               </span>
             </div>
           ))}
+          {/* Add header for approval actions column if needed */}
+          {canApproveEntries && data.some(item => item.approval_status === 'pending') && (
+            <div 
+              className="virtual-table-header-cell"
+              style={{
+                minWidth: '100px',
+                flex: '0 0 100px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.75rem 0.5rem'
+              }}
+            >
+              ⚖️ Actions
+            </div>
+          )}
         </div>
         
         {/* Data Rows */}
@@ -180,9 +327,12 @@ const VirtualTable = ({
                   getColumnType={getColumnType}
                   onRowClick={onRowClick}
                   hasPermission={hasPermission}
+                  canApproveEntries={canApproveEntries}
+                  onApprove={onApprove}
                   rowHeight={rowHeight}
                   getColumnMinWidth={getColumnMinWidth}
                   getColumnFlex={getColumnFlex}
+                  getColumnStyle={getColumnStyle}
                 />
               );
             })}
@@ -202,26 +352,51 @@ const VirtualRow = React.memo(({
   getColumnType, 
   onRowClick, 
   hasPermission, 
+  canApproveEntries,
+  onApprove,
   rowHeight,
   getColumnMinWidth,
-  getColumnFlex
+  getColumnFlex,
+  getColumnStyle
 }) => {
   
   const handleRowClick = useCallback(() => {
     onRowClick(entry);
   }, [entry, onRowClick]);
   
+  // Check if entry has pending approval
+  const hasPendingApproval = entry.approval_status === 'pending';
+  
   return (
     <div
-      className={`virtual-row ${entry.is_virtual ? 'virtual-entry' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
+     className={`virtual-row ${entry.is_virtual ? 'virtual-entry' : ''} ${hasPendingApproval ? 'pending-approval' : ''} ${index % 2 === 0 ? 'even' : 'odd'}`}
       style={{ height: rowHeight }}
       onClick={handleRowClick}
       title={entry.is_virtual ? 'This is a recurring entry instance' : 'Click to view details'}
     >
       {displayColumns.map(column => {
         const value = entry[column.COLUMN_NAME];
-        const formattedValue = formatCellValue(value, column.COLUMN_NAME, column.DATA_TYPE);
+        let formattedValue = formatCellValue(value, column.COLUMN_NAME, column.DATA_TYPE);
         
+        // Handle different column types
+        const columnType = getColumnType(column.COLUMN_NAME, column.DATA_TYPE);
+        if (columnType === 'boolean') {
+          formattedValue = value ? '✅' : '❌';
+        }
+        
+        // Special handling for approval status fields
+        if (column.COLUMN_NAME === 'approval_status') {
+          if (value === 'pending') {
+            formattedValue = '⏳ Pending';
+          } else if (value === 'approved') {
+            formattedValue = '✅ Approved';
+          } else if (value === 'rejected') {
+            formattedValue = '❌ Rejected';
+          } else if (!value) {
+            formattedValue = '— No Review';
+          }
+        }
+
         return (
           <div
             key={column.COLUMN_NAME}
@@ -232,10 +407,22 @@ const VirtualRow = React.memo(({
               padding: '0.75rem 0.5rem',
               display: 'flex',
               alignItems: 'center',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              backgroundColor: hasPendingApproval ? '#fef3c7' : 'transparent',
+              opacity: hasPendingApproval && !canApproveEntries ? 0.7 : 1
             }}
             title={entry.is_virtual ? `🔄 Recurring: ${formattedValue}` : formattedValue}
           >
+            {/* Add pending indicator for pending entries */}
+            {hasPendingApproval && (
+              <span style={{ 
+                fontSize: '10px', 
+                color: '#f59e0b', 
+                marginRight: '4px' 
+              }}>
+                ⏳
+              </span>
+            )}
             {entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident') && (
               <span className="virtual-icon">🔄</span>
             )}
@@ -249,10 +436,44 @@ const VirtualRow = React.memo(({
           </div>
         );
       })}
+     {/* Add approval action buttons for administrators when entry is pending */}
+     {canApproveEntries && hasPendingApproval && (
+       <div 
+         className="virtual-cell approval-actions"
+         style={{
+           minWidth: '100px',
+           flex: '0 0 100px',
+           padding: '0.75rem 0.5rem',
+           display: 'flex',
+           alignItems: 'center',
+           justifyContent: 'center',
+           gap: '4px'
+         }}
+       >
+         <button
+           className="approve-btn"
+           onClick={(e) => {
+             e.stopPropagation();
+             onApprove?.(entry.id, 'approve');
+           }}
+           title="Approve this entry"
+         >
+           ✅
+         </button>
+         <button
+           className="reject-btn"
+           onClick={(e) => {
+             e.stopPropagation();
+             onApprove?.(entry.id, 'reject');
+           }}
+           title="Reject this entry"
+         >
+           ❌
+         </button>
+       </div>
+     )}
     </div>
   );
 });
 
 VirtualRow.displayName = 'VirtualRow';
-
-export default VirtualTable;
