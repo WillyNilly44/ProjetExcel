@@ -1308,6 +1308,7 @@ export default function LogEntriesTable({
           columns={columns}
           getExistingDistricts={getExistingDistricts}
           getExistingIncidents={getExistingIncidents}
+          data={data} // Make sure data is passed here
           currentUser={user} 
         />
       )}
