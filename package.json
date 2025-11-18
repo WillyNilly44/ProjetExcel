@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node server.js"
+    "server": "node server.js",
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "start:all": "concurrently \"npm run server\" \"npm run dev\""
   },
   "engines": {
     "node": "18.x"
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^9.2.1",
     "vite": "^5.0.8"
   }
 }

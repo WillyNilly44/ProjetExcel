@@ -1,5 +1,8 @@
 const sql = require('mssql');
 
+// Add explicit dotenv loading for this file
+require('dotenv').config();
+
 const config = {
   server: process.env.AWS_RDS_HOST?.replace(',1433', ''),
   database: process.env.AWS_RDS_DATABASE,
@@ -42,7 +45,11 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    pool = await sql.connect(config);
+    // Create a new pool connection
+    pool = new sql.ConnectionPool(config);
+    await pool.connect();
+    
+    console.log('Database connected successfully');
     
     // Query with LEFT JOINs to include both recurrence and application fields
     const query = `
