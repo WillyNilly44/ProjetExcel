@@ -114,6 +114,8 @@ export default function AddEntryModal({
     if (columnName === 'uploader') return currentUser?.username || 'Unknown User';
     if (columnName === 'maintenance_event' || columnName === 'incident_event') return '0'; // Default to Maintenance
     if (columnName === 'duration') return '1'; // Default 1 hour
+    if (columnName === 'real_business_impact') return '0'; // Default to 0 (No)
+    if (columnName === 'root_call_analysis') return '0'; // Default to 0 (No)
     return '';
   };
 
