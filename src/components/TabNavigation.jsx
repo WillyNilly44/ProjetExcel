@@ -26,6 +26,14 @@ const TabNavigation = ({ activeTab, onTabChange, hasPermission }) => {
     },
     ...(hasPermission('Administrator') ? [
       {
+        id: 'approvals',
+        label: 'Approvals',
+        icon: '✅',
+        description: 'Pending Entry Approvals',
+        public: false,
+        requiredPermission: 'Administrator'
+      },
+      {
         id: 'users',
         label: 'Users',
         icon: '👥',

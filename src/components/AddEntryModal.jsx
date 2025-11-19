@@ -645,7 +645,9 @@ export default function AddEntryModal({
       const submissionData = {
         ...formData,
         uploader: currentUser?.username || 'Unknown User',
-        isRecurrence
+        isRecurrence,
+        userLevel: currentUser?.level_Name || 'Viewer',
+        userId: currentUser?.id || null
       };
       
       // Only add recurrence fields if recurrence is enabled
