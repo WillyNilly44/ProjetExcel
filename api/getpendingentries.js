@@ -42,7 +42,6 @@ exports.handler = async (event, context) => {
     pool = new sql.ConnectionPool(config);
     await pool.connect();
     
-    console.log('Fetching pending entries...');
     
     // Query to get all pending entries with user information
     const query = `
@@ -101,7 +100,6 @@ exports.handler = async (event, context) => {
     
     const result = await pool.request().query(query);
     
-    console.log(`Found ${result.recordset.length} pending entries`);
     
     return {
       statusCode: 200,

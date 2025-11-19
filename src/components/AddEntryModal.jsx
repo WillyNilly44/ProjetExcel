@@ -55,6 +55,7 @@ export default function AddEntryModal({
   const isHiddenField = (columnName) => {
     const hiddenFields = [
       'uploader', // Hide uploader from step 2
+      'pending_approval', // Hide pending_approval from form
       'recurrence_type', 'day_of_the_week', 'day_of_the_month' // Hide recurrence fields from step 2
     ];
     
@@ -119,7 +120,6 @@ export default function AddEntryModal({
   // Get unique values for dropdowns
   const getUniqueValues = (fieldName) => {
     if (!data || !Array.isArray(data)) {
-      console.log('No data available for dropdowns:', data);
       return [];
     }
     
@@ -143,26 +143,21 @@ export default function AddEntryModal({
     }
     
     if (!actualFieldName) {
-      console.log(`Field '${fieldName}' not found in data. Available fields:`, Object.keys(sampleRow));
       return [];
     }
     
-    console.log(`Using field name '${actualFieldName}' for '${fieldName}'`);
     
     const values = data
       .map(row => row[actualFieldName])
       .filter(value => value && value.toString().trim() !== '')
       .map(value => value.toString().trim());
     
-    console.log(`Found ${values.length} unique values for ${fieldName}:`, [...new Set(values)]);
     return [...new Set(values)].sort();
   };
   
   // Load dropdown options
   useEffect(() => {
     if (data && data.length > 0) {
-      console.log('Loading dropdown options from data:', data.length, 'rows');
-      console.log('Sample row keys:', Object.keys(data[0] || {}));
       
       setDropdownOptions({
         districts: getUniqueValues('district'),
@@ -261,6 +256,7 @@ export default function AddEntryModal({
   // Simple input renderer
   const renderSimpleInput = (column) => {
     const columnName = column.COLUMN_NAME;
+
     const value = formData[columnName] || '';
     const hasError = errors[columnName];
 
@@ -570,6 +566,62 @@ export default function AddEntryModal({
           style={inputStyle}
           placeholder="Enter number"
         />
+      );
+    }
+
+    // Checkbox for specific yes/no fields
+    const columnNameLower = columnName.toLowerCase();
+    
+    // More specific matching for each field
+    const isCheckboxField = 
+      columnNameLower === 'business_impact' ||
+      columnNameLower === 'real_business_impact' ||
+      columnNameLower === 'root_call_analysis';
+    
+    if (isCheckboxField) {
+      const isChecked = value === '1' || value === 1 || value === true || value === 'true' || value === 'Yes';
+      
+      return (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px',
+          backgroundColor: '#f9fafb',
+          border: `1px solid ${hasError ? '#dc2626' : '#d1d5db'}`,
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}>
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(e) => {
+              // Store as '1' for true, '0' for false to match database expectations
+              handleInputChange(columnName, e.target.checked ? '1' : '0');
+            }}
+            style={{
+              width: '18px',
+              height: '18px',
+              cursor: 'pointer'
+            }}
+          />
+          <label 
+            style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              const newValue = !isChecked;
+              handleInputChange(columnName, newValue ? '1' : '0');
+            }}
+          >
+            {isChecked ? '✅ Yes' : '❌ No'}
+          </label>
+        </div>
       );
     }
 
@@ -1074,23 +1126,25 @@ export default function AddEntryModal({
                     gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                     gap: '20px'
                   }}>
-                    {optionalCols.map(column => (
-                      <div key={column.COLUMN_NAME}>
-                        <label style={{
-                          display: 'block',
-                          marginBottom: '6px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#374151'
-                        }}>
-                          {formatColumnName(column.COLUMN_NAME)}
-                          {column.COLUMN_NAME.toLowerCase() === 'time_end' && 
-                            <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
-                          }
-                        </label>
-                        {renderSimpleInput(column)}
-                      </div>
-                    ))}
+                    {optionalCols.map(column => {
+                      return (
+                        <div key={column.COLUMN_NAME}>
+                          <label style={{
+                            display: 'block',
+                            marginBottom: '6px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#374151'
+                          }}>
+                            {formatColumnName(column.COLUMN_NAME)}
+                            {column.COLUMN_NAME.toLowerCase() === 'time_end' && 
+                              <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
+                            }
+                          </label>
+                          {renderSimpleInput(column)}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : (

@@ -159,10 +159,8 @@ const KPITab = ({ data = [], columns = [], formatCellValue, hasPermission }) => 
         // FIXED: Use proper chronological sorting
         const sortedData = sortKPIDataChronologically(result.data || []);
         
-        console.log('=== SORTED KPI DATA ===');
         sortedData.forEach((entry, index) => {
           const parsed = parseEntryDate(entry.month, entry.week);
-          console.log(`${index + 1}. ${entry.month} | ${entry.week} → ${parsed.sortDate.toDateString()}`);
         });
         
         setAllDashboardData(sortedData);

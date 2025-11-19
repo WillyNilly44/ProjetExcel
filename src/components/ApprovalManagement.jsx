@@ -50,11 +50,8 @@ const ApprovalManagement = () => {
   const handleApprove = async (pendingId) => {
     if (!user?.id) return;
     
-    // Find the entry with this pendingId to get the log_entry_id
-    console.log('Looking for pendingId:', pendingId);
-    console.log('Available pending entries:', pendingEntries);
     const entry = pendingEntries.find(e => e.pending_id === pendingId);
-    console.log('Found entry:', entry);
+
     
     if (!entry) {
       alert('Entry not found');
@@ -68,7 +65,6 @@ const ApprovalManagement = () => {
       adminUserId: user.id
     };
     
-    console.log('Sending request body:', requestBody);
     
     try {
       setProcessing(true);

@@ -28,8 +28,6 @@ exports.handler = async (event, context) => {
 
   try {
     const { logEntryId, applicationFields } = JSON.parse(event.body);
-    console.log('Adding application fields for entry ID:', logEntryId);
-    console.log('Application fields:', applicationFields);
 
     pool = await sql.connect(config);
     const request = new sql.Request(pool);
@@ -62,7 +60,6 @@ exports.handler = async (event, context) => {
     request.input('createdBy', sql.NVarChar(50), applicationFields.created_by || 'Unknown');
 
     await request.query(query);
-    console.log('Successfully added application fields');
 
     return {
       statusCode: 200,

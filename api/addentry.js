@@ -35,10 +35,7 @@ exports.handler = async (event, context) => {
     // Extract and filter out non-database fields
     const { applicationFields, isRecurrence, recurrence_type, day_of_the_week, day_of_the_month, userLevel, userId, ...logData } = requestData;
 
-    console.log('Filtered log data:', logData);
-    console.log('Application fields:', applicationFields);
-    console.log('User level:', userLevel);
-    console.log('User ID:', userId);
+   
 
     // Set pending approval flag for 3rd party users
     if (userLevel === '3rd Party') {
@@ -54,7 +51,6 @@ exports.handler = async (event, context) => {
           END
         `);
       } catch (columnError) {
-        console.log('Column check/creation error (may be normal):', columnError.message);
       }
     } else {
       logData.pending_approval = false;
@@ -104,7 +100,6 @@ exports.handler = async (event, context) => {
       let value = logData[column];
       const columnName = column.toLowerCase();
       
-      console.log(`Processing column ${column} (${columnName}): "${value}" (${typeof value})`);
       
       if (typeof value === 'boolean') {
         request.input(`param${index}`, sql.Bit, value);
@@ -138,7 +133,6 @@ exports.handler = async (event, context) => {
             timeValue = '0' + timeValue;
           }
           
-          console.log(`Time field ${columnName}: "${value}" -> "${timeValue}"`);
           
           // FIXED: Use VARCHAR to store time as string - no timezone conversion
           request.input(`param${index}`, sql.VarChar(10), timeValue);
@@ -154,7 +148,6 @@ exports.handler = async (event, context) => {
       else {
         // Convert everything else to string
         const stringValue = value ? value.toString() : '';
-        console.log(`Converting ${column} to string: "${stringValue}"`);
         request.input(`param${index}`, sql.NVarChar, stringValue);
       }
     });
@@ -188,7 +181,6 @@ exports.handler = async (event, context) => {
               FOREIGN KEY (log_entry_id) REFERENCES LOG_ENTRIES(id)
             )
           `);
-          console.log('Created LOG_ENTRIES_PENDING table');
         }
         
         // Now create the pending entry record
@@ -201,7 +193,6 @@ exports.handler = async (event, context) => {
           VALUES (@logEntryId, @submittedBy, GETDATE(), 'pending')
         `);
         
-        console.log(`Created pending entry record for log_entry_id: ${newId}`);
       } catch (pendingError) {
         console.error('Error creating pending entry:', pendingError);
         // Don't fail the whole operation, just log the error

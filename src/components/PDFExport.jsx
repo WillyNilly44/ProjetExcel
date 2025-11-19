@@ -85,14 +85,40 @@ const PDFExport = ({
         // LOGS MODE: Improved text handling for better fit
         tableData = currentData.map(entry => {
           return currentColumns.map(column => {
-            let cellValue = formatCellValue(entry[column.COLUMN_NAME], column.COLUMN_NAME, column.DATA_TYPE);
+            let rawValue = entry[column.COLUMN_NAME];
+            let cellValue;
+            
+            // Handle status and level columns specially to avoid formatting issues
+            const columnName = column.COLUMN_NAME.toLowerCase();
+            if (columnName.includes('status') || columnName.includes('level') || columnName.includes('type')) {
+              // For status/level columns, use raw value directly to avoid formatCellValue issues
+              cellValue = rawValue;
+            } else {
+              cellValue = formatCellValue(rawValue, column.COLUMN_NAME, column.DATA_TYPE);
+            }
             
             if (entry.is_virtual && column.COLUMN_NAME.toLowerCase().includes('incident')) {
               cellValue = `🔄 ${cellValue}`;
             }
             
-            const stringValue = String(cellValue || '');
-            const columnName = column.COLUMN_NAME.toLowerCase();
+            // Ensure we have a clean string value
+            let stringValue = '';
+            if (cellValue !== null && cellValue !== undefined) {
+              if (Array.isArray(cellValue)) {
+                stringValue = cellValue.join(' ');
+              } else if (typeof cellValue === 'object') {
+                stringValue = JSON.stringify(cellValue);
+              } else {
+                stringValue = String(cellValue);
+              }
+            }
+            
+            // Clean up the string - remove leading dots, commas, extra spaces, and control characters
+            stringValue = stringValue
+              .replace(/^[.,\s\[\]"{}]+/, '') // Remove leading punctuation, brackets, quotes
+              .replace(/[.,\s\[\]"{}]+$/, '') // Remove trailing punctuation, brackets, quotes
+              .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+              .trim();
             
             // Handle different column types for better fitting
             if (columnName.includes('note') || 
@@ -107,6 +133,12 @@ const PDFExport = ({
             } else if (columnName.includes('id')) {
               // IDs should be short
               return stringValue;
+            } else if (columnName.includes('status')) {
+              // Keep status values intact - don't truncate, ensure clean display
+              return stringValue || 'N/A';
+            } else if (columnName.includes('level') || columnName.includes('type')) {
+              // Keep level and type values intact
+              return stringValue || 'N/A';
             } else {
               // For other columns, limit length but not too aggressively
               return stringValue.length > 30 ? stringValue.substring(0, 27) + '...' : stringValue;
@@ -119,23 +151,25 @@ const PDFExport = ({
       let columnStyles = {};
       
       if (mode === 'dashboard') {
-        // Dashboard mode - fixed column widths that fit in page
+        // Dashboard mode - improved column widths and styling
+        const totalAvailableWidth = availableWidth - 10; // Leave some margin
         columnStyles = {
-          0: { cellWidth: 15, halign: 'center' }, // #
-          1: { cellWidth: 25 }, // Ticket #
-          2: { cellWidth: 25 }, // Assignee
-          3: { cellWidth: 50, fontSize: 6 }, // Note
-          4: { cellWidth: 30, fontSize: 6 }, // Date & Time
-          5: { cellWidth: 20, halign: 'center' }, // Risk Level
-          6: { cellWidth: 18, halign: 'center' }, // Duration
-          7: { cellWidth: 20, halign: 'center' }, // Est. Downtime
-          8: { cellWidth: 20, halign: 'center' }, // Status
-          9: { cellWidth: 25 } // District
+          0: { cellWidth: Math.max(15, totalAvailableWidth * 0.05), halign: 'center', fontSize: 8 }, // #
+          1: { cellWidth: Math.max(25, totalAvailableWidth * 0.12), fontSize: 8 }, // Ticket #
+          2: { cellWidth: Math.max(25, totalAvailableWidth * 0.12), fontSize: 8 }, // Assignee
+          3: { cellWidth: Math.max(50, totalAvailableWidth * 0.25), fontSize: 7, overflow: 'linebreak' }, // Note
+          4: { cellWidth: Math.max(30, totalAvailableWidth * 0.15), fontSize: 7 }, // Date & Time
+          5: { cellWidth: Math.max(20, totalAvailableWidth * 0.08), halign: 'center', fontSize: 8 }, // Risk Level
+          6: { cellWidth: Math.max(18, totalAvailableWidth * 0.08), halign: 'center', fontSize: 8 }, // Duration
+          7: { cellWidth: Math.max(20, totalAvailableWidth * 0.10), halign: 'center', fontSize: 7 }, // Est. Downtime
+          8: { cellWidth: Math.max(20, totalAvailableWidth * 0.08), halign: 'center', fontSize: 8 }, // Status
+          9: { cellWidth: Math.max(25, totalAvailableWidth * 0.12), fontSize: 8 } // District
         };
       } else {
-        // LOGS MODE: Calculate dynamic column widths to fit page
+        // LOGS MODE: Improved dynamic column width calculation
         const totalColumns = currentColumns.length;
-        const baseWidth = Math.floor(availableWidth / totalColumns);
+        const totalAvailableWidth = availableWidth - 10; // Leave margin for borders
+        const baseWidth = Math.floor(totalAvailableWidth / totalColumns);
         
         columnStyles = Object.fromEntries(
           currentColumns.map((column, index) => {
@@ -143,36 +177,44 @@ const PDFExport = ({
             let width;
             let styles = {
               overflow: 'linebreak',
-              cellPadding: 2
+              cellPadding: { top: 3, right: 2, bottom: 3, left: 2 },
+              fontSize: 8, // Increased default font size
+              minCellHeight: 8
             };
             
             if (columnName.includes('note') || 
                 columnName.includes('description') || 
                 columnName.includes('comment') ||
                 columnName.includes('remarks')) {
-              // Notes get more space but still fit in page
-              width = Math.min(baseWidth * 2.5, availableWidth * 0.3);
-              styles.fontSize = 6;
+              // Notes get proportional space but not too wide
+              width = Math.min(baseWidth * 2.2, totalAvailableWidth * 0.25);
+              styles.fontSize = 7;
               styles.minCellHeight = 12;
+              styles.overflow = 'linebreak';
             } else if (columnName.includes('date') || columnName.includes('time')) {
-              width = Math.min(baseWidth * 1.2, 30);
-              styles.fontSize = 7;
+              width = Math.min(baseWidth * 1.1, Math.max(25, totalAvailableWidth * 0.12));
+              styles.fontSize = 8;
             } else if (columnName.includes('id')) {
-              width = Math.min(baseWidth * 0.7, 20);
-              styles.fontSize = 7;
+              width = Math.min(baseWidth * 0.8, Math.max(15, totalAvailableWidth * 0.08));
+              styles.fontSize = 8;
               styles.halign = 'center';
-            } else if (columnName.includes('status') || columnName.includes('type')) {
-              width = Math.min(baseWidth * 0.9, 25);
-              styles.fontSize = 7;
+            } else if (columnName.includes('status') || columnName.includes('type') || columnName.includes('level')) {
+              width = Math.min(baseWidth * 0.9, Math.max(20, totalAvailableWidth * 0.10));
+              styles.fontSize = 8;
+              styles.halign = 'center';
+            } else if (columnName.includes('duration') || columnName.includes('risk')) {
+              width = Math.min(baseWidth * 0.8, Math.max(18, totalAvailableWidth * 0.08));
+              styles.fontSize = 8;
               styles.halign = 'center';
             } else {
-              // Default column width
-              width = baseWidth;
-              styles.fontSize = 7;
+              // Default column width with better proportions
+              width = Math.max(baseWidth * 0.9, totalAvailableWidth * 0.10);
+              styles.fontSize = 8;
             }
             
-            // Ensure width doesn't exceed available space
-            width = Math.min(width, availableWidth / totalColumns);
+            // Ensure minimum width and maximum constraints
+            width = Math.max(width, 12); // Minimum width
+            width = Math.min(width, totalAvailableWidth * 0.3); // Maximum 30% of page width
             styles.cellWidth = width;
             
             return [index, styles];
@@ -186,63 +228,108 @@ const PDFExport = ({
         body: tableData,
         startY: 30,
         styles: {
-          fontSize: mode === 'dashboard' ? 7 : 6, // Smaller font for better fit
-          cellPadding: { top: 2, right: 1, bottom: 2, left: 1 }, // Reduced padding
+          fontSize: mode === 'dashboard' ? 8 : 7, // Increased base font size
+          cellPadding: { top: 3, right: 2, bottom: 3, left: 2 }, // Better padding
           overflow: 'linebreak',
           halign: 'left',
           valign: 'top',
-          lineColor: [200, 200, 200],
-          lineWidth: 0.1
+          lineColor: [180, 180, 180], // Darker border for better visibility
+          lineWidth: 0.2, // Slightly thicker borders
+          minCellHeight: 8 // Minimum cell height for better readability
         },
         headStyles: {
           fillColor: [59, 130, 246],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          fontSize: mode === 'dashboard' ? 8 : 7,
+          fontSize: mode === 'dashboard' ? 10 : 9, // Larger header font
           halign: 'center',
-          cellPadding: { top: 3, right: 1, bottom: 3, left: 1 }
+          cellPadding: { top: 4, right: 2, bottom: 4, left: 2 },
+          lineWidth: 0.3 // Thicker header borders
         },
         columnStyles: columnStyles,
         alternateRowStyles: {
           fillColor: [248, 250, 252]
         },
-        tableWidth: 'wrap', // Let table adjust to content
+        tableWidth: 'auto', // Changed from 'wrap' to 'auto' for better distribution
+        tableLineColor: [180, 180, 180], // Consistent table line color
+        tableLineWidth: 0.2,
         didParseCell: function (data) {
+          // Clean up cell text - handle arrays and objects properly
+          let cellText = '';
+          if (data.cell.text && Array.isArray(data.cell.text)) {
+            cellText = data.cell.text.join(' ').trim();
+          } else if (data.cell.text) {
+            cellText = String(data.cell.text).trim();
+          } else {
+            cellText = '';
+          }
+          
+          // Remove leading dots, commas, or spaces
+          cellText = cellText.replace(/^[.,\s]+/, '').trim();
+          
           if (mode === 'dashboard') {
             // Dashboard-specific cell styling
             if (data.column.index === 5) { // Risk Level
-              const value = data.cell.text[0];
-              if (value && value.toLowerCase().includes('high')) {
+              if (cellText && cellText.toLowerCase().includes('high')) {
                 data.cell.styles.fillColor = [239, 68, 68];
                 data.cell.styles.textColor = [255, 255, 255];
-              } else if (value && value.toLowerCase().includes('medium')) {
+              } else if (cellText && cellText.toLowerCase().includes('medium')) {
                 data.cell.styles.fillColor = [245, 158, 11];
                 data.cell.styles.textColor = [255, 255, 255];
-              } else if (value && value.toLowerCase().includes('low')) {
+              } else if (cellText && cellText.toLowerCase().includes('low')) {
                 data.cell.styles.fillColor = [34, 197, 94];
                 data.cell.styles.textColor = [255, 255, 255];
               }
             }
             
             if (data.column.index === 8) { // Status
-              const value = data.cell.text[0];
-              if (value && value.toLowerCase().includes('completed')) {
+              if (cellText && cellText.toLowerCase().includes('completed')) {
                 data.cell.styles.fillColor = [34, 197, 94];
                 data.cell.styles.textColor = [255, 255, 255];
-              } else if (value && (value.toLowerCase().includes('progress') || value.toLowerCase().includes('pending'))) {
+              } else if (cellText && (cellText.toLowerCase().includes('progress') || cellText.toLowerCase().includes('pending'))) {
                 data.cell.styles.fillColor = [245, 158, 11];
                 data.cell.styles.textColor = [255, 255, 255];
-              } else if (value && (value.toLowerCase().includes('failed') || value.toLowerCase().includes('error'))) {
+              } else if (cellText && (cellText.toLowerCase().includes('failed') || cellText.toLowerCase().includes('error'))) {
                 data.cell.styles.fillColor = [239, 68, 68];
                 data.cell.styles.textColor = [255, 255, 255];
               }
             }
           } else {
-            // Original logs mode styling
+            // Logs mode styling
             const rowData = currentData[data.row.index];
             if (rowData && rowData.is_virtual) {
               data.cell.styles.fillColor = [219, 234, 254];
               data.cell.styles.textColor = [30, 64, 175];
+            }
+            
+            // Apply status column styling for logs mode
+            const columnName = currentColumns[data.column.index]?.COLUMN_NAME?.toLowerCase();
+            
+            if (columnName && columnName.includes('status') && cellText) {
+              if (cellText.toLowerCase().includes('completed') || cellText.toLowerCase().includes('done')) {
+                data.cell.styles.fillColor = [34, 197, 94];
+                data.cell.styles.textColor = [255, 255, 255];
+              } else if (cellText.toLowerCase().includes('progress') || cellText.toLowerCase().includes('pending') || cellText.toLowerCase().includes('ongoing')) {
+                data.cell.styles.fillColor = [245, 158, 11];
+                data.cell.styles.textColor = [255, 255, 255];
+              } else if (cellText.toLowerCase().includes('failed') || cellText.toLowerCase().includes('error') || cellText.toLowerCase().includes('cancelled')) {
+                data.cell.styles.fillColor = [239, 68, 68];
+                data.cell.styles.textColor = [255, 255, 255];
+              }
+            }
+            
+            // Apply risk level styling for logs mode
+            if (columnName && (columnName.includes('risk') || columnName.includes('level')) && cellText) {
+              if (cellText.toLowerCase().includes('high')) {
+                data.cell.styles.fillColor = [239, 68, 68];
+                data.cell.styles.textColor = [255, 255, 255];
+              } else if (cellText.toLowerCase().includes('medium') || cellText.toLowerCase().includes('moderate')) {
+                data.cell.styles.fillColor = [245, 158, 11];
+                data.cell.styles.textColor = [255, 255, 255];
+              } else if (cellText.toLowerCase().includes('low')) {
+                data.cell.styles.fillColor = [34, 197, 94];
+                data.cell.styles.textColor = [255, 255, 255];
+              }
             }
           }
         },

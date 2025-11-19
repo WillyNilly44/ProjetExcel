@@ -49,8 +49,6 @@ exports.handler = async (event, context) => {
     pool = new sql.ConnectionPool(config);
     await pool.connect();
     
-    console.log('Database connected successfully');
-    
     // Query with LEFT JOINs to include both recurrence and application fields
     const query = `
       SELECT 
