@@ -30,7 +30,8 @@ const UserManagement = () => {
   const userLevels = [
     { id: 1, name: 'Viewer', icon: '👨‍💼', color: '#3b82f6' },
     { id: 2, name: 'Operator', icon: '⚡', color: '#f97316' },
-    { id: 3, name: 'Administrator', icon: '👑', color: '#ef4444' }
+    { id: 3, name: 'Administrator', icon: '👑', color: '#ef4444' },
+    { id: 4, name: '3rd Party', icon: '🏢', color: '#8b5cf6' }
   ];
 
   useEffect(() => {

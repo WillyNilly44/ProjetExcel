@@ -33,10 +33,32 @@ exports.handler = async (event, context) => {
     const requestData = JSON.parse(event.body);
 
     // Extract and filter out non-database fields
-    const { applicationFields, isRecurrence, recurrence_type, day_of_the_week, day_of_the_month, ...logData } = requestData;
+    const { applicationFields, isRecurrence, recurrence_type, day_of_the_week, day_of_the_month, userLevel, userId, ...logData } = requestData;
 
     console.log('Filtered log data:', logData);
     console.log('Application fields:', applicationFields);
+    console.log('User level:', userLevel);
+    console.log('User ID:', userId);
+
+    // Set pending approval flag for 3rd party users
+    if (userLevel === '3rd Party') {
+      logData.pending_approval = true;
+      
+      // Ensure the pending_approval column exists
+      try {
+        await pool.request().query(`
+          IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+                        WHERE TABLE_NAME = 'LOG_ENTRIES' AND COLUMN_NAME = 'pending_approval')
+          BEGIN
+            ALTER TABLE LOG_ENTRIES ADD pending_approval BIT DEFAULT 0
+          END
+        `);
+      } catch (columnError) {
+        console.log('Column check/creation error (may be normal):', columnError.message);
+      }
+    } else {
+      logData.pending_approval = false;
+    }
 
     const host = process.env.AWS_RDS_HOST.replace(',1433', '');
     
@@ -140,6 +162,51 @@ exports.handler = async (event, context) => {
     const result = await request.query(insertQuery);
     const newId = result.recordset[0]?.newId;
     
+    // If this is a 3rd party user, create a pending entry record
+    if (userLevel === '3rd Party' && newId && userId) {
+      try {
+        // First, ensure the LOG_ENTRIES_PENDING table exists
+        const checkTableRequest = pool.request();
+        const tableExistsResult = await checkTableRequest.query(`
+          SELECT COUNT(*) as count 
+          FROM INFORMATION_SCHEMA.TABLES 
+          WHERE TABLE_NAME = 'LOG_ENTRIES_PENDING'
+        `);
+        
+        if (tableExistsResult.recordset[0].count === 0) {
+          // Create the table if it doesn't exist
+          await pool.request().query(`
+            CREATE TABLE LOG_ENTRIES_PENDING (
+              id INT IDENTITY(1,1) PRIMARY KEY,
+              log_entry_id INT NOT NULL,
+              submitted_by INT NOT NULL,
+              submitted_at DATETIME2 DEFAULT GETDATE(),
+              status NVARCHAR(20) DEFAULT 'pending',
+              reviewed_by INT NULL,
+              reviewed_at DATETIME2 NULL,
+              notes NVARCHAR(MAX) NULL,
+              FOREIGN KEY (log_entry_id) REFERENCES LOG_ENTRIES(id)
+            )
+          `);
+          console.log('Created LOG_ENTRIES_PENDING table');
+        }
+        
+        // Now create the pending entry record
+        const pendingRequest = pool.request();
+        pendingRequest.input('logEntryId', sql.Int, newId);
+        pendingRequest.input('submittedBy', sql.Int, userId);
+        
+        await pendingRequest.query(`
+          INSERT INTO LOG_ENTRIES_PENDING (log_entry_id, submitted_by, submitted_at, status)
+          VALUES (@logEntryId, @submittedBy, GETDATE(), 'pending')
+        `);
+        
+        console.log(`Created pending entry record for log_entry_id: ${newId}`);
+      } catch (pendingError) {
+        console.error('Error creating pending entry:', pendingError);
+        // Don't fail the whole operation, just log the error
+      }
+    }
 
     // Close connection
     await pool.close();
@@ -149,11 +216,12 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Log entry created successfully',
+        message: userLevel === '3rd Party' ? 'Entry submitted for approval successfully' : 'Log entry created successfully',
         id: newId, // Frontend expects this field name
         newId: newId, // Keep for compatibility
         isApplicationLog: logData.log_type === 'Application',
         applicationFields: applicationFields, // Pass through for second API call
+        isPending: userLevel === '3rd Party',
         timestamp: new Date().toISOString()
       })
     };

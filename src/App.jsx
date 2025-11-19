@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LogEntriesTable from './components/LogEntriesTable';
 import TabNavigation from './components/TabNavigation';
 import UserManagement from './components/UserManagement';
+import ApprovalManagement from './components/ApprovalManagement';
 import DashboardTab from './components/DashboardTab';
 import KPITab from './components/KPITab';
 import MiniLogin from './components/MiniLogin';
@@ -224,6 +225,13 @@ function AppContent() {
       case 'logs':
         return <LogEntriesTable {...commonProps} />;
       
+      case 'approvals':
+        // Only render ApprovalManagement if user has Administrator permission
+        if (!user || !hasPermission('Administrator')) {
+          return null;
+        }
+        return <ApprovalManagement />;
+      
       case 'users':
         // FIXED: Don't render UserManagement at all if not logged in
         // This prevents the duplicate login buttons
@@ -240,15 +248,15 @@ function AppContent() {
   // Main app content
   return (
     <div className="App">
-      {/* FIXED: Only show corner login when NOT on users tab without auth */}
-      {!user && activeTab !== 'users' && (
+      {/* FIXED: Only show corner login when NOT on users/approvals tab without auth */}
+      {!user && activeTab !== 'users' && activeTab !== 'approvals' && (
         <div className="login-corner">
           <MiniLogin />
         </div>
       )}
 
-      {/* FIXED: Show special login message when on users tab without auth */}
-      {!user && activeTab === 'users' && (
+      {/* FIXED: Show special login message when on users/approvals tab without auth */}
+      {!user && (activeTab === 'users' || activeTab === 'approvals') && (
         <div className="login-corner">
           <div style={{
             background: 'rgba(239, 68, 68, 0.1)',
@@ -259,7 +267,7 @@ function AppContent() {
             marginBottom: '1rem',
             fontSize: '0.875rem'
           }}>
-            🔐 Please log in to access User Management
+            🔐 Please log in to access {activeTab === 'users' ? 'User Management' : 'Approvals'}
           </div>
           <MiniLogin />
         </div>

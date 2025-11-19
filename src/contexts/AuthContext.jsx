@@ -145,6 +145,7 @@ export const AuthProvider = ({ children }) => {
       case 'administrator':
         return 'admin';
       case 'operator':
+      case '3rd party':
         return 'operator';
       case 'viewer':
       default:
@@ -161,7 +162,7 @@ export const AuthProvider = ({ children }) => {
       case 'administrator':
         return userLevel === 'administrator';
       case 'operator':
-        return userLevel === 'operator' || userLevel === 'administrator';
+        return userLevel === 'operator' || userLevel === '3rd party' || userLevel === 'administrator';
       case 'viewer':
         return true; // Everyone can view
       default:

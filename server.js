@@ -769,6 +769,78 @@ app.post('/api/addApplicationFields', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
+// Approval-related routes for 3rd party user workflow
+app.get('/api/getpendingentries', async (req, res) => {
+  const getPendingEntriesHandler = require('./api/getpendingentries');
+  const event = {
+    httpMethod: 'GET',
+    headers: req.headers
+  };
+  const result = await getPendingEntriesHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
+app.post('/api/approveentry', async (req, res) => {
+  try {
+    const { entryId, pendingId, action, notes } = req.body;
+    
+    if (!entryId || !pendingId || !action) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters'
+      });
+    }
+
+    const pool = await sql.connect(config);
+
+    if (action === 'approve') {
+      // Get the pending entry details
+      const pendingResult = await pool.request()
+        .input('pendingId', sql.Int, pendingId)
+        .query('SELECT * FROM LOG_ENTRIES_PENDING WHERE id = @pendingId');
+      
+      if (pendingResult.recordset.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Pending entry not found'
+        });
+      }
+
+      // Update the main entry to set pending_approval = false
+      await pool.request()
+        .input('entryId', sql.Int, entryId)
+        .query('UPDATE LOG_ENTRIES SET pending_approval = 0 WHERE id = @entryId');
+
+      // Delete from pending table
+      await pool.request()
+        .input('pendingId', sql.Int, pendingId)
+        .query('DELETE FROM LOG_ENTRIES_PENDING WHERE id = @pendingId');
+
+    } else if (action === 'reject') {
+      // Delete from both tables for rejection
+      await pool.request()
+        .input('entryId', sql.Int, entryId)
+        .query('DELETE FROM LOG_ENTRIES WHERE id = @entryId');
+
+      await pool.request()
+        .input('pendingId', sql.Int, pendingId)
+        .query('DELETE FROM LOG_ENTRIES_PENDING WHERE id = @pendingId');
+    }
+
+    res.json({
+      success: true,
+      message: `Entry ${action}d successfully`
+    });
+
+  } catch (error) {
+    console.error('Error processing approval:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process approval'
+    });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
