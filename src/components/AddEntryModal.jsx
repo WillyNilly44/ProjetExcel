@@ -111,6 +111,7 @@ export default function AddEntryModal({
     if (dataType.includes('time')) return '08:00';
     if (columnName === 'log_status') return 'Scheduled';
     if (columnName === 'log_type') return 'Operational';
+    if (columnName === 'risk_level') return 'Low';
     if (columnName === 'uploader') return currentUser?.username || 'Unknown User';
     if (columnName === 'maintenance_event' || columnName === 'incident_event') return '0'; // Default to Maintenance
     if (columnName === 'duration') return '1'; // Default 1 hour
@@ -421,6 +422,20 @@ export default function AddEntryModal({
           <option value="">Select...</option>
           <option value="Completed">✅ Completed</option>
           <option value="Scheduled">📅 Scheduled</option>
+        </select>
+      );
+    }
+
+    if (columnName.toLowerCase() === 'risk_level') {
+      return (
+        <select
+          value={value || 'Low'}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          style={inputStyle}
+        >
+          <option value="Low">🟢 Low</option>
+          <option value="Moderate">🟡 Moderate</option>
+          <option value="High">🔴 High</option>
         </select>
       );
     }

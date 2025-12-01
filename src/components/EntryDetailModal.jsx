@@ -28,9 +28,19 @@ const EntryDetailModal = ({
         if (value !== null && value !== undefined) {
           safeCopy[key] = value;
         } else {
-          safeCopy[key] = '';
+          // Set default values for specific fields
+          if (key.toLowerCase() === 'risk_level') {
+            safeCopy[key] = 'Low';
+          } else {
+            safeCopy[key] = '';
+          }
         }
       });
+      
+      // Ensure risk_level has a default value even if the field exists but is empty
+      if (!safeCopy.risk_level || safeCopy.risk_level === '') {
+        safeCopy.risk_level = 'Low';
+      }
       
       setEditedEntry(safeCopy);
       setIsEditing(false);
@@ -255,6 +265,21 @@ const getColumnGroups = () => {
           <option value="">Select type...</option>
           <option value="Operational">Operational</option>
           <option value="Application">Application</option>
+        </select>
+      );
+    }
+
+    // Risk level fields
+    if (lowerColumnName.includes('risk_level')) {
+      return (
+        <select
+          value={value || 'Low'}
+          onChange={(e) => handleInputChange(columnName, e.target.value)}
+          className="detail-select"
+        >
+          <option value="Low">🟢 Low</option>
+          <option value="Moderate">🟡 Moderate</option>
+          <option value="High">🔴 High</option>
         </select>
       );
     }
