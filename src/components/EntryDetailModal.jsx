@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/components/EntryDetailModal.css';
 
-const EntryDetailModal = ({ 
-  isOpen, 
-  onClose, 
-  entry, 
-  columns, 
-  formatColumnName, 
-  formatCellValue, 
+const EntryDetailModal = ({
+  isOpen,
+  onClose,
+  entry,
+  columns,
+  formatColumnName,
+  formatCellValue,
   onSave,
   onDuplicate
 }) => {
@@ -36,16 +36,16 @@ const EntryDetailModal = ({
           }
         }
       });
-      
+
       // Ensure risk_level has a default value even if the field exists but is empty
       if (!safeCopy.risk_level || safeCopy.risk_level === '') {
         safeCopy.risk_level = 'Low';
       }
-      
+
       setEditedEntry(safeCopy);
       setIsEditing(false);
       setSaveError('');
-    
+
     }
   }, [entry]);
 
@@ -57,58 +57,58 @@ const EntryDetailModal = ({
  * Determine if a field should be excluded from updates
  * These fields should not be modified during edit operations
  */
-const isSystemManagedField = (columnName) => {
-  const name = columnName.toLowerCase();
-  
-  const systemFields = [
-    'uploader',     // Should not change when editing
-    'uploaded_by',  // Alternative uploader field name
-    'created_by',   // Original creator should not change
-    'user_id',      // User reference should not change
-    'created_at',   // Creation timestamp should not change
-    'updated_at'    // Update timestamp is managed by server
-  ];
-  
-  return systemFields.some(field => name.includes(field));
-};
+  const isSystemManagedField = (columnName) => {
+    const name = columnName.toLowerCase();
 
-const getColumnGroups = () => {
-  const groups = {
-    basic: [],
-    dates: [],
-    status: [],
-    technical: [],
-    notes: []
+    const systemFields = [
+      'uploader',     // Should not change when editing
+      'uploaded_by',  // Alternative uploader field name
+      'created_by',   // Original creator should not change
+      'user_id',      // User reference should not change
+      'created_at',   // Creation timestamp should not change
+      'updated_at'    // Update timestamp is managed by server
+    ];
+
+    return systemFields.some(field => name.includes(field));
   };
 
-  // Filter out system-managed fields including uploader
-  const visibleColumns = columns.filter(column => 
-    !isSystemManagedField(column.COLUMN_NAME)
-  );
+  const getColumnGroups = () => {
+    const groups = {
+      basic: [],
+      dates: [],
+      status: [],
+      technical: [],
+      notes: []
+    };
 
-  visibleColumns.forEach(column => {
-    const name = column.COLUMN_NAME.toLowerCase();
-    
-    if (name.includes('date') || name.includes('time') || name.includes('created') || name.includes('updated')) {
-      groups.dates.push(column);
-    } else if (name.includes('status') || name.includes('completion')) {
-      groups.status.push(column);
-    } else if (name.includes('note') || name.includes('description') || name.includes('comment')) {
-      groups.notes.push(column);
-    } else if (name.includes('ticket') || name.includes('incident') || name.includes('log_type') || name.includes('priority')) {
-      groups.technical.push(column);
-    } else {
-      groups.basic.push(column);
-    }
-  });
+    // Filter out system-managed fields including uploader
+    const visibleColumns = columns.filter(column =>
+      !isSystemManagedField(column.COLUMN_NAME)
+    );
 
-  return groups;
-};
+    visibleColumns.forEach(column => {
+      const name = column.COLUMN_NAME.toLowerCase();
+
+      if (name.includes('date') || name.includes('time') || name.includes('created') || name.includes('updated')) {
+        groups.dates.push(column);
+      } else if (name.includes('status') || name.includes('completion')) {
+        groups.status.push(column);
+      } else if (name.includes('note') || name.includes('description') || name.includes('comment')) {
+        groups.notes.push(column);
+      } else if (name.includes('ticket') || name.includes('incident') || name.includes('log_type') || name.includes('priority')) {
+        groups.technical.push(column);
+      } else {
+        groups.basic.push(column);
+      }
+    });
+
+    return groups;
+  };
 
   const columnGroups = getColumnGroups();
 
   const handleInputChange = (columnName, value) => {
-    
+
     setEditedEntry(prev => ({
       ...prev,
       [columnName]: value
@@ -132,34 +132,34 @@ const getColumnGroups = () => {
     try {
       // Create a clean copy of editedEntry, excluding system-managed fields
       const cleanedEntry = {};
-      
+
       Object.keys(editedEntry).forEach(key => {
         // Only include fields that are not system-managed
         if (!isSystemManagedField(key)) {
           cleanedEntry[key] = editedEntry[key];
         }
       });
-      
+
       // Always include the ID for the update operation
       cleanedEntry.id = editedEntry.id || entry.id;
-      
+
       // UPDATE: Add current user as uploader when editing
       // This ensures the uploader field reflects who last modified the entry
       if (hasPermission('Administrator')) {
         // Find the uploader field name (could be different variations)
         const uploaderField = columns.find(col => {
           const name = col.COLUMN_NAME.toLowerCase();
-          return name.includes('uploader') || 
-                 name.includes('uploaded_by') || 
-                 name.includes('modified_by');
+          return name.includes('uploader') ||
+            name.includes('uploaded_by') ||
+            name.includes('modified_by');
         });
-        
+
         if (uploaderField && user && user.username) {
           cleanedEntry[uploaderField.COLUMN_NAME] = user.username;
         }
       }
-      
-      
+
+
       const success = await onSave(cleanedEntry);
       if (success) {
         setIsEditing(false);
@@ -185,7 +185,7 @@ const getColumnGroups = () => {
         safeCopy[key] = '';
       }
     });
-    
+
     setEditedEntry(safeCopy);
     setIsEditing(false);
     setSaveError('');
@@ -203,17 +203,17 @@ const getColumnGroups = () => {
     const lowerColumnName = columnName.toLowerCase();
 
     // Read-only fields
-    if (lowerColumnName.includes('id') || 
-        lowerColumnName.includes('created') || 
-        lowerColumnName.includes('updated') ||
-        entry.is_virtual) {
+    if (lowerColumnName.includes('id') ||
+      lowerColumnName.includes('created') ||
+      lowerColumnName.includes('updated') ||
+      entry.is_virtual) {
       return (
         <div className="detail-value readonly">
-          {value !== null && value !== undefined && value !== '' ? 
-            formatCellValue(value, columnName, column.DATA_TYPE) : 
+          {value !== null && value !== undefined && value !== '' ?
+            formatCellValue(value, columnName, column.DATA_TYPE) :
             <span className="empty-value">-</span>
           }
-          {(lowerColumnName.includes('id') || lowerColumnName.includes('created') || lowerColumnName.includes('updated')) && 
+          {(lowerColumnName.includes('id') || lowerColumnName.includes('created') || lowerColumnName.includes('updated')) &&
             <span className="readonly-indicator">Read-only</span>
           }
         </div>
@@ -285,16 +285,16 @@ const getColumnGroups = () => {
     }
 
     // Duration fields (estimated/actual time in hours) - CHECK THIS FIRST!
-    if (lowerColumnName.includes('estimated_time') || 
-        lowerColumnName.includes('duration') || 
-        lowerColumnName.includes('expected_down_time')) {
-    
+    if (lowerColumnName.includes('estimated_time') ||
+      lowerColumnName.includes('duration') ||
+      lowerColumnName.includes('expected_down_time')) {
+
       // Ensure we have a number value
       let numericValue = '';
       if (value !== null && value !== undefined && value !== '') {
         numericValue = parseFloat(value) || 0;
       }
-      
+
       return (
         <input
           type="number"
@@ -331,7 +331,7 @@ const getColumnGroups = () => {
           dateValue = '';
         }
       }
-      
+
       return (
         <input
           type="date"
@@ -342,19 +342,19 @@ const getColumnGroups = () => {
       );
     }
 
-    if (dataType.includes('time') || 
-        (lowerColumnName.includes('time') && 
-         !lowerColumnName.includes('estimated') && 
-         !lowerColumnName.includes('actual') && 
-         !lowerColumnName.includes('expected') &&
-         !lowerColumnName.includes('down'))) {
-      
+    if (dataType.includes('time') ||
+      (lowerColumnName.includes('time') &&
+        !lowerColumnName.includes('estimated') &&
+        !lowerColumnName.includes('actual') &&
+        !lowerColumnName.includes('expected') &&
+        !lowerColumnName.includes('down'))) {
+
       let timeValue = '';
-      
-      
+
+
       if (value !== null && value !== undefined && value !== '') {
         const valueStr = String(value);
-        
+
         // If it's already in HH:MM or HH:MM:SS format
         if (valueStr.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
           timeValue = valueStr.substring(0, 5); // Take only HH:MM part
@@ -385,8 +385,8 @@ const getColumnGroups = () => {
           }
         }
       }
-      
-      
+
+
       return (
         <input
           type="time"
@@ -403,7 +403,7 @@ const getColumnGroups = () => {
       if (value !== null && value !== undefined && value !== '') {
         numericValue = value;
       }
-      
+
       return (
         <input
           type="number"
@@ -467,19 +467,19 @@ const getColumnGroups = () => {
                   {column.IS_NULLABLE === 'NO' && <span className="required">*</span>}
                   {isVirtualField && <span className="virtual-indicator">(Recurring)</span>}
                 </div>
-                
+
                 {isEditing && canEdit ? (
                   renderFieldInput(column, value)
                 ) : (
                   <div className={`detail-value ${getValueType(columnName, column.DATA_TYPE)}`}>
-                    {value !== null && value !== undefined && value !== '' ? 
-                      formatCellValue(value, columnName, column.DATA_TYPE) : 
+                    {value !== null && value !== undefined && value !== '' ?
+                      formatCellValue(value, columnName, column.DATA_TYPE) :
                       <span className="empty-value">-</span>
                     }
                     {isVirtualField && <span className="virtual-note">(Virtual Entry)</span>}
                   </div>
                 )}
-                
+
                 <div className="detail-meta">
                   <span className="field-type">{column.DATA_TYPE}</span>
                   {column.CHARACTER_MAXIMUM_LENGTH && (
@@ -505,98 +505,98 @@ const getColumnGroups = () => {
   };
 
   // Add this function inside your EntryDetailModal component
-const renderApplicationFields = () => {
-  // Check if this entry has application fields
-  const hasAppFields = entry.app_company || entry.app_ticket_number || entry.app_project_name || 
-                      entry.identified_user_impact || entry.post_maintenance_testing || 
-                      entry.rollback_plan || entry.communication_to_user ||
-                      entry.wiki_diagram_updated !== null || entry.s3_support_ready !== null;
+  const renderApplicationFields = () => {
+    // Check if this entry has application fields
+    const hasAppFields = entry.app_company || entry.app_ticket_number || entry.app_project_name ||
+      entry.identified_user_impact || entry.post_maintenance_testing ||
+      entry.rollback_plan || entry.communication_to_user ||
+      entry.wiki_diagram_updated !== null || entry.s3_support_ready !== null;
 
-  if (!hasAppFields) return null;
+    if (!hasAppFields) return null;
 
-  return (
-    <div className="application-fields-section">
-      <div className="section-header">
-        <h3 className="section-title">📋 Application Change Request Details</h3>
-      </div>
-      
-      <div className="detail-fields">
-        {/* Company */}
-        {entry.app_company && (
-          <div className="detail-field">
-            <div className="detail-label">🏢 Company</div>
-            <div className="detail-value company-name">{entry.app_company}</div>
-          </div>
-        )}
-        
-        {/* Application Ticket Number */}
-        {entry.app_ticket_number && (
-          <div className="detail-field">
-            <div className="detail-label">🎫 App Ticket #</div>
-            <div className="detail-value ticket-number">{entry.app_ticket_number}</div>
-          </div>
-        )}
+    return (
+      <div className="application-fields-section">
+        <div className="section-header">
+          <h3 className="section-title">📋 Application Change Request Details</h3>
+        </div>
 
-        {/* Project Name */}
-        {entry.app_project_name && (
-          <div className="detail-field">
-            <div className="detail-label">📂 Project Name</div>
-            <div className="detail-value project-name">{entry.app_project_name}</div>
-          </div>
-        )}
-
-        {/* Wiki/Diagram Updated */}
-        {entry.wiki_diagram_updated !== null && entry.wiki_diagram_updated !== undefined && (
-          <div className="detail-field">
-            <div className="detail-label">📚 Wiki/Diagram Updated</div>
-            <div className={`detail-value status-indicator ${entry.wiki_diagram_updated ? 'status-yes' : 'status-no'}`}>
-              {entry.wiki_diagram_updated ? '✅ Yes' : '❌ No'}
+        <div className="detail-fields">
+          {/* Company */}
+          {entry.app_company && (
+            <div className="detail-field">
+              <div className="detail-label">🏢 Company</div>
+              <div className="detail-value company-name">{entry.app_company}</div>
             </div>
+          )}
+
+          {/* Application Ticket Number */}
+          {entry.app_ticket_number && (
+            <div className="detail-field">
+              <div className="detail-label">🎫 App Ticket #</div>
+              <div className="detail-value ticket-number">{entry.app_ticket_number}</div>
+            </div>
+          )}
+
+          {/* Project Name */}
+          {entry.app_project_name && (
+            <div className="detail-field">
+              <div className="detail-label">📂 Project Name</div>
+              <div className="detail-value project-name">{entry.app_project_name}</div>
+            </div>
+          )}
+
+          {/* Wiki/Diagram Updated */}
+          {entry.wiki_diagram_updated !== null && entry.wiki_diagram_updated !== undefined && (
+            <div className="detail-field">
+              <div className="detail-label">📚 Wiki/Diagram Updated</div>
+              <div className={`detail-value status-indicator ${entry.wiki_diagram_updated ? 'status-yes' : 'status-no'}`}>
+                {entry.wiki_diagram_updated ? '✅ Yes' : '❌ No'}
+              </div>
+            </div>
+          )}
+
+          {/* S3 Support Ready */}
+          {entry.s3_support_ready !== null && entry.s3_support_ready !== undefined && (
+            <div className="detail-field">
+              <div className="detail-label">☁️ S3 Support Ready</div>
+              <div className={`detail-value status-indicator ${entry.s3_support_ready ? 'status-yes' : 'status-no'}`}>
+                {entry.s3_support_ready ? '✅ Yes' : '❌ No'}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Long text fields */}
+        {entry.identified_user_impact && (
+          <div className="text-field">
+            <div className="detail-label">👥 Identified User Impact</div>
+            <div className="detail-text">{entry.identified_user_impact}</div>
           </div>
         )}
 
-        {/* S3 Support Ready */}
-        {entry.s3_support_ready !== null && entry.s3_support_ready !== undefined && (
-          <div className="detail-field">
-            <div className="detail-label">☁️ S3 Support Ready</div>
-            <div className={`detail-value status-indicator ${entry.s3_support_ready ? 'status-yes' : 'status-no'}`}>
-              {entry.s3_support_ready ? '✅ Yes' : '❌ No'}
-            </div>
+        {entry.post_maintenance_testing && (
+          <div className="text-field">
+            <div className="detail-label">🧪 Post-Maintenance Testing</div>
+            <div className="detail-text">{entry.post_maintenance_testing}</div>
+          </div>
+        )}
+
+        {entry.rollback_plan && (
+          <div className="text-field">
+            <div className="detail-label">🔄 Rollback Plan</div>
+            <div className="detail-text">{entry.rollback_plan}</div>
+          </div>
+        )}
+
+        {entry.communication_to_user && (
+          <div className="text-field">
+            <div className="detail-label">📢 Communication to Users</div>
+            <div className="detail-text">{entry.communication_to_user}</div>
           </div>
         )}
       </div>
-
-      {/* Long text fields */}
-      {entry.identified_user_impact && (
-        <div className="text-field">
-          <div className="detail-label">👥 Identified User Impact</div>
-          <div className="detail-text">{entry.identified_user_impact}</div>
-        </div>
-      )}
-
-      {entry.post_maintenance_testing && (
-        <div className="text-field">
-          <div className="detail-label">🧪 Post-Maintenance Testing</div>
-          <div className="detail-text">{entry.post_maintenance_testing}</div>
-        </div>
-      )}
-
-      {entry.rollback_plan && (
-        <div className="text-field">
-          <div className="detail-label">🔄 Rollback Plan</div>
-          <div className="detail-text">{entry.rollback_plan}</div>
-        </div>
-      )}
-
-      {entry.communication_to_user && (
-        <div className="text-field">
-          <div className="detail-label">📢 Communication to Users</div>
-          <div className="detail-text">{entry.communication_to_user}</div>
-        </div>
-      )}
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -674,18 +674,18 @@ const renderApplicationFields = () => {
               </span>
             )}
           </div>
-          
+
           <div className="detail-footer-actions">
             {isEditing ? (
               <>
-                <button 
-                  onClick={handleSave} 
+                <button
+                  onClick={handleSave}
                   disabled={isSaving}
                   className="detail-btn primary"
                 >
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
-                <button 
+                <button
                   onClick={handleCancel}
                   disabled={isSaving}
                   className="detail-btn secondary"
@@ -696,7 +696,7 @@ const renderApplicationFields = () => {
             ) : (
               <>
                 {canEdit && (
-                  <button 
+                  <button
                     onClick={() => setIsEditing(true)}
                     className="detail-btn edit"
                   >

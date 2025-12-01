@@ -5,21 +5,21 @@ import ColumnManager from './ColumnManager';
 import PDFExport from './PDFExport';
 import ToolbarDropdown from './ToolBarDropdown';
 import EntryDetailModal from './EntryDetailModal';
-import CalendarView from './CalendarView'; 
+import CalendarView from './CalendarView';
 import AddColumnModal from './AddColumnModal';
 import VirtualTable from './VirtualTable';
 
-export default function LogEntriesTable({ 
-  data = [], 
-  columns = [], 
+export default function LogEntriesTable({
+  data = [],
+  columns = [],
   formatCellValue = (value) => value,
   hasPermission = () => false,
   isLoading = false,
   connectionStatus = 'Ready to load',
   connectionInfo = null,
-  onRefresh = () => {}
+  onRefresh = () => { }
 }) {
-  const { user } = useAuth(); 
+  const { user } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState([]);
   const [columnOrder, setColumnOrder] = useState([]);
@@ -76,23 +76,23 @@ export default function LogEntriesTable({
   const applyView = (viewKey) => {
     const presets = getViewPresets();
     const preset = presets[viewKey];
-    
+
     if (!preset) return;
-    
+
     const allColumnNames = columns.map(col => col.COLUMN_NAME);
     let finalColumns;
-    
+
     if (preset.columns) {
       // Application view - use specific columns
-      const validPresetColumns = preset.columns.filter(colName => 
+      const validPresetColumns = preset.columns.filter(colName =>
         allColumnNames.some(existingCol => existingCol.toLowerCase() === colName.toLowerCase())
       );
-      
+
       // Map to actual column names (preserving case)
-      finalColumns = validPresetColumns.map(presetCol => 
+      finalColumns = validPresetColumns.map(presetCol =>
         allColumnNames.find(existingCol => existingCol.toLowerCase() === presetCol.toLowerCase())
       ).filter(Boolean);
-      
+
       // Ensure ID is always included
       if (!finalColumns.some(col => col.toLowerCase() === 'id')) {
         const idColumn = allColumnNames.find(col => col.toLowerCase() === 'id');
@@ -102,37 +102,37 @@ export default function LogEntriesTable({
       }
     } else if (preset.excludeFields) {
       // Operational view - include all except excluded fields
-      finalColumns = allColumnNames.filter(colName => 
-        !preset.excludeFields.some(excludeField => 
+      finalColumns = allColumnNames.filter(colName =>
+        !preset.excludeFields.some(excludeField =>
           colName.toLowerCase() === excludeField.toLowerCase()
         )
       );
     }
-    
+
     setVisibleColumns(finalColumns);
     setColumnOrder(finalColumns);
     setCurrentView(viewKey);
-    
+
     // Update filter based on view
     setDateFilters(prev => {
       const newFilters = { ...prev };
-      
+
       if (viewKey === 'application') {
         newFilters.logType = 'application';
       } else if (viewKey === 'operational') {
         newFilters.logType = 'operational';
       }
       // For custom view, keep existing filters as they are
-      
+
       return newFilters;
     });
-    
+
     // Save to localStorage
     try {
       localStorage.setItem('logEntries_visibleColumns', JSON.stringify(finalColumns));
       localStorage.setItem('logEntries_columnOrder', JSON.stringify(finalColumns));
       localStorage.setItem('logEntries_currentView', viewKey);
-      
+
       // Save updated filters
       const updatedFilters = { ...dateFilters };
       if (viewKey === 'application') {
@@ -150,12 +150,12 @@ export default function LogEntriesTable({
   useEffect(() => {
     if (columns.length > 0) {
       const allColumnNames = columns.map(col => col.COLUMN_NAME);
-      
+
       const savedVisible = localStorage.getItem('logEntries_visibleColumns');
       const savedOrder = localStorage.getItem('logEntries_columnOrder');
       const savedView = localStorage.getItem('logEntries_currentView');
       const savedFilters = localStorage.getItem('logEntries_dateFilters');
-      
+
       // Load saved filters first
       if (savedFilters) {
         try {
@@ -165,24 +165,24 @@ export default function LogEntriesTable({
           console.warn('Failed to parse saved filters');
         }
       }
-      
+
       if (savedVisible && savedOrder) {
         try {
           const parsedVisible = JSON.parse(savedVisible);
           const parsedOrder = JSON.parse(savedOrder);
-          
+
           const validVisible = parsedVisible.filter(name => allColumnNames.includes(name));
           const validOrder = parsedOrder.filter(name => allColumnNames.includes(name));
-          
+
           const missingColumns = allColumnNames.filter(name => !validOrder.includes(name));
-          
+
           const finalVisible = [...validVisible, ...missingColumns];
           const finalOrder = [...validOrder, ...missingColumns];
-          
+
           setVisibleColumns(finalVisible);
           setColumnOrder(finalOrder);
           setCurrentView(savedView || 'application');
-          
+
         } catch (e) {
           // Default to application view on first load
           applyView('application');
@@ -212,8 +212,8 @@ export default function LogEntriesTable({
     // Get distinct values for each filter type
     const districtColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('district'));
     const incidentColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('incident'));
-    const assignedColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('assigned') || 
+    const assignedColumn = columns.find(col =>
+      col.COLUMN_NAME.toLowerCase().includes('assigned') ||
       col.COLUMN_NAME.toLowerCase().includes('assignee')
     );
     const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
@@ -252,7 +252,7 @@ export default function LogEntriesTable({
   // Sorting functions
   const handleSort = (columnName) => {
     let direction = 'asc';
-    
+
     if (sortConfig.key === columnName) {
       if (sortConfig.direction === 'asc') {
         direction = 'desc';
@@ -262,10 +262,10 @@ export default function LogEntriesTable({
         direction = 'asc';
       }
     }
-    
-    setSortConfig({ 
-      key: direction ? columnName : null, 
-      direction: direction 
+
+    setSortConfig({
+      key: direction ? columnName : null,
+      direction: direction
     });
   };
 
@@ -273,27 +273,27 @@ export default function LogEntriesTable({
     if (sortConfig.key !== columnName) {
       return '⇅'; // No sort icon
     }
-    
+
     if (sortConfig.direction === 'asc') {
       return '▲'; // Ascending
     } else if (sortConfig.direction === 'desc') {
       return '▼'; // Descending
     }
-    
+
     return '⇅'; // Fallback
   };
 
   // Helper functions
   const getAvailableYears = () => {
     if (!data || data.length === 0) return [];
-    
-    const dateColumn = columns.find(col => 
-      col.COLUMN_NAME.toLowerCase().includes('date') || 
+
+    const dateColumn = columns.find(col =>
+      col.COLUMN_NAME.toLowerCase().includes('date') ||
       col.COLUMN_NAME.toLowerCase().includes('created')
     );
-    
+
     if (!dateColumn) return [];
-    
+
     const years = data
       .map(entry => {
         const dateValue = entry[dateColumn.COLUMN_NAME];
@@ -308,41 +308,41 @@ export default function LogEntriesTable({
       })
       .filter(year => year && !isNaN(year))
       .filter((year, index, array) => array.indexOf(year) === index)
-      .sort((a, b) => b - a); 
-  
+      .sort((a, b) => b - a);
+
     return years;
   };
 
   const getWeeksInMonth = (year, month) => {
     if (!year || !month) return [];
-    
+
     const weeks = [];
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0);
-    
+
     let currentWeek = 1;
     let currentDate = new Date(firstDay);
-    
+
     while (currentDate <= lastDay) {
       const weekStart = new Date(currentDate);
       const weekEnd = new Date(currentDate);
       weekEnd.setDate(weekEnd.getDate() + 6);
-      
+
       if (weekEnd > lastDay) {
         weekEnd.setDate(lastDay.getDate());
       }
-      
+
       weeks.push({
         number: currentWeek,
         start: weekStart.getDate(),
         end: weekEnd.getDate(),
         label: `Week ${currentWeek} (${weekStart.getDate()}-${weekEnd.getDate()})`
       });
-      
+
       currentDate.setDate(currentDate.getDate() + 7);
       currentWeek++;
     }
-    
+
     return weeks;
   };
 
@@ -350,14 +350,14 @@ export default function LogEntriesTable({
     if (!data || data.length === 0) {
       return data;
     }
-    
+
     const expandedData = [...data];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     data.forEach(entry => {
       const hasRecurrence = entry.recurrence_type && (entry.recurrence_type === 'weekly' || entry.recurrence_type === 'monthly');
-      
+
       if (hasRecurrence) {
         if (entry.recurrence_type === 'weekly' && entry.day_of_the_week) {
           // Weekly recurrence logic (existing)
@@ -365,38 +365,38 @@ export default function LogEntriesTable({
             'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
             'thursday': 4, 'friday': 5, 'saturday': 6
           };
-          
+
           const targetDay = dayMapping[entry.day_of_the_week.toLowerCase()];
-          
+
           if (targetDay !== undefined) {
             const weekOffsets = [-1, 1];
-            
+
             weekOffsets.forEach(weekOffset => {
               const startOfTargetWeek = new Date(today);
               startOfTargetWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7));
-              
+
               const recurringDate = new Date(startOfTargetWeek);
               recurringDate.setDate(startOfTargetWeek.getDate() + targetDay);
               recurringDate.setHours(0, 0, 0, 0);
-              
+
               const originalDate = new Date(entry.log_date);
               originalDate.setHours(0, 0, 0, 0);
-              
+
               if (recurringDate.getTime() !== originalDate.getTime()) {
                 const virtualEntry = createVirtualEntry(entry, recurringDate, 'weekly');
                 expandedData.push(virtualEntry);
               }
             });
           }
-        } 
+        }
         else if (entry.recurrence_type === 'monthly') {
           // Monthly recurrence logic
           const monthOffsets = [-1, 1]; // Previous and next month
-          
+
           monthOffsets.forEach(monthOffset => {
             const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
             let recurringDate;
-            
+
             if (entry.monthly_pattern === 'last') {
               // Last day of the month
               recurringDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
@@ -412,13 +412,13 @@ export default function LogEntriesTable({
               const dayOfMonth = Math.min(parseInt(entry.day_of_the_month), lastDayOfMonth);
               recurringDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), dayOfMonth);
             }
-            
+
             if (recurringDate) {
               recurringDate.setHours(0, 0, 0, 0);
-              
+
               const originalDate = new Date(entry.log_date);
               originalDate.setHours(0, 0, 0, 0);
-              
+
               if (recurringDate.getTime() !== originalDate.getTime()) {
                 const virtualEntry = createVirtualEntry(entry, recurringDate, 'monthly');
                 expandedData.push(virtualEntry);
@@ -428,7 +428,7 @@ export default function LogEntriesTable({
         }
       }
     });
-    
+
     return expandedData.sort((a, b) => {
       const dateA = new Date(a.log_date);
       const dateB = new Date(b.log_date);
@@ -438,12 +438,12 @@ export default function LogEntriesTable({
 
   const createVirtualEntry = (entry, recurringDate, recurrenceType) => {
     const isFutureDate = recurringDate > new Date();
-    
-    const statusColumn = columns.find(col => 
+
+    const statusColumn = columns.find(col =>
       col.COLUMN_NAME.toLowerCase().includes('status') ||
       col.COLUMN_NAME.toLowerCase().includes('completion')
     );
-    
+
     const virtualEntry = {
       ...entry,
       id: `${entry.id}_recurring_${recurrenceType}_${recurringDate.getTime()}`,
@@ -453,11 +453,11 @@ export default function LogEntriesTable({
       recurrence_type: recurrenceType,
       generated_on: new Date().toISOString().split('T')[0]
     };
-    
+
     if (statusColumn && isFutureDate) {
       virtualEntry[statusColumn.COLUMN_NAME] = 'Not Completed';
     }
-    
+
     return virtualEntry;
   };
 
@@ -466,29 +466,29 @@ export default function LogEntriesTable({
     if (!data || data.length === 0) return [];
 
     const expandedData = showVirtualEntries ? generateRecurringEntries(data) : data;
-    
+
     // Apply filters first
     const hasFilters = Object.values(dateFilters).some(value => value && value !== '');
     let filteredData = expandedData;
-    
+
     if (hasFilters) {
-      const dateColumn = columns.find(col => 
-        col.COLUMN_NAME.toLowerCase().includes('date') || 
+      const dateColumn = columns.find(col =>
+        col.COLUMN_NAME.toLowerCase().includes('date') ||
         col.COLUMN_NAME.toLowerCase().includes('created')
       );
-      
-      const logTypeColumn = columns.find(col => 
+
+      const logTypeColumn = columns.find(col =>
         col.COLUMN_NAME.toLowerCase().includes('log_type')
       );
 
       const districtColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('district'));
       const incidentColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('incident'));
-      const assignedColumn = columns.find(col => 
-        col.COLUMN_NAME.toLowerCase().includes('assigned') || 
+      const assignedColumn = columns.find(col =>
+        col.COLUMN_NAME.toLowerCase().includes('assigned') ||
         col.COLUMN_NAME.toLowerCase().includes('assignee')
       );
       const uploaderColumn = columns.find(col => col.COLUMN_NAME.toLowerCase().includes('uploader'));
-      
+
       filteredData = expandedData.filter(entry => {
         // Date filters
         if (dateColumn) {
@@ -499,19 +499,19 @@ export default function LogEntriesTable({
               const entryYear = entryDate.getFullYear();
               const entryMonth = entryDate.getMonth() + 1;
               const entryDay = entryDate.getDate();
-              
+
               if (dateFilters.year && entryYear !== parseInt(dateFilters.year)) {
                 return false;
               }
-              
+
               if (dateFilters.month && entryMonth !== parseInt(dateFilters.month)) {
                 return false;
               }
-              
+
               if (dateFilters.week && dateFilters.year && dateFilters.month) {
                 const weeks = getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month));
                 const selectedWeek = weeks.find(w => w.number === parseInt(dateFilters.week));
-                
+
                 if (selectedWeek && (entryDay < selectedWeek.start || entryDay > selectedWeek.end)) {
                   return false;
                 }
@@ -521,12 +521,12 @@ export default function LogEntriesTable({
             }
           }
         }
-        
+
         // Log type filter
         if (dateFilters.logType && logTypeColumn) {
           const entryLogType = entry[logTypeColumn.COLUMN_NAME];
           if (!entryLogType) return false;
-          
+
           const normalizedEntryType = entryLogType.toString().toLowerCase().trim();
           const selectedType = dateFilters.logType.toLowerCase();
 
@@ -563,7 +563,7 @@ export default function LogEntriesTable({
             return false;
           }
         }
-        
+
         return true;
       });
     }
@@ -573,7 +573,7 @@ export default function LogEntriesTable({
       filteredData = [...filteredData].sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
-        
+
         // Handle null/undefined values
         if (aValue === null || aValue === undefined) {
           if (bValue === null || bValue === undefined) return 0;
@@ -582,11 +582,11 @@ export default function LogEntriesTable({
         if (bValue === null || bValue === undefined) {
           return sortConfig.direction === 'asc' ? -1 : 1;
         }
-        
+
         // Try to detect data type and sort accordingly
         const column = columns.find(col => col.COLUMN_NAME === sortConfig.key);
         const dataType = column?.DATA_TYPE?.toLowerCase() || '';
-        
+
         // Handle dates
         if (dataType.includes('date') || dataType.includes('time')) {
           const dateA = new Date(aValue);
@@ -596,7 +596,7 @@ export default function LogEntriesTable({
             return sortConfig.direction === 'asc' ? result : -result;
           }
         }
-        
+
         // Handle numbers
         if (dataType.includes('int') || dataType.includes('decimal') || dataType.includes('float')) {
           const numA = parseFloat(aValue);
@@ -606,7 +606,7 @@ export default function LogEntriesTable({
             return sortConfig.direction === 'asc' ? result : -result;
           }
         }
-        
+
         // Handle boolean/bit
         if (dataType === 'bit' || typeof aValue === 'boolean' || typeof bValue === 'boolean') {
           const boolA = aValue === true || aValue === 1 || aValue === '1';
@@ -614,7 +614,7 @@ export default function LogEntriesTable({
           const result = Number(boolA) - Number(boolB);
           return sortConfig.direction === 'asc' ? result : -result;
         }
-        
+
         // Default string comparison
         const strA = String(aValue).toLowerCase();
         const strB = String(bValue).toLowerCase();
@@ -638,12 +638,12 @@ export default function LogEntriesTable({
       });
 
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      if (result.success) {        
+      if (result.success) {
         alert(result.message);
         await onRefresh();
       } else {
@@ -689,8 +689,8 @@ export default function LogEntriesTable({
       }
 
       const result = await response.json();
-      
-      if (result.success) {        
+
+      if (result.success) {
         await onRefresh();
         setConnectionStatus('✅ Entry updated successfully!');
         setTimeout(() => setConnectionStatus('✅ Loaded'), 3000);
@@ -698,7 +698,7 @@ export default function LogEntriesTable({
       } else {
         throw new Error(result.error || 'Failed to update entry');
       }
-      
+
     } catch (error) {
       setConnectionStatus(`❌ Failed to update entry: ${error.message}`);
       setTimeout(() => setConnectionStatus('✅ Loaded'), 5000);
@@ -707,6 +707,8 @@ export default function LogEntriesTable({
   };
 
   const handleDuplicateEntry = async (sourceEntry) => {
+    console.log('handleDuplicateEntry called with:', sourceEntry);
+
     if (!sourceEntry) {
       alert('No entry selected for duplication');
       return;
@@ -719,7 +721,9 @@ export default function LogEntriesTable({
 
     try {
       const duplicateData = { ...sourceEntry };
-      
+
+      console.log('Initial duplicate data:', duplicateData);
+
       // Remove fields that shouldn't be duplicated
       delete duplicateData.id;
       delete duplicateData.created_at;
@@ -730,12 +734,37 @@ export default function LogEntriesTable({
       delete duplicateData.target_day;
       delete duplicateData.generated_on;
       delete duplicateData.relative_to_current;
-      delete duplicateData.is_recurring;
-      delete duplicateData.recurrence_day;
-      delete duplicateData.day_of_the_week;
-      
+
+      // Remove all fields that don't belong in LOG_ENTRIES table
+      // This includes recurrence fields, application fields, and any other virtual/computed fields
+      Object.keys(duplicateData).forEach(key => {
+        const lowerKey = key.toLowerCase();
+        // Remove recurrence-related fields
+        if (lowerKey.includes('recurrence') ||
+          lowerKey.includes('recurring') ||
+          lowerKey.includes('day_of_week') ||
+          lowerKey.includes('day_of_month') ||
+          lowerKey.includes('dayofweek') ||
+          lowerKey.includes('dayofmonth') ||
+          lowerKey.includes('monthly_pattern') ||
+          lowerKey.includes('monthly_day') ||
+          lowerKey.includes('monthly_week') ||
+          // Remove application-specific fields (stored in separate table)
+          lowerKey.includes('app_') ||
+          key === 'company' ||
+          key === 'project_name' ||
+          key === 'identified_user_impact' ||
+          key === 'post_maintenance_testing' ||
+          key === 'rollback_plan' ||
+          key === 'wiki_diagram_updated' ||
+          key === 'communication_to_user' ||
+          key === 's3_support_ready') {
+          delete duplicateData[key];
+        }
+      });
+
       const todayString = new Date().toLocaleDateString('en-CA');
-      
+
       // Update date fields to today
       Object.keys(duplicateData).forEach(key => {
         const lowerKey = key.toLowerCase();
@@ -746,7 +775,7 @@ export default function LogEntriesTable({
       });
 
       // Set current user as uploader
-      const uploaderField = Object.keys(duplicateData).find(key => 
+      const uploaderField = Object.keys(duplicateData).find(key =>
         key.toLowerCase().includes('uploader')
       );
       if (uploaderField && user.username) {
@@ -754,9 +783,9 @@ export default function LogEntriesTable({
       }
 
       // Add "Original Log: id#" to notes
-      const noteFields = Object.keys(duplicateData).filter(key => 
-        key.toLowerCase().includes('note') || 
-        key.toLowerCase().includes('comment') || 
+      const noteFields = Object.keys(duplicateData).filter(key =>
+        key.toLowerCase().includes('note') ||
+        key.toLowerCase().includes('comment') ||
         key.toLowerCase().includes('description')
       );
 
@@ -764,7 +793,7 @@ export default function LogEntriesTable({
         const noteField = noteFields[0];
         const existingNote = duplicateData[noteField] || '';
         const originalLogText = `Original Log: ${sourceEntry.id}#`;
-        
+
         if (existingNote.trim()) {
           duplicateData[noteField] = `${existingNote.trim()} | ${originalLogText}`;
         } else {
@@ -772,10 +801,9 @@ export default function LogEntriesTable({
         }
       }
 
-      duplicateData.isRecurrence = false;
-      duplicateData.day_of_the_week = null;
+      console.log('Final duplicate data to send:', duplicateData);
 
-      const response = await fetch('/api/addentryrec', {
+      const response = await fetch('/api/addentry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -783,8 +811,12 @@ export default function LogEntriesTable({
         body: JSON.stringify(duplicateData)
       });
 
+      console.log('Response status:', response.status);
+
       const result = await response.json();
-      
+
+      console.log('Response result:', result);
+
       if (!response.ok) {
         throw new Error(result.error || `HTTP ${response.status}: ${response.statusText}`);
       }
@@ -792,9 +824,9 @@ export default function LogEntriesTable({
       if (result.success) {
         setShowDetailModal(false);
         setSelectedEntry(null);
-        
+
         alert(`✅ Entry duplicated successfully!\n\nNew entry created with today's date: ${todayString}\nOriginal entry ID: ${sourceEntry.id}\nNew entry ID: ${result.id}`);
-        
+
         await onRefresh();
       } else {
         throw new Error(result.error);
@@ -807,20 +839,20 @@ export default function LogEntriesTable({
 
   const getColumnStyle = (columnName, dataType) => {
     const baseStyle = { ...cellStyle };
-    
+
     if (dataType === 'bit' || typeof data[0]?.[columnName] === 'boolean') {
       baseStyle.textAlign = 'center';
     }
-    
+
     if (columnName.toLowerCase().includes('status')) {
       baseStyle.fontWeight = '500';
       baseStyle.color = '#059669';
     }
-    
+
     if (columnName.toLowerCase().includes('note') || columnName.toLowerCase().includes('description')) {
       baseStyle.maxWidth = '200px';
     }
-    
+
     return baseStyle;
   };
 
@@ -829,7 +861,7 @@ export default function LogEntriesTable({
       .filter(columnName => visibleColumns.includes(columnName))
       .map(columnName => columns.find(col => col.COLUMN_NAME === columnName))
       .filter(Boolean);
-    
+
     return displayColumns;
   };
 
@@ -837,13 +869,13 @@ export default function LogEntriesTable({
     setVisibleColumns(newVisibleColumns);
     setColumnOrder(newColumnOrder);
     setCurrentView('custom'); // Mark as custom when manually changed
-    
+
     // When switching to custom view, clear the auto-set log type filter
     setDateFilters(prev => ({
       ...prev,
       logType: '' // Clear auto-set filter for manual customization
     }));
-    
+
     try {
       localStorage.setItem('logEntries_visibleColumns', JSON.stringify(newVisibleColumns));
       localStorage.setItem('logEntries_columnOrder', JSON.stringify(newColumnOrder));
@@ -867,9 +899,9 @@ export default function LogEntriesTable({
       assigned: '',
       uploader: ''
     };
-    
+
     setDateFilters(newFilters);
-    
+
     // Save to localStorage
     try {
       localStorage.setItem('logEntries_dateFilters', JSON.stringify(newFilters));
@@ -881,21 +913,21 @@ export default function LogEntriesTable({
   const handleFilterChange = (filterType, value) => {
     setDateFilters(prev => {
       const newFilters = { ...prev, [filterType]: value };
-      
+
       if (filterType === 'year') {
         newFilters.month = '';
         newFilters.week = '';
       } else if (filterType === 'month') {
         newFilters.week = '';
       }
-      
+
       // Save to localStorage
       try {
         localStorage.setItem('logEntries_dateFilters', JSON.stringify(newFilters));
       } catch (e) {
         console.warn('Failed to save filters to localStorage');
       }
-      
+
       return newFilters;
     });
   };
@@ -919,37 +951,37 @@ export default function LogEntriesTable({
 
   const getExistingDistricts = () => {
     if (!data || data.length === 0) return [];
-    
-    const districtColumn = columns.find(col => 
+
+    const districtColumn = columns.find(col =>
       col.COLUMN_NAME.toLowerCase().includes('district')
     );
-    
+
     if (!districtColumn) return [];
-    
+
     const districts = data
       .map(entry => entry[districtColumn.COLUMN_NAME])
       .filter(district => district && typeof district === 'string')
       .filter((district, index, array) => array.indexOf(district) === index)
       .sort();
-    
+
     return districts;
   };
 
   const getExistingIncidents = () => {
     if (!data || data.length === 0) return [];
-    
-    const incidentColumn = columns.find(col => 
+
+    const incidentColumn = columns.find(col =>
       col.COLUMN_NAME.toLowerCase().includes('incident')
     );
-    
+
     if (!incidentColumn) return [];
-    
+
     const incidents = data
       .map(entry => entry[incidentColumn.COLUMN_NAME])
       .filter(incident => incident && typeof incident === 'string')
       .filter((incident, index, array) => array.indexOf(incident) === index)
       .sort();
-    
+
     return incidents;
   };
 
@@ -969,12 +1001,12 @@ export default function LogEntriesTable({
   const getColumnType = (columnName, dataType) => {
     const lowerName = columnName ? columnName.toLowerCase() : '';
     const lowerType = dataType ? dataType.toLowerCase() : '';
-    
+
     if (lowerType === 'bit' || lowerType === 'boolean') return 'boolean';
     if (lowerType.includes('int') || lowerType.includes('decimal') || lowerType.includes('float')) return 'number';
     if (lowerType.includes('date') || lowerType.includes('time')) return 'date';
     if (lowerName.includes('status')) return 'status';
-    
+
     return 'text';
   };
 
@@ -999,7 +1031,7 @@ export default function LogEntriesTable({
             {connectionStatus}
           </div>
         </div>
-        
+
         <div className="toolbar-container">
           {/* View Toggle Buttons */}
           <div className="view-toggle">
@@ -1091,12 +1123,12 @@ export default function LogEntriesTable({
               {/* Current view indicator */}
               <span className="current-view-indicator">
                 View: {getViewPresets()[currentView]?.name || '🎛️ Custom View'}
-                {((currentView === 'application' && dateFilters.logType === 'application') || 
+                {((currentView === 'application' && dateFilters.logType === 'application') ||
                   (currentView === 'operational' && dateFilters.logType === 'operational')) && (
-                  <span style={{ marginLeft: '4px', fontSize: '10px', color: '#3b82f6' }}>
-                    (Auto-filtered)
-                  </span>
-                )}
+                    <span style={{ marginLeft: '4px', fontSize: '10px', color: '#3b82f6' }}>
+                      (Auto-filtered)
+                    </span>
+                  )}
               </span>
               {getActiveFilterCount() > 0 && (
                 <span className="active-filter-count">
@@ -1108,7 +1140,7 @@ export default function LogEntriesTable({
               </button>
             </div>
           </div>
-          
+
           <div className="filter-grid">
             {/* Date Filters Row */}
             <div className="filter-section">
@@ -1127,19 +1159,19 @@ export default function LogEntriesTable({
                     <option value="operational">Operational</option>
                     <option value="application">Application</option>
                   </select>
-                  {((currentView === 'application' && dateFilters.logType === 'application') || 
+                  {((currentView === 'application' && dateFilters.logType === 'application') ||
                     (currentView === 'operational' && dateFilters.logType === 'operational')) && (
-                    <div style={{
-                      fontSize: '11px',
-                      color: '#3b82f6',
-                      marginTop: '2px',
-                      fontWeight: '500'
-                    }}>
-                      Set by {getViewPresets()[currentView]?.name}
-                    </div>
-                  )}
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#3b82f6',
+                        marginTop: '2px',
+                        fontWeight: '500'
+                      }}>
+                        Set by {getViewPresets()[currentView]?.name}
+                      </div>
+                    )}
                 </div>
-                
+
                 {/* Year Filter */}
                 <div className="filter-group">
                   <label>📅 Year</label>
@@ -1179,7 +1211,7 @@ export default function LogEntriesTable({
                     <option value="12">December</option>
                   </select>
                 </div>
-                
+
                 {/* Week Filter */}
                 <div className="filter-group">
                   <label>📍 Week</label>
@@ -1190,7 +1222,7 @@ export default function LogEntriesTable({
                     className="filter-select"
                   >
                     <option value="">All Weeks</option>
-                    {dateFilters.year && dateFilters.month && 
+                    {dateFilters.year && dateFilters.month &&
                       getWeeksInMonth(parseInt(dateFilters.year), parseInt(dateFilters.month)).map(week => (
                         <option key={week.number} value={week.number}>
                           {week.label}
@@ -1294,7 +1326,7 @@ export default function LogEntriesTable({
             <div className="table-info">
             </div>
           </div>
-          
+
           <VirtualTable
             data={getFilteredData()}
             columns={columns}
@@ -1313,7 +1345,7 @@ export default function LogEntriesTable({
 
       {/* Modals */}
       {hasPermission('Operator') && (
-        <AddEntryModal 
+        <AddEntryModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           onSave={handleSaveEntry}
@@ -1321,11 +1353,11 @@ export default function LogEntriesTable({
           getExistingDistricts={getExistingDistricts}
           getExistingIncidents={getExistingIncidents}
           data={data} // Make sure data is passed here
-          currentUser={user} 
+          currentUser={user}
         />
       )}
-      
-      <ColumnManager 
+
+      <ColumnManager
         isOpen={showColumnManager}
         onClose={() => setShowColumnManager(false)}
         columns={columns}

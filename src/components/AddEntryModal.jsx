@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import '../styles/components/modals.css';
 import '../styles/components/forms.css';
 
-export default function AddEntryModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  columns = [], 
-  getExistingDistricts, 
+export default function AddEntryModal({
+  isOpen,
+  onClose,
+  onSave,
+  columns = [],
+  getExistingDistricts,
   getExistingIncidents,
   data = [], // Add data prop to get existing values
-  currentUser 
+  currentUser
 }) {
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -58,12 +58,12 @@ export default function AddEntryModal({
       'pending_approval', // Hide pending_approval from form
       'recurrence_type', 'day_of_the_week', 'day_of_the_month' // Hide recurrence fields from step 2
     ];
-    
+
     // Hide ticket_number from optional fields if it's an application log (we show it in application section)
     if (isApplicationLog() && columnName.toLowerCase() === 'ticket_number') {
       return true;
     }
-    
+
     return hiddenFields.includes(columnName.toLowerCase());
   };
 
@@ -76,24 +76,24 @@ export default function AddEntryModal({
   // Calculate log end time based on log start + actual time
   const calculateLogEnd = (logStart, actualTime) => {
     if (!logStart || !actualTime) return '';
-    
+
     try {
       // Parse the start time
       const [startHours, startMinutes] = logStart.split(':').map(Number);
-      
+
       // Parse actual time (assuming it's in hours format like "2.5" or "1")
       const actualHours = parseFloat(actualTime);
       if (isNaN(actualHours)) return '';
-      
+
       // Calculate total minutes
       const startTotalMinutes = startHours * 60 + startMinutes;
       const actualMinutes = actualHours * 60;
       const endTotalMinutes = startTotalMinutes + actualMinutes;
-      
+
       // Convert back to hours and minutes
       const endHours = Math.floor(endTotalMinutes / 60) % 24; // Handle day overflow
       const endMinutes = Math.floor(endTotalMinutes % 60);
-      
+
       // Format as HH:MM
       return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
     } catch (error) {
@@ -125,7 +125,7 @@ export default function AddEntryModal({
     if (!data || !Array.isArray(data)) {
       return [];
     }
-    
+
     // Try multiple possible field name variations
     const possibleFieldNames = [
       fieldName,
@@ -133,10 +133,10 @@ export default function AddEntryModal({
       fieldName.toUpperCase(),
       fieldName.charAt(0).toUpperCase() + fieldName.slice(1).toLowerCase()
     ];
-    
+
     let actualFieldName = null;
     const sampleRow = data[0] || {};
-    
+
     // Find the actual field name in the data
     for (const possibleName of possibleFieldNames) {
       if (sampleRow.hasOwnProperty(possibleName)) {
@@ -144,24 +144,24 @@ export default function AddEntryModal({
         break;
       }
     }
-    
+
     if (!actualFieldName) {
       return [];
     }
-    
-    
+
+
     const values = data
       .map(row => row[actualFieldName])
       .filter(value => value && value.toString().trim() !== '')
       .map(value => value.toString().trim());
-    
+
     return [...new Set(values)].sort();
   };
-  
+
   // Load dropdown options
   useEffect(() => {
     if (data && data.length > 0) {
-      
+
       setDropdownOptions({
         districts: getUniqueValues('district'),
         incidents: getUniqueValues('incident'),
@@ -179,11 +179,11 @@ export default function AddEntryModal({
           initialData[column.COLUMN_NAME] = getDefaultValue(column);
         }
       });
-      
+
       if (initialData.time_start && initialData.duration) {
         initialData.time_end = calculateLogEnd(initialData.time_start, initialData.duration);
       }
-      
+
       setFormData(initialData);
       setErrors({});
       setCurrentStep(1);
@@ -230,12 +230,12 @@ export default function AddEntryModal({
 
   const handleApplicationFieldChange = (fieldName, value) => {
     setApplicationFields(prev => ({ ...prev, [fieldName]: value }));
-    
+
     // Also update the main form data for ticket_number
     if (fieldName === 'ticket_number') {
       setFormData(prev => ({ ...prev, ticket_number: value }));
     }
-    
+
     if (errors[fieldName]) {
       setErrors(prev => ({ ...prev, [fieldName]: null }));
     }
@@ -345,7 +345,7 @@ export default function AddEntryModal({
                 onChange={(e) => handleEventTypeChange(e.target.value)}
                 style={{ margin: 0 }}
               />
-              <span style={{ 
+              <span style={{
                 color: formData.incident_event === '1' ? 'white' : '#374151',
                 fontSize: '14px',
                 fontWeight: '500'
@@ -375,7 +375,7 @@ export default function AddEntryModal({
                 onChange={(e) => handleEventTypeChange(e.target.value)}
                 style={{ margin: 0 }}
               />
-              <span style={{ 
+              <span style={{
                 color: formData.incident_event === '0' ? 'white' : '#374151',
                 fontSize: '14px',
                 fontWeight: '500'
@@ -466,7 +466,7 @@ export default function AddEntryModal({
         </div>
       );
     }
-    
+
     // Incident dropdown/input combo
     if (columnName.toLowerCase() === 'incident') {
       return (
@@ -493,7 +493,7 @@ export default function AddEntryModal({
         </div>
       );
     }
-    
+
     // Assigned dropdown/input combo
     if (columnName.toLowerCase() === 'assigned') {
       return (
@@ -588,16 +588,16 @@ export default function AddEntryModal({
 
     // Checkbox for specific yes/no fields
     const columnNameLower = columnName.toLowerCase();
-    
+
     // More specific matching for each field
-    const isCheckboxField = 
+    const isCheckboxField =
       columnNameLower === 'business_impact' ||
       columnNameLower === 'real_business_impact' ||
       columnNameLower === 'root_call_analysis';
-    
+
     if (isCheckboxField) {
       const isChecked = value === '1' || value === 1 || value === true || value === 'true' || value === 'Yes';
-      
+
       return (
         <div style={{
           display: 'flex',
@@ -622,7 +622,7 @@ export default function AddEntryModal({
               cursor: 'pointer'
             }}
           />
-          <label 
+          <label
             style={{
               fontSize: '14px',
               fontWeight: '500',
@@ -657,7 +657,7 @@ export default function AddEntryModal({
   // Validation
   const validateStep = (step) => {
     const newErrors = {};
-    
+
     if (step === 1) {
       const requiredFields = ['log_type', 'log_date', 'incident', 'district', 'maintenance_event', 'incident_event'];
       requiredFields.forEach(field => {
@@ -718,16 +718,16 @@ export default function AddEntryModal({
         userLevel: currentUser?.level_Name || 'Viewer',
         userId: currentUser?.id || null
       };
-      
+
       // Only add recurrence fields if recurrence is enabled
       if (isRecurrence) {
         submissionData.recurrence_type = recurrenceType;
-        
+
         if (recurrenceType === 'weekly') {
           submissionData.day_of_the_week = selectedDayOfWeek;
         } else if (recurrenceType === 'monthly') {
           submissionData.monthly_pattern = monthlyPattern;
-          
+
           if (monthlyPattern === 'day') {
             submissionData.day_of_the_month = monthlyDay;
           } else if (monthlyPattern === 'weekday') {
@@ -778,7 +778,7 @@ export default function AddEntryModal({
 
   const filteredColumns = columns.filter(col => col.COLUMN_NAME.toLowerCase() !== 'id');
   const requiredCols = filteredColumns.filter(col => isRequiredField(col.COLUMN_NAME));
-  const optionalCols = filteredColumns.filter(col => 
+  const optionalCols = filteredColumns.filter(col =>
     !isRequiredField(col.COLUMN_NAME) && !isHiddenField(col.COLUMN_NAME)
   );
 
@@ -818,21 +818,21 @@ export default function AddEntryModal({
           backgroundColor: '#f8fafc'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ margin: 0, fontSize: '20px', color: '#111827', fontWeight: '600' }}>
-            📝 Add New Entry
-          </h2>
-          {isApplicationLog() && (
-            <span style={{
-              padding: '4px 12px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              borderRadius: '16px',
-              fontSize: '12px',
-              fontWeight: '500'
-            }}>
-              💻 Application
-            </span>
-          )}
+            <h2 style={{ margin: 0, fontSize: '20px', color: '#111827', fontWeight: '600' }}>
+              📝 Add New Entry
+            </h2>
+            {isApplicationLog() && (
+              <span style={{
+                padding: '4px 12px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '16px',
+                fontSize: '12px',
+                fontWeight: '500'
+              }}>
+                💻 Application
+              </span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -853,7 +853,7 @@ export default function AddEntryModal({
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = 'transparent';
               e.target.style.color = '#6b7280';
-             }}
+            }}
           >
             ×
           </button>
@@ -895,10 +895,10 @@ export default function AddEntryModal({
               </React.Fragment>
             ))}
           </div>
-          <div style={{ 
-            textAlign: 'center', 
+          <div style={{
+            textAlign: 'center',
             marginTop: '12px',
-            fontSize: '14px', 
+            fontSize: '14px',
             color: '#6b7280',
             fontWeight: '500'
           }}>
@@ -930,7 +930,7 @@ export default function AddEntryModal({
                   if (column.COLUMN_NAME.toLowerCase() === 'incident_event') {
                     return null;
                   }
-                  
+
                   return (
                     <div key={column.COLUMN_NAME} style={{
                       gridColumn: column.COLUMN_NAME.toLowerCase() === 'maintenance_event' ? '1 / -1' : 'auto'
@@ -943,8 +943,8 @@ export default function AddEntryModal({
                           fontWeight: '600',
                           color: '#374151'
                         }}>
-                          {formatColumnName(column.COLUMN_NAME)} 
-                          {column.COLUMN_NAME.toLowerCase() === 'time_end' && 
+                          {formatColumnName(column.COLUMN_NAME)}
+                          {column.COLUMN_NAME.toLowerCase() === 'time_end' &&
                             <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
                           }
                           {column.COLUMN_NAME.toLowerCase() !== 'time_end' && ' *'}
@@ -987,7 +987,7 @@ export default function AddEntryModal({
                   </span>
                 )}
               </h3>
-              
+
               {/* Application-specific fields (only show when Application is selected) */}
               {isApplicationLog() && (
                 <div style={{
@@ -1001,7 +1001,7 @@ export default function AddEntryModal({
                   <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#1e40af', fontWeight: '600' }}>
                     💻 Application-Specific Fields
                   </h4>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div>
                       <label style={{
@@ -1126,15 +1126,15 @@ export default function AddEntryModal({
                   </div>
                 </div>
               )}
-              
+
               {/* Regular optional fields (always show) */}
               {optionalCols.length > 0 ? (
                 <div>
-                  <h4 style={{ 
-                    margin: '0 0 16px 0', 
-                    fontSize: '16px', 
-                    color: '#374151', 
-                    fontWeight: '600' 
+                  <h4 style={{
+                    margin: '0 0 16px 0',
+                    fontSize: '16px',
+                    color: '#374151',
+                    fontWeight: '600'
                   }}>
                     📋 Standard Optional Fields
                   </h4>
@@ -1154,7 +1154,7 @@ export default function AddEntryModal({
                             color: '#374151'
                           }}>
                             {formatColumnName(column.COLUMN_NAME)}
-                            {column.COLUMN_NAME.toLowerCase() === 'time_end' && 
+                            {column.COLUMN_NAME.toLowerCase() === 'time_end' &&
                               <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '12px' }}> (Auto-calculated)</span>
                             }
                           </label>
@@ -1189,7 +1189,7 @@ export default function AddEntryModal({
               <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: '#111827' }}>
                 ✅ Review & Submit
               </h3>
-              
+
               {/* Recurrence Settings */}
               <div style={{
                 padding: '16px',
@@ -1217,7 +1217,7 @@ export default function AddEntryModal({
                 </label>
 
                 {isRecurrence && (
-                  <div style={{ 
+                  <div style={{
                     padding: '16px',
                     backgroundColor: 'white',
                     borderRadius: '6px',
@@ -1226,12 +1226,12 @@ export default function AddEntryModal({
                     <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#374151', fontWeight: '600' }}>
                       📅 Recurrence Settings
                     </h4>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ display: 'flex', gap: '16px' }}>
-                        <label style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: '6px',
                           cursor: 'pointer'
                         }}>
@@ -1244,9 +1244,9 @@ export default function AddEntryModal({
                           />
                           📅 Weekly
                         </label>
-                        <label style={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        <label style={{
+                          display: 'flex',
+                          alignItems: 'center',
                           gap: '6px',
                           cursor: 'pointer'
                         }}>
@@ -1315,7 +1315,7 @@ export default function AddEntryModal({
                               Nth weekday
                             </label>
                           </div>
-                          
+
                           {monthlyPattern === 'day' && (
                             <div>
                               <label style={{ display: 'block', marginBottom: '4px', fontSize: '12px', color: '#374151' }}>Select day:</label>
@@ -1331,7 +1331,7 @@ export default function AddEntryModal({
                                 }}
                               >
                                 <option value="">Select day...</option>
-                                {Array.from({length: 31}, (_, i) => (<option key={i+1} value={i+1}>{i+1}</option>))}
+                                {Array.from({ length: 31 }, (_, i) => (<option key={i + 1} value={i + 1}>{i + 1}</option>))}
                                 <option value="last">Last day of month</option>
                               </select>
                               {errors.monthlyDay && (<div style={{ marginTop: '4px', color: '#dc2626', fontSize: '12px' }}>{errors.monthlyDay}</div>)}

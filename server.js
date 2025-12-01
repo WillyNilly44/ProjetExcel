@@ -44,8 +44,8 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     timestamp: new Date().toISOString(),
     server: 'Render.com',
     database: 'AWS RDS Connected',
@@ -57,6 +57,7 @@ const loginHandler = require('./api/login');
 const changePasswordHandler = require('./api/changepassword');
 const dbConnectionHandler = require('./api/dbconnection');
 const addEntryHandler = require('./api/addentry');
+const addEntryRecHandler = require('./api/addentryrec');
 const deleteEntryHandler = require('./api/deleteentry');
 const updateEntryHandler = require('./api/updateentry');
 const getUsersHandler = require('./api/getusers');
@@ -112,11 +113,21 @@ app.post('/api/addentry', async (req, res) => {
   res.status(result.statusCode).json(JSON.parse(result.body));
 });
 
+app.post('/api/addentryrec', async (req, res) => {
+  const event = {
+    httpMethod: 'POST',
+    body: JSON.stringify(req.body),
+    headers: req.headers
+  };
+  const result = await addEntryRecHandler.handler(event, {});
+  res.status(result.statusCode).json(JSON.parse(result.body));
+});
+
 // Update the delete entry endpoint with correct table names
 app.delete('/api/deleteentry', async (req, res) => {
   try {
     const { id, user } = req.body;
-    
+
     // Verify user information
     if (!user || !user.username) {
       return res.status(401).json({
@@ -132,7 +143,7 @@ app.delete('/api/deleteentry', async (req, res) => {
 
     const userRequest = new sql.Request();
     userRequest.input('username', sql.VarChar(10), user.username);
-    
+
     const userResult = await userRequest.query(`
       SELECT u.*, l.level_Name 
       FROM LOG_ENTRIES_USER u 
@@ -168,10 +179,10 @@ app.delete('/api/deleteentry', async (req, res) => {
 
     const deleteRequest = new sql.Request();
     deleteRequest.input('id', sql.Int, parseInt(id));
-    
+
     // First check if entry exists
     const checkResult = await deleteRequest.query('SELECT * FROM LOG_ENTRIES WHERE id = @id');
-    
+
     if (checkResult.recordset.length === 0) {
       return res.status(404).json({
         success: false,
@@ -180,7 +191,7 @@ app.delete('/api/deleteentry', async (req, res) => {
     }
 
     const entryToDelete = checkResult.recordset[0];
-    
+
     // Delete the entry
     await deleteRequest.query('DELETE FROM LOG_ENTRIES WHERE id = @id');
 
@@ -316,7 +327,7 @@ app.get('/api/getthresholds', async (req, res) => {
     }
 
     const request = new sql.Request();
-    
+
     const query = `
       SELECT 
         id,
@@ -334,8 +345,8 @@ app.get('/api/getthresholds', async (req, res) => {
     res.json({
       success: true,
       data: result.recordset,
-      message: result.recordset.length > 0 
-        ? 'Thresholds loaded successfully' 
+      message: result.recordset.length > 0
+        ? 'Thresholds loaded successfully'
         : 'No thresholds found - using defaults'
     });
 
@@ -350,20 +361,20 @@ app.get('/api/getthresholds', async (req, res) => {
 // POST /api/savethresholds - Save thresholds to database
 app.post('/api/savethresholds', async (req, res) => {
   try {
-    const { 
-      maintenance_yellow, 
-      maintenance_red, 
-      incident_yellow, 
-      incident_red, 
-      impact 
+    const {
+      maintenance_yellow,
+      maintenance_red,
+      incident_yellow,
+      incident_red,
+      impact
     } = req.body;
 
     // Validate required fields
     if (
-      maintenance_yellow === undefined || 
-      maintenance_red === undefined || 
-      incident_yellow === undefined || 
-      incident_red === undefined || 
+      maintenance_yellow === undefined ||
+      maintenance_red === undefined ||
+      incident_yellow === undefined ||
+      incident_red === undefined ||
       impact === undefined
     ) {
       return res.status(400).json({
@@ -437,7 +448,7 @@ app.post('/api/savethresholds', async (req, res) => {
 app.post('/api/add-column', async (req, res) => {
   try {
     const { columnData, user } = req.body;
-    
+
     // Verify user is Administrator
     if (!user || !user.username) {
       return res.status(401).json({
@@ -453,7 +464,7 @@ app.post('/api/add-column', async (req, res) => {
     // Check user permissions using correct table names
     const userRequest = new sql.Request();
     userRequest.input('username', sql.VarChar(10), user.username);
-    
+
     const userResult = await userRequest.query(`
       SELECT u.*, l.level_Name 
       FROM LOG_ENTRIES_USER u 
@@ -478,7 +489,7 @@ app.post('/api/add-column', async (req, res) => {
 
     // Validate column data
     const { name, dataType, maxLength, isNullable, defaultValue } = columnData;
-    
+
     if (!name || !dataType) {
       return res.status(400).json({
         success: false,
@@ -498,7 +509,7 @@ app.post('/api/add-column', async (req, res) => {
     // Check if column already exists
     const checkRequest = new sql.Request();
     checkRequest.input('columnName', sql.NVarChar(255), sanitizedName);
-    
+
     const existsResult = await checkRequest.query(`
       SELECT COUNT(*) as count 
       FROM INFORMATION_SCHEMA.COLUMNS 
@@ -515,7 +526,7 @@ app.post('/api/add-column', async (req, res) => {
 
     // Build SQL ALTER TABLE statement
     let sqlType = dataType.toUpperCase();
-    
+
     // Handle data type specifics
     switch (dataType.toLowerCase()) {
       case 'nvarchar':
@@ -552,7 +563,7 @@ app.post('/api/add-column', async (req, res) => {
 
     // Add NULL/NOT NULL constraint
     const nullConstraint = isNullable ? 'NULL' : 'NOT NULL';
-    
+
     // Add default value if provided
     let defaultConstraint = '';
     if (defaultValue && defaultValue.trim()) {
@@ -568,9 +579,9 @@ app.post('/api/add-column', async (req, res) => {
     // Execute ALTER TABLE statement
     const alterRequest = new sql.Request();
     const alterSQL = `ALTER TABLE LOG_ENTRIES ADD [${sanitizedName}] ${sqlType} ${nullConstraint}${defaultConstraint}`;
-    
+
     await alterRequest.query(alterSQL);
-    
+
     res.json({
       success: true,
       message: `Column '${sanitizedName}' added successfully`,
@@ -590,7 +601,7 @@ app.post('/api/add-column', async (req, res) => {
     } else if (error.message.includes('syntax error')) {
       errorMessage = 'Invalid data type or SQL syntax error.';
     }
-    
+
     res.status(500).json({
       success: false,
       error: `Failed to add column: ${errorMessage}`
@@ -602,7 +613,7 @@ app.post('/api/add-column', async (req, res) => {
 app.post('/api/addcolumn', async (req, res) => {
   try {
     const { columnName, dataType, isNullable, defaultValue, user } = req.body;
-    
+
     // Verify user authentication
     if (!user || !user.username) {
       return res.status(401).json({
@@ -618,7 +629,7 @@ app.post('/api/addcolumn', async (req, res) => {
     // Check user permissions using correct table names
     const userRequest = new sql.Request();
     userRequest.input('username', sql.VarChar(10), user.username);
-    
+
     const userResult = await userRequest.query(`
       SELECT u.*, l.level_Name 
       FROM LOG_ENTRIES_USER u 
@@ -661,7 +672,7 @@ app.post('/api/addcolumn', async (req, res) => {
     // Check if column already exists
     const checkRequest = new sql.Request();
     checkRequest.input('columnName', sql.NVarChar(255), sanitizedName);
-    
+
     const existsResult = await checkRequest.query(`
       SELECT COUNT(*) as count 
       FROM INFORMATION_SCHEMA.COLUMNS 
@@ -678,7 +689,7 @@ app.post('/api/addcolumn', async (req, res) => {
 
     // Build SQL data type
     let sqlType = dataType.toUpperCase();
-    
+
     switch (dataType.toLowerCase()) {
       case 'varchar(255)':
         sqlType = 'NVARCHAR(255)';
@@ -710,7 +721,7 @@ app.post('/api/addcolumn', async (req, res) => {
 
     // Add NULL/NOT NULL constraint
     const nullConstraint = isNullable ? 'NULL' : 'NOT NULL';
-    
+
     // Add default value if provided
     let defaultConstraint = '';
     if (defaultValue && defaultValue.trim()) {
@@ -726,8 +737,8 @@ app.post('/api/addcolumn', async (req, res) => {
     // Execute ALTER TABLE statement
     const alterRequest = new sql.Request();
     const alterSQL = `ALTER TABLE LOG_ENTRIES ADD [${sanitizedName}] ${sqlType} ${nullConstraint}${defaultConstraint}`;
-    
-    
+
+
     await alterRequest.query(alterSQL);
 
     res.json({
@@ -741,7 +752,7 @@ app.post('/api/addcolumn', async (req, res) => {
 
   } catch (error) {
     console.error('Add column error:', error);
-    
+
     // Handle specific SQL errors
     let errorMessage = error.message;
     if (error.message.includes('Invalid column name')) {
@@ -751,7 +762,7 @@ app.post('/api/addcolumn', async (req, res) => {
     } else if (error.message.includes('syntax error')) {
       errorMessage = 'Invalid data type or SQL syntax error.';
     }
-    
+
     res.status(500).json({
       success: false,
       error: `Failed to add column: ${errorMessage}`
@@ -783,7 +794,7 @@ app.get('/api/getpendingentries', async (req, res) => {
 app.post('/api/approveentry', async (req, res) => {
   try {
     const { entryId, pendingId, action, notes } = req.body;
-    
+
     if (!entryId || !pendingId || !action) {
       return res.status(400).json({
         success: false,
@@ -798,7 +809,7 @@ app.post('/api/approveentry', async (req, res) => {
       const pendingResult = await pool.request()
         .input('pendingId', sql.Int, pendingId)
         .query('SELECT * FROM LOG_ENTRIES_PENDING WHERE id = @pendingId');
-      
+
       if (pendingResult.recordset.length === 0) {
         return res.status(404).json({
           success: false,
